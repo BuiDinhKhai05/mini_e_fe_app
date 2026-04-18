@@ -150,6 +150,12 @@ class AuthProvider with ChangeNotifier {
     } finally {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('access_token');
+
+      final context = navigatorKey.currentContext;
+      if (context != null) {
+        Provider.of<UserProvider>(context, listen: false).clearMe();
+      }
+
       _clearUserData();
       _accessToken = null;
       _navigateTo('/login');
@@ -236,7 +242,7 @@ class AuthProvider with ChangeNotifier {
       }
 
       final userProvider = Provider.of<UserProvider>(context, listen: false);
-      await userProvider.fetchMe();
+      await userProvider.fetchMe(force: true);
       _user = userProvider.me;
       _isVerified = _user?.isVerified ?? false;
 

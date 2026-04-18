@@ -35,8 +35,8 @@ class UserProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> fetchMe() async {
-    if (_me != null) return; // Tránh gọi lặp
+  Future<void> fetchMe({bool force = false}) async {
+    if (!force && _me != null) return;
     _setLoading(true);
     try {
       _me = await _userService.getMe();
@@ -46,6 +46,12 @@ class UserProvider extends ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  void clearMe() {
+    _me = null;
+    _error = null;
+    notifyListeners();
   }
 
   Future<bool> updateMe(Map<String, dynamic> patch) async {
