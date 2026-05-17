@@ -1,145 +1,205 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
-.DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+# =========================================================
+# Flutter / Dart project .gitignore
+# Dùng cho project mini_e_fe_app
+# Lưu ý:
+# - KHÔNG ignore assets/ vì app đang dùng ảnh logo Mochi trong assets/images/mochi/
+# - KHÔNG ignore web/index.html vì Flutter Web cần file này
+# - KHÔNG ignore android/gradle, gradlew, gradlew.bat vì đây là Gradle Wrapper cần để build Android
+# =========================================================
 
-# IntelliJ / Android Studio
+
+# =========================================================
+# 1. File hệ thống / file rác chung
+# =========================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Spotlight-V100
+.Trashes
+._*
+
+
+# =========================================================
+# 2. File tạm / file backup / file log
+# =========================================================
+*.log
+logs/
+*.tmp
+*.temp
+*.bak
+*.swp
+*~
+.fuse_hidden*
+.directory
+Trash-*
+.nfs*
+
+
+# =========================================================
+# 3. File biên dịch / cache của ngôn ngữ khác
+# =========================================================
+*.class
+*.pyc
+__pycache__/
+
+
+# =========================================================
+# 4. IDE / Editor
+# Không commit cấu hình riêng của máy cá nhân
+# =========================================================
+.idea/
 *.iml
 *.ipr
 *.iws
-.idea/
-*.gradle
-local.properties
 
-# VS Code (bạn có thể bỏ comment nếu muốn commit .vscode)
 .vscode/
+*.sublime-workspace
+*.sublime-project
 
-# Flutter/Dart/Pub
+.atom/
+.history
+
+
+# =========================================================
+# 5. Flutter / Dart / Pub
+# Các thư mục này được sinh tự động khi chạy flutter pub get/build
+# =========================================================
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
+.packages
 build/
 **/doc/api/
-**/ios/Flutter/.last_build_id
 
-# Build outputs
+
+# =========================================================
+# 6. Flutter build outputs
+# Không commit file build ra
+# =========================================================
 /build/
+app.*.symbols
+app.*.map.json
+
+*.apk
+*.aab
+*.ipa
+
+
+# =========================================================
+# 7. Android
+# Chỉ ignore cache, local config, file build
+# KHÔNG ignore android/gradle/
+# KHÔNG ignore android/gradlew
+# KHÔNG ignore android/gradlew.bat
+# =========================================================
+android/.gradle/
+android/local.properties
+android/captures/
+
 android/app/debug/
 android/app/profile/
 android/app/release/
-ios/Runner.xcworkspace/xcuserdata/
+
+*.jks
+*.keystore
+
+
+# =========================================================
+# 8. iOS
+# Các thư mục sinh tự động bởi Flutter/CocoaPods/Xcode
+# =========================================================
 ios/Pods/
 ios/.symlinks/
+ios/Flutter/.last_build_id
 ios/Flutter/Flutter.framework
 ios/Flutter/Flutter.podspec
 ios/Flutter/Generated.xcconfig
 ios/Flutter/app.flx
 ios/Flutter/app.zip
 ios/Flutter/flutter_assets/
-ios/Flutter/Flutter.podspec
 
-# Android
-android/.gradle/
-android/local.properties
-android/gradle/
-android/gradlew
-android/gradlew.bat
-android/captures/
-
-# iOS
-ios/.xcworkspace/
-ios/Podfile.lock
-ios/Pods/
+ios/Runner.xcworkspace/xcuserdata/
 ios/*.xcworkspace/
 ios/*.xcodeproj/project.xcworkspace/
 ios/*.xcodeproj/xcuserdata/
 
-# macOS
+
+# =========================================================
+# 9. macOS
+# File sinh tự động khi build Flutter macOS
+# =========================================================
 macos/.symlinks/
 macos/Flutter/Generated.xcconfig
 macos/Flutter/ephemeral/
 
-# Linux
+
+# =========================================================
+# 10. Linux
+# File sinh tự động khi build Flutter Linux
+# =========================================================
 linux/flutter/ephemeral/
 
-# Windows
+
+# =========================================================
+# 11. Windows
+# File sinh tự động khi build Flutter Windows
+# =========================================================
 windows/flutter/ephemeral/
 
-# Web
-web/favicon.png
-web/icons/Icon-192.png
-web/icons/Icon-512.png
-web/index.html
 
-# Symbolication & Obfuscation
-app.*.symbols
-app.*.map.json
+# =========================================================
+# 12. Web
+# KHÔNG ignore:
+# - web/index.html
+# - web/favicon.png
+# - web/icons/
+#
+# Vì Flutter Web cần các file này để chạy đúng.
+# =========================================================
 
-# Firebase (nếu dùng)
+
+# =========================================================
+# 13. Firebase / file cấu hình nhạy cảm
+# Nếu project dùng Firebase thật thì không nên commit các file này
+# =========================================================
 **/google-services.json
 **/GoogleService-Info.plist
 
-# Environment variables
+
+# =========================================================
+# 14. Environment variables
+# Không commit biến môi trường, token, password, secret key
+# =========================================================
 .env
 .env.local
 .env.*.local
 
-# Secrets & Keys
+
+# =========================================================
+# 15. Secrets / Keys / Certificates
+# Không commit private key, certificate, file ký app
+# =========================================================
 *.pem
 *.key
 *.crt
-*.jks
-*.keystore
 
-# Logs
-*.log
-logs/
 
-# Temporary files
-*.tmp
-*.temp
-*.bak
-*.swp
-*~
+# =========================================================
+# 16. Test coverage
+# Thư mục sinh ra khi chạy test coverage
+# =========================================================
+coverage/
 
-# IDE & Editor
-.vscode/
-.idea/
-*.sublime-workspace
-*.sublime-project
 
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
+# =========================================================
+# 17. Swift Package Manager / migration temp
+# =========================================================
+.swiftpm/
+migrate_working_dir/
 
-# Thumbnails
-._*
-
-# Files that might appear on external disk
-.Spotlight-V100
-.Trashes
-
-# Windows
-Thumbs.db
-ehthumbs.db
-Desktop.ini
-$RECYCLE.BIN/
-
-# Linux
-*~
-.fuse_hidden*
-.directory
-Trash-*
-.nfs*
