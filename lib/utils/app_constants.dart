@@ -16,6 +16,7 @@ class AppConstants {
   static const String requestVerifyEndpoint = '/auth/request-verify';
   static const String verifyAccountEndpoint = '/auth/verify-account';
   static const String resetPasswordEndpoint = '/auth/reset-password';
+  static const String changePasswordEndpoint = '/auth/change-password';
 }
 
 // USERS API

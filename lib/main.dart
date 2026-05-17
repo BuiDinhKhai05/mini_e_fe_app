@@ -48,6 +48,8 @@ import 'screens/oders_payments/checkout_screen.dart';
 import 'screens/oders_payments/my_orders_screen.dart';
 import 'screens/oders_payments/payment_qr_screen.dart';
 import 'screens/oders_payments/payment_result_screen.dart';
+import 'screens/auths/change_password_screen.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -72,16 +74,24 @@ void main() async {
   );
 
   // SAU KHI KHỞI TẠO ỨNG DỤNG → TỰ ĐỘNG TẢI DATA HOME
+  // WidgetsBinding.instance.addPostFrameCallback((_) async {
+  //   await authProvider.init();
+  //
+  //   final context = AuthProvider.navigatorKey.currentContext;
+  //   if (context != null) {
+  //     // ✅ load category tree cho Home filter
+  //     Provider.of<CategoryProvider>(context, listen: false).fetchTree();
+  //
+  //     // ✅ load sản phẩm public
+  //     Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
+  //   }
+  // });
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await authProvider.init();
 
     final context = AuthProvider.navigatorKey.currentContext;
     if (context != null) {
-      // ✅ load category tree cho Home filter
       Provider.of<CategoryProvider>(context, listen: false).fetchTree();
-
-      // ✅ load sản phẩm public
-      Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
     }
   });
 }
@@ -104,16 +114,39 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(),
+        // '/home': (context) {
+        //   WidgetsBinding.instance.addPostFrameCallback((_) {
+        //     Provider.of<CategoryProvider>(context, listen: false).fetchTree();
+        //     Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
+        //   });
+        //   return const HomeScreen();
+        // },
         '/home': (context) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Provider.of<CategoryProvider>(context, listen: false).fetchTree();
-            Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            final auth = Provider.of<AuthProvider>(context, listen: false);
+            final role = auth.user?.role?.toUpperCase();
+
+            await Provider.of<CategoryProvider>(context, listen: false).fetchTree();
+
+            if (role == 'SELLER') {
+              await Provider.of<ProductProvider>(
+                context,
+                listen: false,
+              ).fetchAllProductsForSeller(showLoading: false);
+            } else {
+              await Provider.of<ProductProvider>(
+                context,
+                listen: false,
+              ).fetchPublicProducts(showLoading: false);
+            }
           });
           return const HomeScreen();
         },
         '/forgot-password': (context) => ForgotPasswordScreen(),
         '/verify-account': (context) => const VerifyAccountScreen(),
         '/reset-otp': (context) => ResetOtpScreen(),
+        '/change-password': (context) => const ChangePasswordScreen(),
+
         '/profile': (context) => const ProfileScreen(),
 
         // === SHOP ===

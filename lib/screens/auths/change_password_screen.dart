@@ -1,3 +1,7 @@
+// Màn hình đổi mật khẩu.
+// Giao diện giữ style Mochi, phần chức năng gọi AuthProvider.changePassword().
+// Backend hiện tại đổi mật khẩu qua UsersService.update() bằng field password.
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
@@ -8,102 +12,168 @@ const Color _kMochiPinkSoft = Color(0xFFFFF7FA);
 const Color _kMochiBorder = Color(0xFFF7DCE7);
 const Color _kMochiText = Color(0xFF3F2D33);
 const Color _kMochiMuted = Color(0xFF9C7A86);
-const String _kMochiLogoAsset = 'assets/images/mochi/bunny_bear_original.png';
-const String _kScreenIllustrationAsset = 'assets/images/mochi/verify_envelope.png';
 
-class VerifyAccountScreen extends StatefulWidget {
-  const VerifyAccountScreen({super.key});
+const String _kMochiLogoAsset = 'assets/images/mochi/bunny_bear_original.png';
+const String _kScreenIllustrationAsset = 'assets/images/mochi/new_password_lock.png';
+
+class ChangePasswordScreen extends StatefulWidget {
+  const ChangePasswordScreen({super.key});
 
   @override
-  State<VerifyAccountScreen> createState() => _VerifyAccountScreenState();
+  State<ChangePasswordScreen> createState() => _ChangePasswordScreenState();
 }
 
-class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _otpController = TextEditingController();
+class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
+  final _currentPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
 
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<AuthProvider>().requestVerify();
-    });
+  bool _obscureCurrentPassword = true;
+  bool _obscureNewPassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _isSubmitting = false;
+
+  Future<void> _handleChangePassword(AuthProvider authProvider) async {
+    final currentPassword = _currentPasswordController.text.trim();
+    final newPassword = _newPasswordController.text.trim();
+    final confirmPassword = _confirmPasswordController.text.trim();
+
+    if (currentPassword.isEmpty) {
+      _showSnackBar('Vui lòng nhập mật khẩu hiện tại');
+      return;
+    }
+
+    if (newPassword.isEmpty) {
+      _showSnackBar('Vui lòng nhập mật khẩu mới');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      _showSnackBar('Mật khẩu mới phải có ít nhất 8 ký tự');
+      return;
+    }
+
+    final passwordRegex = RegExp(
+      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*()_+\-=\[\]{};:\\|,.<>/?]).{8,}$',
+    );
+
+    if (!passwordRegex.hasMatch(newPassword)) {
+      _showSnackBar('Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt');
+      return;
+    }
+
+    if (confirmPassword.isEmpty) {
+      _showSnackBar('Vui lòng nhập lại mật khẩu mới');
+      return;
+    }
+
+    if (confirmPassword != newPassword) {
+      _showSnackBar('Mật khẩu nhập lại không khớp');
+      return;
+    }
+
+    if (currentPassword == newPassword) {
+      _showSnackBar('Mật khẩu mới không được trùng với mật khẩu hiện tại');
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      // Gọi AuthProvider để xử lý đổi mật khẩu.
+      // Provider sẽ gọi AuthService, còn AuthService sẽ gọi API backend.
+      await authProvider.changePassword(
+        currentPassword,
+        newPassword,
+        confirmPassword,
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('Đổi mật khẩu thất bại: $e');
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = context.watch<AuthProvider>();
-    final email = authProvider.user?.email ?? 'email của bạn';
+    final authProvider = Provider.of<AuthProvider>(context);
+    final isLoading = authProvider.isLoading || _isSubmitting;
 
     return Scaffold(
       backgroundColor: _kMochiPinkSoft,
       body: _MochiAuthScaffold(
-        title: 'Xác minh tài khoản',
-        subtitle: 'Nhập mã OTP Mochi đã gửi đến email của bạn 💌',
+        title: 'Đổi mật khẩu',
+        subtitle: 'Cập nhật mật khẩu mới để bảo vệ tài khoản Mochi của bạn 🔐',
         illustrationAsset: _kScreenIllustrationAsset,
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _InfoBox(
-                icon: Icons.mark_email_read_outlined,
-                title: 'OTP đã gửi đến',
-                subtitle: email,
-              ),
-              const SizedBox(height: 18),
-              _MochiInput(
-                controller: _otpController,
-                label: 'Mã OTP',
-                hintText: 'Nhập mã OTP',
-                icon: Icons.pin_outlined,
-                keyboardType: TextInputType.number,
-                validator: (value) => value?.isEmpty == true ? 'Vui lòng nhập mã OTP' : null,
-              ),
-              const SizedBox(height: 22),
-              _MochiPrimaryButton(
-                text: 'Xác minh',
-                isLoading: authProvider.isLoading,
-                onPressed: () {
-                  if (_formKey.currentState!.validate()) {
-                    authProvider.verifyAccount(_otpController.text.trim()).then((_) {
-                      if (!mounted) return;
-                      if (authProvider.isVerified) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Xác thực thành công!')),
-                        );
-                        Navigator.pushReplacementNamed(context, '/home');
-                      } else if (authProvider.errorMessage != null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text(authProvider.errorMessage!)),
-                        );
-                      }
-                    });
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: TextButton(
-                  onPressed: authProvider.isLoading
-                      ? null
-                      : () {
-                    authProvider.requestVerify().then((_) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(authProvider.errorMessage ?? 'OTP đã được gửi lại!'),
-                          backgroundColor: authProvider.errorMessage == null ? Colors.green : Colors.red,
-                        ),
-                      );
-                    });
-                  },
-                  style: TextButton.styleFrom(foregroundColor: _kMochiPink),
-                  child: const Text('Gửi lại OTP', style: TextStyle(fontWeight: FontWeight.w900)),
+        footer: const _InfoBox(
+          icon: Icons.verified_user_outlined,
+          title: 'Bảo mật tài khoản',
+          subtitle: 'Không chia sẻ mật khẩu và nên dùng mật khẩu mạnh.',
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _MochiInput(
+              controller: _currentPasswordController,
+              label: 'Mật khẩu hiện tại',
+              hintText: 'Nhập mật khẩu hiện tại',
+              icon: Icons.lock_outline_rounded,
+              obscureText: _obscureCurrentPassword,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureCurrentPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: _kMochiMuted,
                 ),
+                onPressed: () => setState(() => _obscureCurrentPassword = !_obscureCurrentPassword),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 16),
+            _MochiInput(
+              controller: _newPasswordController,
+              label: 'Mật khẩu mới',
+              hintText: 'Tạo mật khẩu mới',
+              icon: Icons.lock_reset_rounded,
+              obscureText: _obscureNewPassword,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureNewPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: _kMochiMuted,
+                ),
+                onPressed: () => setState(() => _obscureNewPassword = !_obscureNewPassword),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _MochiInput(
+              controller: _confirmPasswordController,
+              label: 'Xác nhận mật khẩu',
+              hintText: 'Nhập lại mật khẩu mới',
+              icon: Icons.lock_outline_rounded,
+              obscureText: _obscureConfirmPassword,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureConfirmPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                  color: _kMochiMuted,
+                ),
+                onPressed: () => setState(() => _obscureConfirmPassword = !_obscureConfirmPassword),
+              ),
+            ),
+            const SizedBox(height: 22),
+            _MochiPrimaryButton(
+              text: 'Cập nhật mật khẩu',
+              isLoading: isLoading,
+              onPressed: () => _handleChangePassword(authProvider),
+            ),
+          ],
         ),
       ),
     );
@@ -111,7 +181,9 @@ class _VerifyAccountScreenState extends State<VerifyAccountScreen> {
 
   @override
   void dispose() {
-    _otpController.dispose();
+    _currentPasswordController.dispose();
+    _newPasswordController.dispose();
+    _confirmPasswordController.dispose();
     super.dispose();
   }
 }
@@ -153,7 +225,7 @@ class _MochiAuthScaffold extends StatelessWidget {
                       }
                     },
                     icon: const Icon(Icons.arrow_back_rounded, size: 18),
-                    label: const Text('Quay về trang chủ'),
+                    label: const Text('Quay lại'),
                     style: TextButton.styleFrom(
                       foregroundColor: _kMochiText,
                       padding: EdgeInsets.zero,
@@ -197,7 +269,12 @@ class _MochiAuthScaffold extends StatelessWidget {
                                 const SizedBox(height: 8),
                                 Text(
                                   subtitle,
-                                  style: const TextStyle(color: _kMochiText, fontSize: 14, height: 1.35, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(
+                                    color: _kMochiText,
+                                    fontSize: 14,
+                                    height: 1.35,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
                               ],
                             ),
@@ -373,11 +450,7 @@ class _CuteIllustration extends StatelessWidget {
               child: Image.asset(
                 assetPath,
                 fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.image_not_supported_outlined,
-                  color: _kMochiPink,
-                  size: 34,
-                ),
+                errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, color: _kMochiPink, size: 34),
               ),
             ),
           ),

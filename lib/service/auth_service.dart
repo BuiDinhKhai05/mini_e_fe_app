@@ -99,6 +99,52 @@ class AuthService {
     }
   }
 
+
+  /// ĐỔI MẬT KHẨU
+  ///
+  /// Dựa theo backend bạn gửi:
+  /// - Trong UsersService.update(id, dto), backend có đoạn:
+  ///   if (dto.password) { user.passwordHash = await bcrypt.hash(...) }
+  /// - Nghĩa là backend hiện tại đổi mật khẩu thông qua API cập nhật user.
+  /// - FE chỉ cần gọi PATCH /users/:id và gửi field password mới.
+  ///
+  /// Lưu ý quan trọng:
+  /// - Backend hiện tại KHÔNG có field currentPassword trong đoạn code bạn gửi.
+  /// - Vì vậy currentPassword chỉ được kiểm tra ở giao diện FE, chưa được backend xác thực.
+  /// - Nếu backend controller của bạn đặt route khác /users/:id thì chỉ sửa dòng endpoint bên dưới.
+  Future<UserModel> changePassword({
+    required int userId,
+    required String newPassword,
+  }) async {
+    final response = await _dio.patch(
+      '/users/$userId',
+      data: {
+        // Field này phải khớp với dto.password trong UsersService.update().
+        'password': newPassword,
+      },
+    );
+
+    final statusCode = response.statusCode ?? 0;
+
+    if (statusCode >= 200 && statusCode < 300) {
+      final body = response.data;
+
+      // Có backend trả về { data: user }, có backend trả trực tiếp user.
+      // Đoạn này hỗ trợ cả 2 kiểu response để FE đỡ bị lỗi parse.
+      final dynamic rawUser = body is Map<String, dynamic>
+          ? (body['data'] ?? body)
+          : null;
+
+      if (rawUser is Map<String, dynamic>) {
+        return UserModel.fromJson(rawUser);
+      }
+
+      throw Exception('Dữ liệu trả về khi đổi mật khẩu không hợp lệ');
+    }
+
+    throw Exception(response.data['message'] ?? 'Đổi mật khẩu thất bại');
+  }
+
   Future<void> logout() async {
     try {
       await _dio.post(AppConstants.logoutEndpoint);
