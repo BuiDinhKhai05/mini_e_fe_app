@@ -21,25 +21,52 @@ class ShopManagementScreen extends StatefulWidget {
   State<ShopManagementScreen> createState() => _ShopManagementScreenState();
 }
 
-class _ShopManagementScreenState extends State<ShopManagementScreen> with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
+class _ShopManagementScreenState extends State<ShopManagementScreen> {
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final auth = context.read<AuthProvider>();
-      if (auth.accessToken != null) {
-        context.read<ShopProvider>().loadMyShop();
-        context.read<ProductProvider>().fetchAllProductsForSeller();
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _reloadManagementData(
+        clearProductsFirst: true,
+        showLoading: true,
+      );
     });
+  }
+
+  Future<void> _reloadManagementData({
+    bool clearProductsFirst = true,
+    bool showLoading = true,
+  }) async {
+    if (!mounted) return;
+
+    final auth = context.read<AuthProvider>();
+    final shopProvider = context.read<ShopProvider>();
+    final productProvider = context.read<ProductProvider>();
+
+    if (auth.accessToken == null || auth.accessToken!.isEmpty) {
+      productProvider.clearProductsCache(notify: false);
+      shopProvider.clearShopData(notify: false);
+      return;
+    }
+
+    if (clearProductsFirst) {
+      productProvider.clearProductsCache(notify: false);
+    }
+
+    await shopProvider.loadMyShop();
+
+    if (!mounted) return;
+
+    if (shopProvider.shop != null) {
+      await productProvider.fetchAllProductsForSeller(showLoading: showLoading);
+    } else {
+      productProvider.clearProductsCache(notify: false);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     final shopProvider = Provider.of<ShopProvider>(context);
     final myShop = shopProvider.shop;
 
@@ -63,14 +90,21 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> with Automa
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black87),
-            onPressed: () => shopProvider.loadMyShop(),
+            onPressed: () async {
+              await _reloadManagementData(
+                clearProductsFirst: true,
+                showLoading: true,
+              );
+            },
           ),
         ],
       ),
       body: RefreshIndicator(
         onRefresh: () async {
-          await shopProvider.loadMyShop();
-          if (mounted) context.read<ProductProvider>().fetchAllProductsForSeller();
+          await _reloadManagementData(
+            clearProductsFirst: true,
+            showLoading: false,
+          );
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -186,13 +220,26 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> with Automa
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
                 children: [
-                  _buildMenuItem(Icons.inventory_2_outlined, 'Sản phẩm', () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const SellerProductListScreen()),
-                    );
-                  }, badgeCount: myShop.stats.productCount),
+                  _buildMenuItem(
+                    Icons.inventory_2_outlined,
+                    'Sản phẩm',
+                        () async {
+                      await _reloadManagementData(
+                        clearProductsFirst: true,
+                        showLoading: true,
+                      );
 
+                      if (!mounted) return;
+
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const SellerProductListScreen(),
+                        ),
+                      );
+                    },
+                    badgeCount: myShop.stats.productCount,
+                  ),
                   _buildMenuItem(Icons.shopping_bag_outlined, 'Đơn hàng', () {}, badgeCount: myShop.stats.orderCount),
                   _buildMenuItem(Icons.campaign_outlined, 'Marketing', () {}),
                   _buildMenuItem(Icons.account_balance_wallet_outlined, 'Tài chính', () {}),

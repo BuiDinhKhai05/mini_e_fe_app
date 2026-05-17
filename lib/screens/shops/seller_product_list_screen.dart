@@ -1,10 +1,10 @@
-// lib/screens/shops/seller_product_list_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 // Providers & Models
 import '../../providers/product_provider.dart';
+import '../../providers/shop_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../../models/product_model.dart';
 
 // Screens
@@ -19,51 +19,70 @@ class SellerProductListScreen extends StatefulWidget {
 }
 
 class _SellerProductListScreenState extends State<SellerProductListScreen> {
+  Future<void> _reloadSellerProducts({bool showLoading = true}) async {
+    if (!mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final shopProvider = context.read<ShopProvider>();
+    final productProvider = context.read<ProductProvider>();
+
+    if (authProvider.accessToken == null || authProvider.accessToken!.isEmpty) {
+      productProvider.clearProductsCache(notify: false);
+      shopProvider.clearShopData(notify: false);
+      return;
+    }
+
+    // Bắt buộc đồng bộ lại shop hiện tại
+    await shopProvider.loadMyShop();
+
+    if (!mounted) return;
+
+    // Nếu account này không có shop thì xóa list để tránh dính sản phẩm cũ
+    if (shopProvider.shop == null) {
+      productProvider.clearProductsCache();
+      return;
+    }
+
+    // Xóa cache cũ trước khi tải lại
+    productProvider.clearProductsCache(notify: false);
+
+    // Tải tất cả sản phẩm seller hiện tại
+    await productProvider.fetchAllProductsForSeller(showLoading: showLoading);
+  }
+
   @override
   void initState() {
     super.initState();
-    // Sử dụng addPostFrameCallback để thực hiện logic sau khi Widget được dựng
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final provider = context.read<ProductProvider>();
-
-      // --- CẬP NHẬT QUAN TRỌNG ---
-      // 1. Xóa bộ nhớ đệm cũ ngay lập tức để không hiện sản phẩm của shop trước
-      provider.clearProductsCache();
-
-      // 2. Sau đó mới gọi API tải danh sách sản phẩm của shop hiện tại
-      provider.fetchAllProductsForSeller();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _reloadSellerProducts(showLoading: true);
     });
   }
 
-  // Hàm tính tổng tồn kho thực tế (bao gồm cả biến thể)
   int _calculateTotalStock(ProductModel product) {
-    // Nếu có variants → tính tổng stock từ các variant
     if (product.variants != null && product.variants!.isNotEmpty) {
       return product.variants!.fold(0, (sum, variant) => sum + variant.stock);
     }
-    // Nếu không có variants → dùng stock của product (có thể null)
     return product.stock ?? 0;
   }
 
-  // Hàm chuyển trạng thái sản phẩm (Active <-> Draft)
   Future<void> _toggleStatus(BuildContext context, ProductModel product) async {
     final provider = context.read<ProductProvider>();
     final success = await provider.toggleProductStatus(product.id);
 
     if (success && mounted) {
       final newStatus = product.status == 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Đã chuyển trạng thái sản phẩm thành $newStatus'),
           backgroundColor: newStatus == 'ACTIVE' ? Colors.green : Colors.orange,
         ),
       );
-      // Tải lại danh sách để cập nhật giao diện
-      provider.fetchAllProductsForSeller();
+
+      await _reloadSellerProducts(showLoading: false);
     }
   }
 
-  // Hàm xác nhận xóa sản phẩm
   void _confirmDeleteProduct(BuildContext context, int productId) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -72,25 +91,28 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
         content: const Text('Sản phẩm này sẽ bị xóa vĩnh viễn.'),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text('Hủy')),
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Hủy'),
+          ),
           TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text('Xóa', style: TextStyle(color: Colors.red))),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Xóa',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
         ],
       ),
     );
 
     if (confirm == true && mounted) {
-      // Gọi API xóa từ Provider
       final success = await context.read<ProductProvider>().deleteProduct(productId);
 
       if (success && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã xóa sản phẩm.')),
         );
-        // Refresh danh sách sau khi xóa
-        context.read<ProductProvider>().fetchAllProductsForSeller();
+        await _reloadSellerProducts(showLoading: false);
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Xóa thất bại. Vui lòng thử lại.')),
@@ -102,58 +124,99 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
   @override
   Widget build(BuildContext context) {
     final productProvider = context.watch<ProductProvider>();
-    final products = productProvider.products;
+    final shopProvider = context.watch<ShopProvider>();
+
+    final currentShop = shopProvider.shop;
+    final currentShopId = currentShop?.id;
+
+    // CHỈ HIỂN THỊ SẢN PHẨM THUỘC SHOP HIỆN TẠI
+    final products = currentShopId == null
+        ? <ProductModel>[]
+        : productProvider.products
+        .where((p) => p.shopId == currentShopId)
+        .toList();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5FA),
       appBar: AppBar(
-        title: const Text('Sản phẩm của tôi',
-            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Sản phẩm của tôi',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+        ),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.black87),
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () async {
+              await _reloadSellerProducts(showLoading: true);
+            },
+          ),
+          IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              await Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const AddProductScreen()),
               );
+
+              if (!mounted) return;
+              await _reloadSellerProducts(showLoading: false);
             },
-          )
+          ),
         ],
       ),
-      body: productProvider.isLoading
+      body: currentShop == null
+          ? const Center(
+        child: Text(
+          'Tài khoản này chưa có shop',
+          style: TextStyle(color: Colors.grey),
+        ),
+      )
+          : productProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : products.isEmpty
           ? Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.inventory_2_outlined,
-                size: 80, color: Colors.grey[300]),
+            Icon(
+              Icons.inventory_2_outlined,
+              size: 80,
+              color: Colors.grey[300],
+            ),
             const SizedBox(height: 16),
-            const Text('Bạn chưa có sản phẩm nào',
-                style: TextStyle(color: Colors.grey)),
+            const Text(
+              'Shop này chưa có sản phẩm nào',
+              style: TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: () => Navigator.push(
+              onPressed: () async {
+                await Navigator.push(
                   context,
                   MaterialPageRoute(
-                      builder: (_) => const AddProductScreen())),
+                    builder: (_) => const AddProductScreen(),
+                  ),
+                );
+
+                if (!mounted) return;
+                await _reloadSellerProducts(showLoading: false);
+              },
               icon: const Icon(Icons.add),
               label: const Text('Thêm sản phẩm ngay'),
               style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0D6EFD)),
+                backgroundColor: const Color(0xFF0D6EFD),
+              ),
             ),
           ],
         ),
       )
           : RefreshIndicator(
-        onRefresh: () async => await context
-            .read<ProductProvider>()
-            .fetchAllProductsForSeller(),
+        onRefresh: () async {
+          await _reloadSellerProducts(showLoading: false);
+        },
         child: ListView.separated(
           padding: const EdgeInsets.all(12),
           itemCount: products.length,
@@ -162,14 +225,19 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
               _buildProductItem(context, products[index]),
         ),
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: currentShop == null
+          ? null
+          : FloatingActionButton(
         backgroundColor: const Color(0xFF0D6EFD),
         child: const Icon(Icons.add, color: Colors.white),
-        onPressed: () {
-          Navigator.push(
+        onPressed: () async {
+          await Navigator.push(
             context,
             MaterialPageRoute(builder: (_) => const AddProductScreen()),
           );
+
+          if (!mounted) return;
+          await _reloadSellerProducts(showLoading: false);
         },
       ),
     );
@@ -179,12 +247,10 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
     final String? image =
     (product.imageUrl.isNotEmpty) ? product.imageUrl : null;
 
-    // Tính tổng tồn kho thực tế
     final int totalStock = _calculateTotalStock(product);
 
     return InkWell(
       onTap: () {
-        // Chuyển sang màn hình chi tiết (đảm bảo route '/product-detail' đã được định nghĩa)
         Navigator.pushNamed(
           context,
           '/product-detail',
@@ -199,15 +265,15 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-                color: Colors.black.withOpacity(0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2))
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            )
           ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- ẢNH ---
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: Container(
@@ -215,13 +281,16 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                 height: 80,
                 color: Colors.grey[100],
                 child: image != null
-                    ? Image.network(image, fit: BoxFit.cover)
+                    ? Image.network(
+                  image,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.image, color: Colors.grey),
+                )
                     : const Icon(Icons.image, color: Colors.grey),
               ),
             ),
             const SizedBox(width: 12),
-
-            // --- THÔNG TIN ---
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +298,9 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                   Text(
                     product.title,
                     style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -237,7 +308,9 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                   Text(
                     '${product.price.toStringAsFixed(0)} đ',
                     style: const TextStyle(
-                        color: Color(0xFF0D6EFD), fontWeight: FontWeight.bold),
+                      color: Color(0xFF0D6EFD),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Row(
@@ -251,14 +324,19 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                       const SizedBox(width: 12),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 6, vertical: 2),
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
-                            color: Colors.grey[200],
-                            borderRadius: BorderRadius.circular(4)),
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(4),
+                        ),
                         child: Text(
                           product.status ?? 'N/A',
-                          style:
-                          TextStyle(fontSize: 10, color: Colors.grey[700]),
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.grey[700],
+                          ),
                         ),
                       )
                     ],
@@ -266,22 +344,23 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                 ],
               ),
             ),
-
-            // --- NÚT CHUYỂN TRẠNG THÁI + MENU ---
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Nút chuyển trạng thái nhanh
                 IconButton(
                   icon: Icon(
-                    product.status == 'ACTIVE' ? Icons.visibility : Icons.visibility_off,
-                    color: product.status == 'ACTIVE' ? Colors.green : Colors.grey,
+                    product.status == 'ACTIVE'
+                        ? Icons.visibility
+                        : Icons.visibility_off,
+                    color: product.status == 'ACTIVE'
+                        ? Colors.green
+                        : Colors.grey,
                   ),
-                  tooltip: product.status == 'ACTIVE' ? 'Ẩn sản phẩm' : 'Hiển thị sản phẩm',
+                  tooltip: product.status == 'ACTIVE'
+                      ? 'Ẩn sản phẩm'
+                      : 'Hiển thị sản phẩm',
                   onPressed: () => _toggleStatus(context, product),
                 ),
-
-                // Menu mở rộng (Sửa/Xóa)
                 PopupMenuButton<String>(
                   icon: const Icon(Icons.more_vert, color: Colors.grey),
                   onSelected: (value) async {
@@ -292,33 +371,35 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                           builder: (_) => EditProductScreen(product: product),
                         ),
                       );
-                      // Refresh lại danh sách sau khi quay về từ màn hình sửa
-                      if (context.mounted) {
-                        context.read<ProductProvider>().fetchAllProductsForSeller();
-                      }
+
+                      if (!mounted) return;
+                      await _reloadSellerProducts(showLoading: false);
                     } else if (value == 'delete') {
                       _confirmDeleteProduct(context, product.id);
                     }
                   },
-                  itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                  itemBuilder: (BuildContext context) =>
+                  <PopupMenuEntry<String>>[
                     const PopupMenuItem<String>(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit, size: 18, color: Colors.blue),
-                            SizedBox(width: 8),
-                            Text('Chỉnh sửa'),
-                          ],
-                        )),
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit, size: 18, color: Colors.blue),
+                          SizedBox(width: 8),
+                          Text('Chỉnh sửa'),
+                        ],
+                      ),
+                    ),
                     const PopupMenuItem<String>(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, size: 18, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Xóa', style: TextStyle(color: Colors.red)),
-                          ],
-                        )),
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(Icons.delete, size: 18, color: Colors.red),
+                          SizedBox(width: 8),
+                          Text('Xóa', style: TextStyle(color: Colors.red)),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ],

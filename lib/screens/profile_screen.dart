@@ -182,7 +182,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     context,
                     icon: Icons.lock_outline,
                     title: 'Đổi mật khẩu',
-                    onTap: () => Navigator.pushNamed(context, '/forgot-password'),
+                    onTap: () => Navigator.pushNamed(context, '/change-password'),
                   ),
                   _menuTile(
                     context,

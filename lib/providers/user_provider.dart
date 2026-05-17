@@ -4,14 +4,16 @@ import '../models/user_model.dart';
 import '../service/user_service.dart';
 
 class UserProvider extends ChangeNotifier {
-  final UserService _userService = UserService(); // Không cần param nữa
+  final UserService _userService = UserService();
 
   UserModel? _me;
   bool _loading = false;
   String? _error;
 
   List<UserModel> _users = [];
-  int _page = 1, _limit = 20, _total = 0;
+  int _page = 1;
+  int _limit = 20;
+  int _total = 0;
 
   List<UserModel> _deletedUsers = [];
 
@@ -25,33 +27,51 @@ class UserProvider extends ChangeNotifier {
   int get total => _total;
   List<UserModel> get deletedUsers => _deletedUsers;
 
-  void _setLoading(bool v) {
-    _loading = v;
+  void _setLoading(bool value) {
+    _loading = value;
     notifyListeners();
   }
 
-  void _setError(String? e) {
-    _error = e;
+  void _setError(String? value) {
+    _error = value;
     notifyListeners();
   }
 
   Future<void> fetchMe({bool force = false}) async {
     if (!force && _me != null) return;
+
     _setLoading(true);
     try {
       _me = await _userService.getMe();
       _setError(null);
     } catch (e) {
+      _me = null;
       _setError(e.toString());
+      rethrow;
     } finally {
       _setLoading(false);
     }
   }
 
-  void clearMe() {
+  void clearAll({bool notify = true}) {
     _me = null;
+    _loading = false;
     _error = null;
-    notifyListeners();
+
+    _users = [];
+    _deletedUsers = [];
+
+    _page = 1;
+    _limit = 20;
+    _total = 0;
+
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
+  void clearMe() {
+    clearAll();
   }
 
   Future<bool> updateMe(Map<String, dynamic> patch) async {
@@ -71,6 +91,7 @@ class UserProvider extends ChangeNotifier {
 
   Future<bool> deleteMeSoft() async {
     if (_me?.id == null) return false;
+
     _setLoading(true);
     try {
       await _userService.deleteMeSoft();
@@ -131,10 +152,12 @@ class UserProvider extends ChangeNotifier {
     try {
       final updated = await _userService.updateUserById(id, patch);
       final idx = _users.indexWhere((u) => u.id == id);
+
       if (idx >= 0) {
         _users[idx] = updated;
         notifyListeners();
       }
+
       _setError(null);
       return true;
     } catch (e) {
@@ -166,8 +189,12 @@ class UserProvider extends ChangeNotifier {
     try {
       final restored = await _userService.restoreUser(id);
       _deletedUsers.removeWhere((u) => u.id == id);
+
       final idx = _users.indexWhere((u) => u.id == id);
-      if (idx >= 0) _users[idx] = restored;
+      if (idx >= 0) {
+        _users[idx] = restored;
+      }
+
       notifyListeners();
       _setError(null);
       return true;

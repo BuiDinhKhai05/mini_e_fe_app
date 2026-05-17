@@ -1,26 +1,23 @@
-// lib/providers/shop_provider.dart
 import 'package:flutter/material.dart';
+
 import '../models/shop_model.dart';
 import '../service/shop_service.dart';
 
 class ShopProvider with ChangeNotifier {
-  final ShopService service; // Dùng named parameter
+  final ShopService service;
 
   ShopModel? _shop;
   List<ShopModel> _shops = [];
   bool _isLoading = false;
   String? _error;
 
-  // Constructor bắt buộc truyền service
   ShopProvider({required this.service});
 
-  // Getters
   ShopModel? get shop => _shop;
   List<ShopModel> get shops => _shops;
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // ==================== MY SHOP ====================
   Future<void> loadMyShop() async {
     _setLoading(true);
     try {
@@ -29,6 +26,7 @@ class ShopProvider with ChangeNotifier {
       _error = null;
     } catch (e) {
       final message = e.toString();
+
       if (message.contains('404') || message.contains('Bạn chưa có shop')) {
         _shop = null;
         _error = null;
@@ -40,7 +38,6 @@ class ShopProvider with ChangeNotifier {
     }
   }
 
-  // ==================== REGISTER ====================
   Future<void> register(Map<String, dynamic> data) async {
     _setLoading(true);
     try {
@@ -53,7 +50,6 @@ class ShopProvider with ChangeNotifier {
     }
   }
 
-  // ==================== UPDATE ====================
   Future<void> update(int shopId, Map<String, dynamic> data) async {
     _setLoading(true);
     try {
@@ -66,7 +62,6 @@ class ShopProvider with ChangeNotifier {
     }
   }
 
-  // ==================== DELETE ====================
   Future<void> delete(int shopId) async {
     _setLoading(true);
     try {
@@ -80,18 +75,16 @@ class ShopProvider with ChangeNotifier {
     }
   }
 
-  // ==================== CHECK NAME ====================
   Future<bool> checkNameExists(String name) async {
     try {
       return await service.checkName(name);
     } catch (e) {
       _error = e.toString();
       notifyListeners();
-      return true; // Giả sử tồn tại nếu lỗi
+      return true;
     }
   }
 
-  // ==================== FETCH SHOPS ====================
   Future<void> fetchShops({
     String? q,
     String? status,
@@ -116,29 +109,31 @@ class ShopProvider with ChangeNotifier {
 
   Future<ShopModel> getShopById(int id) async {
     try {
-      // Gọi service vừa tạo ở Bước 1
       return await service.getShopById(id);
     } catch (e) {
-      // Ném lỗi ra để UI (try-catch trong _fetchShopInfo) xử lý
       rethrow;
     }
   }
 
-  // ==================== CLEAR ====================
-  void clearShops() {
+  void clearShops({bool notify = true}) {
     _shops = [];
-    notifyListeners();
-  }
-
-
-  void clearShopData() {
-    _shop = null;      // Xóa shop hiện tại
-    _shops = [];       // Xóa danh sách tìm kiếm
     _error = null;
-    notifyListeners();
+    if (notify) {
+      notifyListeners();
+    }
   }
 
-  // ==================== PRIVATE HELPER ====================
+  void clearShopData({bool notify = true}) {
+    _shop = null;
+    _shops = [];
+    _error = null;
+    _isLoading = false;
+
+    if (notify) {
+      notifyListeners();
+    }
+  }
+
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();

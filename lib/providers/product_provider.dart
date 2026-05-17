@@ -14,8 +14,6 @@ import 'shop_provider.dart';
 
 /// ---------------------------------------------------------------------------
 /// PRODUCT PROVIDER – QUẢN LÝ SẢN PHẨM & GỌI API
-/// ĐÃ CẬP NHẬT:
-/// • Thêm hàm clearProductsCache() để xóa dữ liệu khi đổi shop/user
 /// ---------------------------------------------------------------------------
 class ProductProvider with ChangeNotifier {
   // ====================== DIO CLIENT ======================
@@ -41,11 +39,14 @@ class ProductProvider with ChangeNotifier {
   // ========================================================================
   // 0. HÀM MỚI: XÓA CACHE DỮ LIỆU (Dùng khi logout hoặc switch account)
   // ========================================================================
-  void clearProductsCache() {
+  void clearProductsCache({bool notify = true}) {
     _products = [];
     _error = null;
     _isLoading = false;
-    notifyListeners();
+
+    if (notify) {
+      notifyListeners();
+    }
   }
 
   // ========================================================================
@@ -54,8 +55,15 @@ class ProductProvider with ChangeNotifier {
   Future<String> _getToken() async {
     final context = AuthProvider.navigatorKey.currentContext;
     if (context == null) throw Exception('App chưa khởi tạo');
+
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    return authProvider.accessToken ?? '';
+    final token = authProvider.accessToken;
+
+    if (token == null || token.isEmpty) {
+      throw Exception('Chưa đăng nhập');
+    }
+
+    return token;
   }
 
   // ========================================================================
@@ -79,9 +87,11 @@ class ProductProvider with ChangeNotifier {
   }) async {
     if (showLoading) {
       _isLoading = true;
-      _products = []; // <--- THÊM: Xóa ngay dữ liệu cũ khi bắt đầu tải mới
+      _products = [];
       _error = null;
       notifyListeners();
+    } else {
+      _error = null;
     }
 
     try {
@@ -95,7 +105,7 @@ class ProductProvider with ChangeNotifier {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
 
-      dynamic data = response.data['data'];
+      final dynamic data = response.data['data'];
       List<dynamic> rawList = [];
 
       if (data is Map) {
@@ -104,22 +114,18 @@ class ProductProvider with ChangeNotifier {
         rawList = data;
       }
 
-      final List<ProductModel> parsedProducts = rawList
+      final parsedProducts = rawList
           .whereType<Map<String, dynamic>>()
           .map((item) => ProductModel.fromJson(item))
           .toList();
 
       _products = parsedProducts;
-
-      if (showLoading) _isLoading = false;
-      notifyListeners();
     } on DioException catch (e) {
       _error = _handleDioError(e);
-      if (showLoading) _isLoading = false;
-      notifyListeners();
     } catch (e) {
       _error = 'Lỗi tải sản phẩm: $e';
-      if (showLoading) _isLoading = false;
+    } finally {
+      _isLoading = false;
       notifyListeners();
     }
   }
@@ -452,13 +458,17 @@ class ProductProvider with ChangeNotifier {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
       final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+      final role = authProvider.user?.role?.toUpperCase();
 
-      if (authProvider.user?.role?.toUpperCase() == 'SELLER' && shopProvider.shop != null) {
+      if (role == 'SELLER') {
+        await shopProvider.loadMyShop();
         await fetchAllProductsForSeller(showLoading: false);
+      } else if (role == 'ADMIN') {
+        clearProductsCache();
       } else {
         await fetchPublicProducts(showLoading: false);
       }
-    } catch (e) {
+    } catch (_) {
       await fetchPublicProducts(showLoading: false);
     }
   }
