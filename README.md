@@ -148,10 +148,6 @@ mini_e_fe_app/
             vietnam_address_selector.dart
 ```
 
-> Lưu ý: thư mục hiện tại của bạn đang đặt tên là `oders_payments`. Nếu muốn đổi thành `orders_payments`, cần đổi tên thư mục và sửa lại tất cả import trong code.
-
----
-
 ## Khai báo assets trong `pubspec.yaml`
 
 Để các ảnh trong `assets/images/mochi/` hiển thị đúng, trong `pubspec.yaml` cần có:

@@ -44,10 +44,10 @@ import 'screens/products/add_product_screen.dart';
 import 'screens/products//add_variant_screen.dart';
 import 'screens/carts/cart_screen.dart';
 import 'screens/address/address_list_screen.dart';
-import 'screens/oders_payments/checkout_screen.dart';
-import 'screens/oders_payments/my_orders_screen.dart';
-import 'screens/oders_payments/payment_qr_screen.dart';
-import 'screens/oders_payments/payment_result_screen.dart';
+import 'screens/orders_payments/checkout_screen.dart';
+import 'screens/orders_payments/my_orders_screen.dart';
+import 'screens/orders_payments/payment_qr_screen.dart';
+import 'screens/orders_payments/payment_result_screen.dart';
 import 'screens/auths/change_password_screen.dart';
 
 
