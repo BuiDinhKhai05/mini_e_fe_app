@@ -1,19 +1,19 @@
-// lib/screens/add_variant_screen.dart
-
+// lib/screens/products/add_variant_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '/../providers/product_provider.dart';
-import '/../models/product_model.dart'; // ← THÊM import này
+
+import 'package:mini_e_fe_app/models/product_model.dart';
+import 'package:mini_e_fe_app/providers/product_provider.dart';
 import 'edit_product_screen.dart';
 
 class AddVariantScreen extends StatefulWidget {
   final int productId;
-  final ProductModel? currentProduct; // ← THÊM: Để truyền product hiện tại
+  final ProductModel? currentProduct;
 
   const AddVariantScreen({
     super.key,
     required this.productId,
-    this.currentProduct, // Optional, nếu có thì load schema cũ
+    this.currentProduct,
   });
 
   @override
@@ -21,9 +21,31 @@ class AddVariantScreen extends StatefulWidget {
 }
 
 class _AddVariantScreenState extends State<AddVariantScreen> {
-  List<Map<String, dynamic>> _options = [];
-  String _mode = 'replace'; // mặc định thay thế toàn bộ
-  final Color primaryColor = const Color(0xFF0D6EFD);
+  // =========================
+  // Màu dùng chung theo format Soft Pink Card UI
+  // =========================
+  static const Color _primaryPink = Color(0xFFFF5C8A);
+  static const Color _softPink = Color(0xFFFFEEF4);
+  static const Color _lighterPink = Color(0xFFFFF7FA);
+  static const Color _borderPink = Color(0xFFFFD8E4);
+  static const Color _textDark = Color(0xFF222222);
+  static const Color _textGrey = Color(0xFF707070);
+  static const Color _dangerRed = Color(0xFFFF4D5E);
+
+  final List<_OptionDraft> _options = [];
+  String _mode = 'replace';
+  bool _isSubmitting = false;
+
+  int get _estimatedVariantCount {
+    if (_options.isEmpty) return 0;
+    int result = 1;
+    for (final option in _options) {
+      final count = option.values.length;
+      if (count == 0) return 0;
+      result *= count;
+    }
+    return result;
+  }
 
   @override
   void initState() {
@@ -31,102 +53,136 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
     _loadExistingOptions();
   }
 
-  // ← HÀM MỚI: Load optionSchema hiện tại từ product
-  void _loadExistingOptions() {
-    if (widget.currentProduct != null &&
-        widget.currentProduct!.optionSchema != null &&
-        widget.currentProduct!.optionSchema!.isNotEmpty) {
-      setState(() {
-        _options = widget.currentProduct!.optionSchema!.map((schema) {
-          return {
-            'name': TextEditingController(text: schema.name),
-            'values': List<String>.from(schema.values),
-            'tempValue': TextEditingController(),
-          };
-        }).toList();
-      });
-    }
-  }
-
   @override
   void dispose() {
-    for (var opt in _options) {
-      opt['name'].dispose();
-      opt['tempValue'].dispose();
+    for (final option in _options) {
+      option.dispose();
     }
     super.dispose();
   }
 
-  void _addOption() {
-    if (_options.length < 5) {
-      setState(() {
-        _options.add({
-          'name': TextEditingController(),
-          'values': <String>[],
-          'tempValue': TextEditingController(),
-        });
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tối đa 5 nhóm thuộc tính')),
-      );
+  // =========================
+  // Load optionSchema cũ nếu seller đang chỉnh biến thể.
+  // =========================
+  void _loadExistingOptions() {
+    final schema = widget.currentProduct?.optionSchema ?? [];
+    if (schema.isEmpty) return;
+
+    for (final item in schema) {
+      _options.add(_OptionDraft(
+        name: item.name,
+        values: List<String>.from(item.values),
+      ));
     }
+  }
+
+  void _addOption() {
+    if (_options.length >= 5) {
+      _showSnack('Tối đa 5 nhóm thuộc tính', isError: true);
+      return;
+    }
+    setState(() => _options.add(_OptionDraft()));
   }
 
   void _removeOption(int index) {
     setState(() {
-      _options[index]['name'].dispose();
-      _options[index]['tempValue'].dispose();
+      _options[index].dispose();
       _options.removeAt(index);
     });
   }
 
-  void _addValueToOption(int index, String value) {
-    final val = value.trim();
-    if (val.isEmpty) return;
+  void _addValueToOption(int index) {
+    final option = _options[index];
+    final value = option.tempValueController.text.trim();
+    if (value.isEmpty) return;
 
-    final currentValues = _options[index]['values'] as List<String>;
-    if (!currentValues.contains(val)) {
-      setState(() {
-        currentValues.add(val);
-        _options[index]['tempValue'].clear();
-      });
-    } else {
-      _options[index]['tempValue'].clear();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Giá trị "$val" đã tồn tại!')),
-      );
+    final exists = option.values.any((item) => item.toLowerCase() == value.toLowerCase());
+    if (exists) {
+      option.tempValueController.clear();
+      _showSnack('Giá trị "$value" đã tồn tại', isError: true);
+      return;
     }
-  }
 
-  void _removeValueFromOption(int index, String valueToRemove) {
+    if (option.values.length >= 20) {
+      _showSnack('Mỗi nhóm chỉ nên có tối đa 20 giá trị', isError: true);
+      return;
+    }
+
     setState(() {
-      (_options[index]['values'] as List<String>).remove(valueToRemove);
+      option.values.add(value);
+      option.tempValueController.clear();
     });
   }
 
+  void _removeValueFromOption(int optionIndex, String value) {
+    setState(() => _options[optionIndex].values.remove(value));
+  }
+
+  void _showSnack(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? _dangerRed : Colors.green,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _buildOptionsPayload() {
+    return _options
+        .map((option) => {
+      'name': option.nameController.text.trim(),
+      'values': option.values.map((value) => value.trim()).where((value) => value.isNotEmpty).toList(),
+    })
+        .toList();
+  }
+
+  String? _validateOptions(List<Map<String, dynamic>> options) {
+    if (options.isEmpty) return 'Vui lòng thêm ít nhất 1 nhóm thuộc tính';
+
+    final names = <String>{};
+    for (final option in options) {
+      final name = option['name'].toString().trim();
+      final values = (option['values'] as List).cast<String>();
+
+      if (name.isEmpty) return 'Tên thuộc tính không được để trống';
+      if (values.isEmpty) return 'Mỗi thuộc tính phải có ít nhất 1 giá trị';
+
+      final nameKey = name.toLowerCase();
+      if (names.contains(nameKey)) return 'Tên thuộc tính "$name" bị trùng';
+      names.add(nameKey);
+
+      final valueKeys = <String>{};
+      for (final value in values) {
+        final key = value.toLowerCase();
+        if (valueKeys.contains(key)) return 'Giá trị "$value" trong $name bị trùng';
+        valueKeys.add(key);
+      }
+    }
+
+    if (_estimatedVariantCount > 300) {
+      return 'Số biến thể dự kiến quá nhiều ($_estimatedVariantCount). Hãy giảm bớt giá trị.';
+    }
+
+    return null;
+  }
+
+  // =========================
+  // Submit: gọi API generate variants, sau đó load lại product mới nhất.
+  // =========================
   Future<void> _submitVariants() async {
-    final provider = Provider.of<ProductProvider>(context, listen: false);
+    if (_isSubmitting) return;
 
-    final List<Map<String, dynamic>> options = _options.map((opt) {
-      return {
-        'name': (opt['name'] as TextEditingController).text.trim(),
-        'values': opt['values'] as List<String>,
-      };
-    }).toList();
-
-    if (options.any((o) => o['name'].toString().isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Tên thuộc tính không được để trống')),
-      );
+    final options = _buildOptionsPayload();
+    final error = _validateOptions(options);
+    if (error != null) {
+      _showSnack(error, isError: true);
       return;
     }
-    if (options.any((o) => (o['values'] as List).isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Mỗi thuộc tính phải có ít nhất 1 giá trị')),
-      );
-      return;
-    }
+
+    setState(() => _isSubmitting = true);
+    final provider = context.read<ProductProvider>();
 
     try {
       final result = await provider.generateVariants(
@@ -135,169 +191,431 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
         mode: _mode,
       );
 
-      if (result != null && mounted) {
-        final updatedProduct = await provider.fetchProductDetail(widget.productId);
-        if (updatedProduct != null && mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Cập nhật biến thể thành công!'),
-              backgroundColor: Colors.green,
-            ),
-          );
+      if (!mounted) return;
+      if (result == null) {
+        _showSnack(provider.error ?? 'Cập nhật biến thể thất bại', isError: true);
+        return;
+      }
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (ctx) => EditProductScreen(product: updatedProduct),
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+      final updatedProduct = await provider.fetchProductDetail(widget.productId);
+      if (!mounted) return;
+      _showSnack('Cập nhật biến thể thành công');
+
+      if (updatedProduct != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => EditProductScreen(product: updatedProduct)),
         );
+      } else {
+        Navigator.pop(context, true);
       }
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final provider = Provider.of<ProductProvider>(context);
-
     return Scaffold(
-      backgroundColor: Colors.grey[100],
+      backgroundColor: _lighterPink,
       appBar: AppBar(
-        title: const Text('Cấu hình biến thể'),
-        backgroundColor: primaryColor,
-        foregroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: _textDark,
+        title: const Text(
+          'Cấu hình biến thể',
+          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Thay thế toàn bộ biến thể cũ\n(Tắt để chỉ thêm mới)',
-                        style: TextStyle(fontSize: 13),
-                      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+              child: Column(
+                children: [
+                  _buildGuideCard(),
+                  const SizedBox(height: 14),
+                  _buildModeCard(),
+                  const SizedBox(height: 14),
+                  if (_options.isEmpty) _buildEmptyState(),
+                  ...List.generate(_options.length, _buildOptionCard),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _isSubmitting ? null : _addOption,
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('Thêm nhóm thuộc tính'),
+                      style: _outlineButtonStyle(),
                     ),
-                    Switch(
-                      value: _mode == 'replace',
-                      onChanged: (val) => setState(() => _mode = val ? 'replace' : 'add'),
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 90),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
+          ),
+          _buildBottomBar(),
+        ],
+      ),
+    );
+  }
 
-            Expanded(
-              child: _options.isEmpty
-                  ? const Center(
-                child: Text(
-                  'Chưa có nhóm thuộc tính nào.\nNhấn nút bên dưới để thêm.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey),
-                ),
-              )
-                  : ListView.builder(
-                itemCount: _options.length,
-                itemBuilder: (ctx, index) {
-                  final opt = _options[index];
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: opt['name'],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Tên thuộc tính (VD: Màu sắc)',
-                                  ),
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.delete, color: Colors.red),
-                                onPressed: () => _removeOption(index),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Wrap(
-                            spacing: 8,
-                            children: (opt['values'] as List<String>).map((val) {
-                              return Chip(
-                                label: Text(val),
-                                onDeleted: () => _removeValueFromOption(index, val),
-                              );
-                            }).toList(),
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: opt['tempValue'],
-                                  decoration: const InputDecoration(
-                                    hintText: 'Nhập giá trị mới',
-                                  ),
-                                  onSubmitted: (v) => _addValueToOption(index, v),
-                                ),
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.add_circle, color: Colors.green),
-                                onPressed: () => _addValueToOption(
-                                    index, opt['tempValue'].text),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                },
-              ),
+  Widget _buildGuideCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFFFFEEF4), Color(0xFFFFFFFF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _borderPink),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
             ),
+            child: const Icon(Icons.tune_rounded, color: _primaryPink),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tạo phân loại cho sản phẩm',
+                  style: TextStyle(
+                    color: _textDark,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Ví dụ: Màu sắc = Đỏ, Xanh; Size = S, M, L. Hệ thống sẽ tự sinh tổ hợp biến thể.',
+                  style: TextStyle(color: _textGrey, height: 1.35),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-            ElevatedButton.icon(
-              onPressed: _addOption,
-              icon: const Icon(Icons.add),
-              label: const Text('Thêm nhóm thuộc tính'),
+  Widget _buildModeCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Chế độ cập nhật',
+                  style: TextStyle(
+                    color: _textDark,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _mode == 'replace'
+                      ? 'Thay thế toàn bộ biến thể cũ bằng cấu hình mới.'
+                      : 'Giữ biến thể cũ và chỉ thêm tổ hợp mới.',
+                  style: const TextStyle(color: _textGrey, height: 1.3),
+                ),
+                const SizedBox(height: 10),
+                _buildEstimateChip(),
+              ],
             ),
-            const SizedBox(height: 16),
+          ),
+          Switch(
+            value: _mode == 'replace',
+            activeColor: _primaryPink,
+            onChanged: _isSubmitting
+                ? null
+                : (value) => setState(() => _mode = value ? 'replace' : 'add'),
+          ),
+        ],
+      ),
+    );
+  }
 
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: provider.isLoading || _options.isEmpty ? null : _submitVariants,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: primaryColor,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-                child: provider.isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                  'Cập nhật biến thể',
-                  style: TextStyle(fontSize: 16, color: Colors.white),
-                ),
-              ),
-            ),
-          ],
+  Widget _buildEstimateChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _softPink,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        'Dự kiến: $_estimatedVariantCount biến thể',
+        style: const TextStyle(
+          color: _primaryPink,
+          fontWeight: FontWeight.w700,
+          fontSize: 12,
         ),
       ),
     );
+  }
+
+  Widget _buildEmptyState() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 34),
+      decoration: _cardDecoration(),
+      child: const Column(
+        children: [
+          Icon(Icons.category_outlined, size: 58, color: _borderPink),
+          SizedBox(height: 12),
+          Text(
+            'Chưa có nhóm thuộc tính',
+            style: TextStyle(
+              color: _textDark,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Nhấn nút bên dưới để thêm Size, Màu sắc hoặc kiểu dáng.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _textGrey),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOptionCard(int index) {
+    final option = _options[index];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: _cardDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: _softPink,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    '${index + 1}',
+                    style: const TextStyle(
+                      color: _primaryPink,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: option.nameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(
+                    label: 'Tên thuộc tính',
+                    hint: 'Ví dụ: Màu sắc, Size',
+                    icon: Icons.label_outline_rounded,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Xóa nhóm',
+                onPressed: _isSubmitting ? null : () => _removeOption(index),
+                icon: const Icon(Icons.delete_outline_rounded, color: _dangerRed),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (option.values.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: option.values.map((value) {
+                return Chip(
+                  label: Text(value),
+                  backgroundColor: _softPink,
+                  deleteIconColor: _dangerRed,
+                  side: const BorderSide(color: _borderPink),
+                  onDeleted: _isSubmitting ? null : () => _removeValueFromOption(index, value),
+                );
+              }).toList(),
+            )
+          else
+            const Text(
+              'Chưa có giá trị nào',
+              style: TextStyle(color: _textGrey, fontSize: 13),
+            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: option.tempValueController,
+                  textInputAction: TextInputAction.done,
+                  decoration: _inputDecoration(
+                    label: 'Giá trị mới',
+                    hint: 'Ví dụ: Đỏ',
+                    icon: Icons.add_circle_outline_rounded,
+                  ),
+                  onSubmitted: (_) => _addValueToOption(index),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _isSubmitting ? null : () => _addValueToOption(index),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _primaryPink,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Icon(Icons.add_rounded),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBottomBar() {
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+        16,
+        12,
+        16,
+        12 + MediaQuery.of(context).padding.bottom,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 16,
+            offset: const Offset(0, -6),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: _isSubmitting ? null : _submitVariants,
+          icon: _isSubmitting
+              ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.2),
+          )
+              : const Icon(Icons.check_rounded),
+          label: Text(_isSubmitting ? 'Đang cập nhật...' : 'Cập nhật biến thể'),
+          style: _primaryButtonStyle(),
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration _cardDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: _borderPink.withOpacity(0.75)),
+      boxShadow: [
+        BoxShadow(
+          color: _primaryPink.withOpacity(0.05),
+          blurRadius: 16,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
+  }
+
+  InputDecoration _inputDecoration({
+    required String label,
+    String? hint,
+    IconData? icon,
+  }) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      prefixIcon: icon == null ? null : Icon(icon, color: _primaryPink),
+      filled: true,
+      fillColor: _lighterPink,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _borderPink),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _borderPink),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _primaryPink, width: 1.4),
+      ),
+    );
+  }
+
+  ButtonStyle _primaryButtonStyle() {
+    return ElevatedButton.styleFrom(
+      backgroundColor: _primaryPink,
+      foregroundColor: Colors.white,
+      elevation: 0,
+      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
+    );
+  }
+
+  ButtonStyle _outlineButtonStyle() {
+    return OutlinedButton.styleFrom(
+      foregroundColor: _primaryPink,
+      side: const BorderSide(color: _borderPink),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      textStyle: const TextStyle(fontWeight: FontWeight.w700),
+    );
+  }
+}
+
+class _OptionDraft {
+  final TextEditingController nameController;
+  final TextEditingController tempValueController;
+  final List<String> values;
+
+  _OptionDraft({String name = '', List<String>? values})
+      : nameController = TextEditingController(text: name),
+        tempValueController = TextEditingController(),
+        values = values ?? <String>[];
+
+  void dispose() {
+    nameController.dispose();
+    tempValueController.dispose();
   }
 }

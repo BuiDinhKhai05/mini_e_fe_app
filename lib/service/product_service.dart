@@ -112,8 +112,8 @@ class ProductService {
               continue;
             }
 
-            // 🔥 QUAN TRỌNG: Đổi key từ 'images' thành 'files' để khớp với NestJS
-            formData.files.add(MapEntry('files', multipartFile));
+            // BE NestJS đang dùng FilesInterceptor('images', 10, uploadOptions).
+            formData.files.add(MapEntry('images', multipartFile));
           }
         }
       }
@@ -163,9 +163,10 @@ class ProductService {
         for (var file in newImages) {
           String fileName = file.path.split('/').last;
 
-          // 🔥 QUAN TRỌNG: Đổi key thành 'files'
+          // BE hiện tại PATCH /products/:id chưa có FilesInterceptor.
+          // Khi BE bổ sung upload ảnh cho PATCH, key đúng vẫn là 'images'.
           formData.files.add(MapEntry(
-            'files',
+            'images',
             await MultipartFile.fromFile(file.path, filename: fileName),
           ));
         }

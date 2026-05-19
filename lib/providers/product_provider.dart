@@ -1,20 +1,27 @@
 // lib/providers/product_provider.dart
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:http_parser/http_parser.dart';
 import 'package:provider/provider.dart';
-import 'package:http_parser/http_parser.dart'; // cho MediaType
-import '../models/product_model.dart'; // Đảm bảo file này đã có class VariantItem
-import '../utils/app_constants.dart';
 
+import '../models/product_model.dart';
+import '../utils/app_constants.dart';
 import 'auth_provider.dart';
 import 'shop_provider.dart';
 
 /// ---------------------------------------------------------------------------
 /// PRODUCT PROVIDER – QUẢN LÝ SẢN PHẨM & GỌI API
 /// ---------------------------------------------------------------------------
+/// Lưu ý quan trọng theo BE hiện tại:
+/// - GET /products, GET /products/:id, GET /products/:id/variants là public.
+/// - POST /products dùng multipart key là `images`.
+/// - PATCH /products/:id hiện chỉ nhận JSON, chưa nhận upload ảnh.
+/// - Product stock trên BE được đồng bộ từ variants, không sửa trực tiếp ở product.
+/// - BE chưa có DELETE variant / POST variant thủ công.
 class ProductProvider with ChangeNotifier {
   // ====================== DIO CLIENT ======================
   final Dio _dio = Dio(BaseOptions(
@@ -25,7 +32,6 @@ class ProductProvider with ChangeNotifier {
 
   // ====================== TRẠNG THÁI ======================
   List<ProductModel> _products = [];
-
   bool _isLoading = false;
   String? _error;
 
@@ -33,56 +39,89 @@ class ProductProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
 
-  // ====================== CONSTRUCTOR ======================
   ProductProvider();
 
   // ========================================================================
-  // 0. HÀM MỚI: XÓA CACHE DỮ LIỆU (Dùng khi logout hoặc switch account)
+  // 0. XÓA CACHE DỮ LIỆU (Dùng khi logout hoặc switch account)
   // ========================================================================
   void clearProductsCache({bool notify = true}) {
     _products = [];
     _error = null;
     _isLoading = false;
 
-    if (notify) {
-      notifyListeners();
-    }
+    if (notify) notifyListeners();
   }
 
   // ========================================================================
-  // 1. LẤY TOKEN TỪ AUTH PROVIDER
+  // 1. TOKEN HELPERS
   // ========================================================================
   Future<String> _getToken() async {
-    final context = AuthProvider.navigatorKey.currentContext;
-    if (context == null) throw Exception('App chưa khởi tạo');
-
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final token = authProvider.accessToken;
-
+    final token = await _getOptionalToken();
     if (token == null || token.isEmpty) {
       throw Exception('Chưa đăng nhập');
     }
-
     return token;
   }
 
+  Future<String?> _getOptionalToken() async {
+    final context = AuthProvider.navigatorKey.currentContext;
+    if (context == null) return null;
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final token = authProvider.accessToken;
+      if (token == null || token.isEmpty) return null;
+      return token;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Options _jsonAuthOptions(String token) {
+    return Options(
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      },
+    );
+  }
+
   // ========================================================================
-  // 2. LẤY DANH SÁCH SẢN PHẨM (PAGINATION)
+  // 2. LẤY DANH SÁCH SẢN PHẨM
   // ========================================================================
 
-  // PUBLIC: Chỉ lấy sản phẩm đang bán (ACTIVE)
+  /// PUBLIC: chỉ lấy sản phẩm ACTIVE vì BE public đang hard-code ACTIVE.
   Future<void> fetchPublicProducts({bool showLoading = true}) async {
-    await _fetchProductsWithFilter(status: 'ACTIVE', showLoading: showLoading);
+    await _fetchProductsWithFilter(showLoading: showLoading);
   }
 
-  // SELLER: Lấy tất cả sản phẩm (cả DRAFT)
+  /// SELLER: BE hiện tại CHƯA có API lấy cả ACTIVE + DRAFT của shop.
+  /// FE sẽ ưu tiên lọc theo shopId nếu load được shop, nhưng kết quả vẫn chỉ
+  /// gồm ACTIVE do API public của BE đang giới hạn như vậy.
   Future<void> fetchAllProductsForSeller({bool showLoading = true}) async {
-    await _fetchProductsWithFilter(status: null, showLoading: showLoading);
+    int? shopId;
+    final context = AuthProvider.navigatorKey.currentContext;
+
+    if (context != null) {
+      try {
+        final shopProvider = Provider.of<ShopProvider>(context, listen: false);
+        if (shopProvider.shop == null) {
+          await shopProvider.loadMyShop();
+        }
+        shopId = shopProvider.shop?.id;
+      } catch (_) {
+        shopId = null;
+      }
+    }
+
+    await _fetchProductsWithFilter(
+      shopId: shopId,
+      showLoading: showLoading,
+    );
   }
 
-  // HÀM RIÊNG – CORE FETCH
   Future<void> _fetchProductsWithFilter({
-    required String? status,
+    int? shopId,
     required bool showLoading,
   }) async {
     if (showLoading) {
@@ -95,14 +134,13 @@ class ProductProvider with ChangeNotifier {
     }
 
     try {
-      final token = await _getToken();
-      final url = status != null
-          ? '${ProductApi.products}?status=$status'
-          : ProductApi.products;
-
       final response = await _dio.get(
-        url,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        ProductApi.products,
+        queryParameters: {
+          'page': 1,
+          'limit': 100,
+          if (shopId != null) 'shopId': shopId,
+        },
       );
 
       final dynamic data = response.data['data'];
@@ -114,14 +152,12 @@ class ProductProvider with ChangeNotifier {
         rawList = data;
       }
 
-      final parsedProducts = rawList
+      _products = rawList
           .whereType<Map<String, dynamic>>()
           .map((item) => ProductModel.fromJson(item))
           .toList();
-
-      _products = parsedProducts;
     } on DioException catch (e) {
-      _error = _handleDioError(e);
+      _error = _handleDioError(e, autoLogoutOn401: false);
     } catch (e) {
       _error = 'Lỗi tải sản phẩm: $e';
     } finally {
@@ -136,7 +172,7 @@ class ProductProvider with ChangeNotifier {
   Future<ProductModel?> createProduct({
     required String title,
     required double price,
-    int? stock,
+    int? stock, // Giữ tham số để tránh sửa nhiều UI, nhưng BE hiện không nhận stock product.
     String? description,
     String? slug,
     List<dynamic>? images, // File (mobile) hoặc Uint8List (web)
@@ -151,13 +187,12 @@ class ProductProvider with ChangeNotifier {
       final formData = FormData.fromMap({
         'title': title.trim(),
         'price': price,
-        if (stock != null && stock > 0) 'stock': stock,
         if (description != null && description.trim().isNotEmpty)
           'description': description.trim(),
         if (slug != null && slug.trim().isNotEmpty) 'slug': slug.trim(),
+        // Không gửi stock vì CreateProductDto của BE hiện không có field stock.
       });
 
-      // Xử lý ảnh upload - key đúng: images[0], images[1]...
       if (images != null && images.isNotEmpty) {
         for (int i = 0; i < images.length; i++) {
           final item = images[i];
@@ -169,16 +204,16 @@ class ProductProvider with ChangeNotifier {
               filename: 'image_$i.jpg',
               contentType: MediaType('image', 'jpeg'),
             );
-          } else if (item is File) {
+          } else if (!kIsWeb && item is File) {
             multipartFile = await MultipartFile.fromFile(
               item.path,
               filename: item.path.split('/').last,
             );
           } else {
-            continue; // Bỏ qua nếu loại không hỗ trợ
+            continue;
           }
 
-          // KEY QUAN TRỌNG: images[0], images[1]... → backend nhận mảng
+          // BE NestJS: FilesInterceptor('images', 10, uploadOptions)
           formData.files.add(MapEntry('images', multipartFile));
         }
       }
@@ -190,14 +225,14 @@ class ProductProvider with ChangeNotifier {
       );
 
       final newProduct = ProductModel.fromJson(response.data['data']);
-      _products.insert(0, newProduct); // Thêm vào đầu danh sách
+      _products.insert(0, newProduct);
 
       _isLoading = false;
       notifyListeners();
       return newProduct;
     } on DioException catch (e) {
       _error = _handleDioError(e);
-      print('Create product error: ${e.response?.data}');
+      debugPrint('Create product error: ${e.response?.data}');
     } catch (e) {
       _error = 'Lỗi tạo sản phẩm: $e';
     }
@@ -208,17 +243,17 @@ class ProductProvider with ChangeNotifier {
   }
 
   // ========================================================================
-  // 4. CẬP NHẬT SẢN PHẨM – ĐÃ SỬA ĐÚNG KEY ẢNH + HAI TRƯỜNG HỢP
+  // 4. CẬP NHẬT SẢN PHẨM
   // ========================================================================
   Future<bool> updateProduct({
     required int productId,
     String? title,
     double? price,
-    int? stock,
+    int? stock, // BE không nhận field này ở product, tồn kho được sync từ variants.
     String? description,
     String? slug,
     String? status,
-    List<dynamic>? images, // File hoặc Uint8List
+    List<dynamic>? images, // PATCH BE hiện chưa nhận upload ảnh, nên bỏ qua.
   }) async {
     _isLoading = true;
     _error = null;
@@ -226,87 +261,38 @@ class ProductProvider with ChangeNotifier {
 
     try {
       final token = await _getToken();
-      final hasNewImages = images != null && images.isNotEmpty;
+      final Map<String, dynamic> jsonBody = {};
 
-      // Trường hợp 1: Không có ảnh mới → gửi JSON
-      if (!hasNewImages) {
-        final Map<String, dynamic> jsonBody = {};
-        if (title != null) jsonBody['title'] = title.trim();
-        if (price != null) jsonBody['price'] = price;
-        if (stock != null) jsonBody['stock'] = stock;
-        if (description != null) jsonBody['description'] = description.trim();
-        if (slug != null) jsonBody['slug'] = slug.trim();
-        if (status != null) jsonBody['status'] = status;
+      if (title != null) jsonBody['title'] = title.trim();
+      if (price != null) jsonBody['price'] = price;
+      if (description != null) jsonBody['description'] = description.trim();
+      if (slug != null) jsonBody['slug'] = slug.trim();
+      if (status != null) jsonBody['status'] = status;
 
-        if (jsonBody.isEmpty) {
-          _isLoading = false;
-          notifyListeners();
-          return true; // Không có gì để update
-        }
-
-        final response = await _dio.patch(
-          ProductApi.byId(productId),
-          data: jsonBody,
-          options: Options(
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-          ),
-        );
-
-        _updateLocalProduct(productId, response.data['data']);
+      // Không gửi stock/images vì UpdateProductDto và PATCH hiện tại của BE chưa hỗ trợ.
+      if (jsonBody.isEmpty) {
         _isLoading = false;
         notifyListeners();
         return true;
       }
 
-      // Trường hợp 2: Có ảnh mới → gửi FormData
-      final formData = FormData();
-
-      if (title != null) formData.fields.add(MapEntry('title', title.trim()));
-      if (price != null) formData.fields.add(MapEntry('price', price.toString()));
-      if (stock != null) formData.fields.add(MapEntry('stock', stock.toString()));
-      if (description != null) formData.fields.add(MapEntry('description', description.trim()));
-      if (slug != null) formData.fields.add(MapEntry('slug', slug.trim()));
-      if (status != null) formData.fields.add(MapEntry('status', status));
-
-      // Upload ảnh mới với key đúng
-      for (int i = 0; i < images!.length; i++) {
-        final item = images[i];
-        MultipartFile multipartFile;
-
-        if (kIsWeb && item is Uint8List) {
-          multipartFile = MultipartFile.fromBytes(
-            item,
-            filename: 'image_$i.jpg',
-            contentType: MediaType('image', 'jpeg'),
-          );
-        } else if (item is File) {
-          multipartFile = await MultipartFile.fromFile(
-            item.path,
-            filename: item.path.split('/').last,
-          );
-        } else {
-          continue;
-        }
-
-        formData.files.add(MapEntry('images', multipartFile));
-      }
-
       final response = await _dio.patch(
         ProductApi.byId(productId),
-        data: formData,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        data: jsonBody,
+        options: _jsonAuthOptions(token),
       );
 
-      _updateLocalProduct(productId, response.data['data']);
+      final data = response.data['data'];
+      if (data is Map<String, dynamic>) {
+        _updateLocalProduct(productId, data);
+      }
+
       _isLoading = false;
       notifyListeners();
       return true;
     } on DioException catch (e) {
       _error = _handleDioError(e);
-      print('Update product error: ${e.response?.data}');
+      debugPrint('Update product error: ${e.response?.data}');
     } catch (e) {
       _error = 'Lỗi cập nhật sản phẩm: $e';
     }
@@ -317,11 +303,30 @@ class ProductProvider with ChangeNotifier {
   }
 
   void _updateLocalProduct(int id, Map<String, dynamic> jsonData) {
-    final updatedProduct = ProductModel.fromJson(jsonData);
     final index = _products.indexWhere((p) => p.id == id);
+    final incoming = ProductModel.fromJson(jsonData);
+
     if (index != -1) {
-      _products[index] = updatedProduct;
+      final old = _products[index];
+      _products[index] = incoming.copyWith(
+        imageUrl: incoming.imageUrl.isNotEmpty ? incoming.imageUrl : old.imageUrl,
+        images: incoming.images.isNotEmpty ? incoming.images : old.images,
+        optionSchema: (incoming.optionSchema != null && incoming.optionSchema!.isNotEmpty)
+            ? incoming.optionSchema
+            : old.optionSchema,
+        variants: (incoming.variants != null && incoming.variants!.isNotEmpty)
+            ? incoming.variants
+            : old.variants,
+      );
       notifyListeners();
+    }
+  }
+
+  ProductModel? getProductFromCache(int id) {
+    try {
+      return _products.firstWhere((p) => p.id == id);
+    } catch (_) {
+      return null;
     }
   }
 
@@ -344,7 +349,7 @@ class ProductProvider with ChangeNotifier {
       final response = await _dio.post(
         ProductApi.generateVariants(productId),
         data: dto,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: _jsonAuthOptions(token),
       );
 
       _isLoading = false;
@@ -359,25 +364,23 @@ class ProductProvider with ChangeNotifier {
   }
 
   // ========================================================================
-  // 6. LẤY DANH SÁCH BIẾN THỂ (CẬP NHẬT TRẢ VỀ VariantItem)
+  // 6. LẤY DANH SÁCH BIẾN THỂ
   // ========================================================================
   Future<List<VariantItem>> getVariants(int productId) async {
     try {
-      final token = await _getToken();
-      final response = await _dio.get(
-        ProductApi.variants(productId),
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-
-      final List list = response.data['data'];
-      return list.map((e) => VariantItem.fromJson(e)).toList();
+      final response = await _dio.get(ProductApi.variants(productId));
+      final List list = response.data['data'] ?? [];
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map((e) => VariantItem.fromJson(e))
+          .toList();
     } on DioException catch (e) {
-      _error = _handleDioError(e);
-      print("Get Variants Error: $_error");
+      _error = _handleDioError(e, autoLogoutOn401: false);
+      debugPrint('Get variants error: $_error');
       notifyListeners();
       return [];
     } catch (e) {
-      print("Get Variants Error: $e");
+      debugPrint('Get variants error: $e');
       return [];
     }
   }
@@ -395,7 +398,7 @@ class ProductProvider with ChangeNotifier {
       await _dio.patch(
         ProductApi.variant(productId, variantId),
         data: dto,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: _jsonAuthOptions(token),
       );
       return true;
     } on DioException catch (e) {
@@ -410,14 +413,10 @@ class ProductProvider with ChangeNotifier {
   // ========================================================================
   Future<ProductModel?> fetchProductDetail(int id) async {
     try {
-      final token = await _getToken();
-      final response = await _dio.get(
-        ProductApi.byId(id),
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
+      final response = await _dio.get(ProductApi.byId(id));
       return ProductModel.fromJson(response.data['data']);
     } on DioException catch (e) {
-      _error = _handleDioError(e);
+      _error = _handleDioError(e, autoLogoutOn401: false);
       notifyListeners();
       return null;
     }
@@ -457,11 +456,9 @@ class ProductProvider with ChangeNotifier {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
       final role = authProvider.user?.role?.toUpperCase();
 
       if (role == 'SELLER') {
-        await shopProvider.loadMyShop();
         await fetchAllProductsForSeller(showLoading: false);
       } else if (role == 'ADMIN') {
         clearProductsCache();
@@ -477,38 +474,20 @@ class ProductProvider with ChangeNotifier {
   // 11. XÓA MỘT BIẾN THỂ
   // ========================================================================
   Future<bool> deleteVariant(int productId, int variantId) async {
-    try {
-      // 1. Gửi request xóa lên server
-      // Lưu ý: Đảm bảo đường dẫn API khớp với backend: DELETE /products/:id/variants/:variantId
-      await _dio.delete('/products/$productId/variants/$variantId');
-
-      // 2. Cập nhật lại danh sách biến thể ở local (nếu cần)
-      // Thông thường UI sẽ gọi lại hàm getVariants để làm mới, nên ở đây chỉ cần return true
-      return true;
-    } catch (e) {
-      print('Lỗi xóa biến thể: $e');
-      return false;
-    }
+    // BE hiện tại chưa mở route DELETE /products/:productId/variants/:variantId.
+    _error = 'Backend hiện tại chưa có API xóa biến thể. Hãy dùng chế độ "replace" để tạo lại danh sách biến thể.';
+    notifyListeners();
+    return false;
   }
 
   // ========================================================================
   // 12. TẠO MỘT BIẾN THỂ THỦ CÔNG
   // ========================================================================
   Future<dynamic> createVariant(int productId, Map<String, dynamic> dto) async {
-    try {
-      final token = await _getToken();
-      final response = await _dio.post(
-        ProductApi.variants(productId),
-        data: dto,
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
-      );
-      notifyListeners();
-      return response.data['data'];
-    } on DioException catch (e) {
-      _error = _handleDioError(e);
-      notifyListeners();
-      return null;
-    }
+    // BE hiện tại chưa mở route POST /products/:productId/variants.
+    _error = 'Backend hiện tại chưa có API tạo biến thể thủ công. Hãy dùng chức năng generate biến thể.';
+    notifyListeners();
+    return null;
   }
 
   // ========================================================================
@@ -518,34 +497,46 @@ class ProductProvider with ChangeNotifier {
     required int productId,
     required String status,
   }) async {
-    // Tận dụng hàm updateProduct chung để tránh lặp code
-    return await updateProduct(productId: productId, status: status);
+    return updateProduct(productId: productId, status: status);
   }
 
-  Future<bool> toggleProductStatus(int productId) async {
-    final product = _products.firstWhere(
-          (p) => p.id == productId,
-      orElse: () => ProductModel(id: productId, title: '', price: 0, imageUrl: '', shopId: 0),
-    );
-    final newStatus = product.status == 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
-    return await updateProductStatus(productId: productId, status: newStatus);
+  Future<bool> toggleProductStatus(int productId, {String? currentStatus}) async {
+    final product = getProductFromCache(productId);
+    final oldStatus = (currentStatus ?? product?.status)?.toUpperCase();
+
+    if (oldStatus == null || oldStatus.isEmpty) {
+      _error = 'Không xác định được trạng thái hiện tại của sản phẩm';
+      notifyListeners();
+      return false;
+    }
+
+    final newStatus = oldStatus == 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
+    return updateProductStatus(productId: productId, status: newStatus);
   }
 
   // ========================================================================
   // HELPER: XỬ LÝ LỖI DIO
   // ========================================================================
-  String _handleDioError(DioException e) {
-    print('Dio Error: ${e.type} | Status: ${e.response?.statusCode}');
+  String _handleDioError(DioException e, {bool autoLogoutOn401 = true}) {
+    debugPrint('Dio Error: ${e.type} | Status: ${e.response?.statusCode}');
+
     if (e.response?.statusCode == 401) {
       final context = AuthProvider.navigatorKey.currentContext;
-      if (context != null && context.mounted) {
+      if (autoLogoutOn401 && context != null && context.mounted) {
         Provider.of<AuthProvider>(context, listen: false).logout();
       }
       return 'Phiên đăng nhập hết hạn';
     }
+
     if (e.response != null) {
-      return e.response?.data['message']?.toString() ?? 'Lỗi server';
+      final data = e.response?.data;
+      if (data is Map && data['message'] != null) {
+        if (data['message'] is List) return (data['message'] as List).join('\n');
+        return data['message'].toString();
+      }
+      return 'Lỗi server';
     }
+
     return 'Lỗi kết nối mạng';
   }
 }

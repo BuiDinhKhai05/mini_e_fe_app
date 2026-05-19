@@ -38,6 +38,39 @@ class ProductModel {
     this.variants,
   });
 
+
+  /// Tạo bản sao ProductModel khi FE cần cập nhật cục bộ
+  /// (ví dụ đổi ACTIVE/DRAFT) mà không phải gọi lại public detail.
+  ProductModel copyWith({
+    int? id,
+    String? title,
+    String? description,
+    double? price,
+    String? imageUrl,
+    List<ProductImage>? images,
+    int? stock,
+    String? status,
+    int? shopId,
+    String? slug,
+    List<OptionSchema>? optionSchema,
+    List<VariantItem>? variants,
+  }) {
+    return ProductModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      price: price ?? this.price,
+      imageUrl: imageUrl ?? this.imageUrl,
+      images: images ?? this.images,
+      stock: stock ?? this.stock,
+      status: status ?? this.status,
+      shopId: shopId ?? this.shopId,
+      slug: slug ?? this.slug,
+      optionSchema: optionSchema ?? this.optionSchema,
+      variants: variants ?? this.variants,
+    );
+  }
+
   factory ProductModel.fromJson(Map<String, dynamic> json) {
     // 1. Xử lý danh sách ảnh
     List<ProductImage> parsedImages = [];
@@ -56,7 +89,7 @@ class ProductModel {
       // Ưu tiên 1: Ảnh có isMain = true
       // Ưu tiên 2: Ảnh đầu tiên trong list
       final mainImg = parsedImages.firstWhere(
-        (img) => img.isMain == true,
+            (img) => img.isMain == true,
         orElse: () => parsedImages.first,
       );
       finalUrl = mainImg.url;
@@ -93,15 +126,15 @@ class ProductModel {
       // Parse Option Schema
       optionSchema: json['optionSchema'] != null
           ? (json['optionSchema'] as List)
-              .map((e) => OptionSchema.fromJson(e))
-              .toList()
+          .map((e) => OptionSchema.fromJson(e))
+          .toList()
           : [],
 
       // Parse Variants
       variants: json['variants'] != null
           ? (json['variants'] as List)
-              .map((v) => VariantItem.fromJson(v))
-              .toList()
+          .map((v) => VariantItem.fromJson(v))
+          .toList()
           : [],
     );
   }
@@ -148,7 +181,7 @@ class OptionSchema {
     return OptionSchema(
       name: json['name']?.toString() ?? '',
       values:
-          (json['values'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      (json['values'] as List?)?.map((e) => e.toString()).toList() ?? [],
     );
   }
 }

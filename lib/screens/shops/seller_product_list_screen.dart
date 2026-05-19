@@ -31,9 +31,17 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
   static const Color _dangerRed = Color(0xFFFF4D5E);
 
   // =========================
-  // tải lại sản phẩm của seller hiện tại
+  // Tải sản phẩm của seller hiện tại
+  //
+  // LƯU Ý QUAN TRỌNG:
+  // Backend hiện tại chưa có API riêng trả về cả ACTIVE + DRAFT cho seller.
+  // Vì vậy ở FE ta KHÔNG xóa cache và KHÔNG reload lại API public sau khi ẩn sản phẩm,
+  // để sản phẩm DRAFT vẫn còn trong trang quản lý trong phiên app hiện tại.
   // =========================
-  Future<void> _reloadSellerProducts({bool showLoading = true}) async {
+  Future<void> _reloadSellerProducts({
+    bool showLoading = true,
+    bool forceServer = false,
+  }) async {
     if (!mounted) return;
 
     final authProvider = context.read<AuthProvider>();
@@ -57,10 +65,21 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
       return;
     }
 
-    // Xóa cache cũ trước khi tải lại
-    productProvider.clearProductsCache(notify: false);
+    final currentShopId = shopProvider.shop!.id;
 
-    // Tải tất cả sản phẩm seller hiện tại
+    // Nếu trong Provider đã có sản phẩm của shop này rồi thì dùng luôn cache local.
+    // Việc này giúp sản phẩm vừa chuyển ACTIVE -> DRAFT không bị mất khỏi trang quản lý.
+    final hasLocalProductsForThisShop = productProvider.products.any(
+          (p) => p.shopId == currentShopId,
+    );
+
+    if (hasLocalProductsForThisShop && !forceServer) {
+      if (mounted) setState(() {});
+      return;
+    }
+
+    // Chỉ gọi server khi chưa có dữ liệu local hoặc người dùng chủ động ép tải lại.
+    // Không clear cache trước khi gọi để tránh xóa mất sản phẩm DRAFT đang được giữ local.
     await productProvider.fetchAllProductsForSeller(showLoading: showLoading);
   }
 
@@ -83,15 +102,16 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
   }
 
   // =========================
-  // LOGIC CŨ: bật/tắt trạng thái sản phẩm
+  // bật/tắt trạng thái sản phẩm
   // =========================
   Future<void> _toggleStatus(BuildContext context, ProductModel product) async {
     final provider = context.read<ProductProvider>();
+    final oldStatus = product.status.toUpperCase();
+    final newStatus = oldStatus == 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
+
     final success = await provider.toggleProductStatus(product.id);
 
     if (success && mounted) {
-      final newStatus = product.status == 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Đã chuyển trạng thái sản phẩm thành $newStatus'),
@@ -99,12 +119,14 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
         ),
       );
 
-      await _reloadSellerProducts(showLoading: false);
+      // KHÔNG gọi _reloadSellerProducts() ở đây.
+      // ProductProvider.updateProductStatus đã cập nhật sản phẩm trong local list.
+      // Nếu reload lại API public /products, sản phẩm DRAFT sẽ bị mất khỏi trang quản lý.
     }
   }
 
   // =========================
-  // LOGIC CŨ: xác nhận xóa sản phẩm, chỉ đổi giao diện dialog
+  // xác nhận xóa sản phẩm, chỉ đổi giao diện dialog
   // =========================
   void _confirmDeleteProduct(BuildContext context, int productId) async {
     final confirm = await showDialog<bool>(

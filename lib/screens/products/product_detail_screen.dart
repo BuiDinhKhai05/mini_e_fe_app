@@ -3,11 +3,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/product_model.dart';
-import '../../providers/product_provider.dart';
-import '../../providers/auth_provider.dart';
-import '../../providers/shop_provider.dart';
-import '../../providers/cart_provider.dart';
+import 'package:mini_e_fe_app/models/product_model.dart';
+import 'package:mini_e_fe_app/providers/product_provider.dart';
+import 'package:mini_e_fe_app/providers/auth_provider.dart';
+import 'package:mini_e_fe_app/providers/shop_provider.dart';
+import 'package:mini_e_fe_app/providers/cart_provider.dart';
 
 import 'edit_product_screen.dart';
 
@@ -66,6 +66,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ======== LOAD DETAIL (để có images[]) ========
   Future<void> _loadProductDetail() async {
+    // BE hiện tại chỉ cho public detail với sản phẩm ACTIVE.
+    // Nếu seller đang quản lý sản phẩm DRAFT thì giữ dữ liệu local để tránh 404.
+    if (widget.isFromShopManagement && _currentProduct.status.toUpperCase() != 'ACTIVE') {
+      return;
+    }
+
     try {
       final provider = Provider.of<ProductProvider>(context, listen: false);
       final fresh = await provider.fetchProductDetail(widget.product.id);
@@ -82,6 +88,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ======== VARIANTS ========
   Future<void> _fetchVariants() async {
+    // BE hiện tại list variants public cũng chỉ hoạt động khi product ACTIVE.
+    if (widget.isFromShopManagement && _currentProduct.status.toUpperCase() != 'ACTIVE') {
+      return;
+    }
+
     setState(() => _isLoadingVariants = true);
     try {
       final productProvider =
@@ -225,6 +236,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   // ======== DISPLAY PRICE/STOCK ========
+  // Format phần số của giá tiền theo kiểu Việt Nam. Đơn vị VND được thêm ở nơi hiển thị để tránh lặp chữ.
   String _formatPrice(dynamic price) {
     double value = 0.0;
     if (price is String) value = double.tryParse(price) ?? 0.0;
@@ -259,31 +271,45 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (authProvider.user == null || shopProvider.shop == null) return false;
     final userRole = authProvider.user!.role?.toUpperCase();
     final isSeller = userRole == 'SELLER';
-    final isOwnerOfThisShop = shopProvider.shop!.id == widget.product.shopId;
+    final isOwnerOfThisShop = shopProvider.shop!.id == _currentProduct.shopId;
     return isSeller && isOwnerOfThisShop && widget.isFromShopManagement;
   }
 
   Future<void> _toggleProductStatus() async {
     if (_isUpdatingStatus) return;
+
+    final oldStatus = _currentProduct.status.toUpperCase();
+    final newStatus = oldStatus == 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
+
     setState(() => _isUpdatingStatus = true);
     final provider = Provider.of<ProductProvider>(context, listen: false);
-    final success = await provider.toggleProductStatus(_currentProduct.id);
+    final success = await provider.updateProductStatus(
+      productId: _currentProduct.id,
+      status: newStatus,
+    );
 
     if (!mounted) return;
     setState(() => _isUpdatingStatus = false);
 
     if (success) {
-      final updated = provider.products.firstWhere(
-            (p) => p.id == _currentProduct.id,
-        orElse: () => _currentProduct,
-      );
-      setState(() => _currentProduct = updated);
+      // Không gọi lại GET detail sau khi ẩn vì BE public detail không trả DRAFT.
+      setState(() {
+        _currentProduct = _currentProduct.copyWith(status: newStatus);
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(updated.status == 'ACTIVE'
-              ? 'Đã bật bán'
-              : 'Đã ẩn sản phẩm'),
+          content: Text(newStatus == 'ACTIVE' ? 'Đã bật bán' : 'Đã ẩn sản phẩm'),
           backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(provider.error ?? 'Cập nhật trạng thái thất bại'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }
@@ -294,7 +320,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Xóa sản phẩm?'),
-        content: const Text('Hành động này không thể hoàn tác.'),
+        content: const Text('Sản phẩm sẽ bị xóa khỏi trang quản lý. Hãy chắc chắn trước khi tiếp tục.'),
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
@@ -314,7 +340,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Đã xóa sản phẩm'),
+              content: Text('Đã xóa sản phẩm khỏi danh sách quản lý'),
               backgroundColor: Colors.green),
         );
       }
@@ -573,7 +599,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '$displayPrice VNĐ',
+                                '$displayPrice VND',
                                 style: const TextStyle(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w900,
@@ -1418,7 +1444,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                 Row(
                                   children: [
                                     Text(
-                                      '₫$_displayPrice',
+                                      '$_displayPrice VND',
                                       style: TextStyle(
                                         fontSize: 24,
                                         fontWeight: FontWeight.w900,
@@ -1579,17 +1605,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               children: [
                                 Expanded(
                                   child: ElevatedButton.icon(
-                                    onPressed: _toggleProductStatus,
-                                    icon: Icon(
+                                    onPressed: _isUpdatingStatus ? null : _toggleProductStatus,
+                                    icon: _isUpdatingStatus
+                                        ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                        : Icon(
                                       _currentProduct.status == 'ACTIVE'
                                           ? Icons.visibility_off_rounded
                                           : Icons.visibility_rounded,
                                       size: 16,
                                     ),
                                     label: Text(
-                                      _currentProduct.status == 'ACTIVE'
+                                      _isUpdatingStatus
+                                          ? 'Đang lưu...'
+                                          : (_currentProduct.status == 'ACTIVE'
                                           ? 'Ẩn sản phẩm'
-                                          : 'Hiện sản phẩm',
+                                          : 'Hiện sản phẩm'),
                                     ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: const Color(0xFFFFB84D),
