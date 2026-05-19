@@ -15,7 +15,18 @@ class CartProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  // Tổng số lượng sản phẩm theo quantity.
+  // Ví dụ: 2 dòng giỏ hàng, trong đó 1 dòng có quantity = 2 => totalItems = 3.
   int get totalItems => _cartData?.itemsQuantity ?? 0;
+
+  // Số dòng sản phẩm thực tế trong giỏ hàng.
+  // Dùng cho tiêu đề giỏ hàng để tránh nhầm quantity là số sản phẩm khác nhau.
+  int get cartLinesCount {
+    final serverCount = _cartData?.itemsCount ?? 0;
+    if (serverCount > 0) return serverCount;
+    return _cartData?.items.length ?? 0;
+  }
+
   double get subtotal => _cartData?.subtotal ?? 0.0;
   List<CartItemModel> get items => _cartData?.items ?? [];
 

@@ -5,7 +5,10 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/cart_model.dart';
+import '../../models/product_model.dart';
 import '../../providers/cart_provider.dart';
+import '../../providers/product_provider.dart';
+import '../products/product_detail_screen.dart';
 
 // -----------------------------------------------------------------------------
 // Bảng màu dùng chung theo format Soft Pink Card UI của phần product.
@@ -132,7 +135,8 @@ class _CartScreenState extends State<CartScreen> {
               ),
               if (provider.items.isNotEmpty)
                 Text(
-                  '${provider.totalItems} sản phẩm',
+                  // Hiển thị số dòng sản phẩm trong giỏ, không cộng dồn theo quantity.
+                  '${provider.cartLinesCount} sản phẩm',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -508,6 +512,256 @@ class _CartScreenState extends State<CartScreen> {
   }
 }
 
+
+// -----------------------------------------------------------------------------
+// Bottom sheet chọn lại phân loại sản phẩm trong giỏ hàng.
+// -----------------------------------------------------------------------------
+class _VariantPickerSheet extends StatefulWidget {
+  final String title;
+  final int? currentVariantId;
+  final List<VariantItem> variants;
+  final String Function(double) formatCurrency;
+
+  const _VariantPickerSheet({
+    required this.title,
+    required this.currentVariantId,
+    required this.variants,
+    required this.formatCurrency,
+  });
+
+  @override
+  State<_VariantPickerSheet> createState() => _VariantPickerSheetState();
+}
+
+class _VariantPickerSheetState extends State<_VariantPickerSheet> {
+  int? _selectedVariantId;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedVariantId = widget.currentVariantId;
+  }
+
+  VariantItem? get _selectedVariant {
+    for (final variant in widget.variants) {
+      if (variant.id == _selectedVariantId) return variant;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.78,
+        ),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 5,
+              decoration: BoxDecoration(
+                color: AppColors.borderPink,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Đổi phân loại',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textGrey,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.pop(context),
+                  icon: const Icon(Icons.close_rounded, color: AppColors.textGrey),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Flexible(
+              child: ListView.separated(
+                shrinkWrap: true,
+                itemCount: widget.variants.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final variant = widget.variants[index];
+                  final isSelected = variant.id == _selectedVariantId;
+                  final isCurrent = variant.id == widget.currentVariantId;
+                  final isOutOfStock = variant.stock <= 0;
+
+                  return InkWell(
+                    onTap: isOutOfStock
+                        ? null
+                        : () {
+                      setState(() => _selectedVariantId = variant.id);
+                    },
+                    borderRadius: BorderRadius.circular(18),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isSelected ? AppColors.softPink : AppColors.lighterPink,
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: isSelected ? AppColors.primaryPink : AppColors.borderPink,
+                          width: isSelected ? 1.4 : 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: isSelected ? AppColors.primaryPink : Colors.white,
+                              border: Border.all(
+                                color: isSelected ? AppColors.primaryPink : AppColors.borderPink,
+                              ),
+                            ),
+                            child: isSelected
+                                ? const Icon(Icons.check_rounded, size: 15, color: Colors.white)
+                                : null,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        variant.name.isNotEmpty ? variant.name : 'Phân loại ${index + 1}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 14.5,
+                                          fontWeight: FontWeight.w900,
+                                          color: isOutOfStock ? AppColors.textGrey : AppColors.textDark,
+                                        ),
+                                      ),
+                                    ),
+                                    if (isCurrent)
+                                      Container(
+                                        margin: const EdgeInsets.only(left: 8),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(999),
+                                          border: Border.all(color: AppColors.borderPink),
+                                        ),
+                                        child: const Text(
+                                          'Đang chọn',
+                                          style: TextStyle(
+                                            fontSize: 10.5,
+                                            color: AppColors.primaryPink,
+                                            fontWeight: FontWeight.w900,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 5),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 4,
+                                  children: [
+                                    Text(
+                                      widget.formatCurrency(variant.price),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: AppColors.primaryPink,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                    Text(
+                                      isOutOfStock ? 'Hết hàng' : 'Kho: ${variant.stock}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: isOutOfStock ? AppColors.dangerRed : AppColors.textGrey,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    if (variant.sku.trim().isNotEmpty)
+                                      Text(
+                                        'SKU: ${variant.sku.trim()}',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textGrey,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _selectedVariant == null
+                    ? null
+                    : () => Navigator.pop(context, _selectedVariant),
+                style: ElevatedButton.styleFrom(
+                  elevation: 0,
+                  backgroundColor: AppColors.primaryPink,
+                  disabledBackgroundColor: AppColors.borderPink,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text(
+                  'Xác nhận đổi phân loại',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w900),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // -----------------------------------------------------------------------------
 // Checkbox pink dùng lại ở nhiều vị trí để đồng bộ format product.
 // -----------------------------------------------------------------------------
@@ -690,6 +944,124 @@ class _CartItemWidgetState extends State<CartItemWidget> {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Bấm vào ảnh/tên sản phẩm trong giỏ hàng để mở trang chi tiết sản phẩm.
+  // Dùng dữ liệu tạm từ cart item, sau đó ProductDetailScreen sẽ tự gọi lại
+  // API GET /products/:id để lấy đủ ảnh, optionSchema và thông tin mới nhất.
+  // ---------------------------------------------------------------------------
+  Future<void> _openProductDetail() async {
+    if (_isUpdating) return;
+
+    final product = ProductModel(
+      id: widget.item.productId,
+      title: widget.item.title,
+      description: null,
+      price: widget.item.price,
+      imageUrl: _imageUrl,
+      stock: 0,
+      status: 'ACTIVE',
+      shopId: 0,
+      variants: const [],
+      optionSchema: const [],
+    );
+
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductDetailScreen(product: product),
+      ),
+    );
+
+    // Khi quay lại từ chi tiết, reload cart để đồng bộ nếu user vừa thêm/mua sản phẩm.
+    if (!mounted) return;
+    try {
+      await widget.provider.fetchCart(notifyOnStart: false);
+    } catch (_) {
+      // Không chặn UI nếu reload lỗi, vì cart hiện tại vẫn đang hiển thị dữ liệu cũ.
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Đổi phân loại ngay trong giỏ hàng.
+  // BE hiện tại chưa có API update variant riêng cho cart item, nên FE dùng cách an toàn:
+  // 1. Thêm variant mới vào giỏ với đúng số lượng hiện tại.
+  // 2. Xóa cart item cũ.
+  // Nếu bước thêm variant mới lỗi thì item cũ vẫn được giữ nguyên.
+  // ---------------------------------------------------------------------------
+  Future<void> _showChangeVariantSheet() async {
+    if (_isUpdating) return;
+
+    setState(() => _isUpdating = true);
+
+    try {
+      final productProvider = Provider.of<ProductProvider>(context, listen: false);
+      final variants = await productProvider.getVariants(widget.item.productId);
+
+      if (!mounted) return;
+      setState(() => _isUpdating = false);
+
+      if (variants.isEmpty) {
+        _showSnack('Sản phẩm này chưa có phân loại để thay đổi', isError: true);
+        return;
+      }
+
+      final selectedVariant = await showModalBottomSheet<VariantItem>(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (_) => _VariantPickerSheet(
+          title: widget.item.title,
+          currentVariantId: widget.item.variantId,
+          variants: variants,
+          formatCurrency: widget.formatCurrency,
+        ),
+      );
+
+      if (selectedVariant == null || !mounted) return;
+
+      if (selectedVariant.id == widget.item.variantId) {
+        _showSnack('Bạn đang chọn phân loại này rồi');
+        return;
+      }
+
+      await _changeVariant(selectedVariant);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUpdating = false);
+        _showSnack('Không thể tải phân loại sản phẩm: $e', isError: true);
+      }
+    }
+  }
+
+  Future<void> _changeVariant(VariantItem newVariant) async {
+    if (newVariant.stock <= 0) {
+      _showSnack('Phân loại này đã hết hàng', isError: true);
+      return;
+    }
+
+    setState(() => _isUpdating = true);
+
+    try {
+      await widget.provider.addToCart(
+        widget.item.productId,
+        variantId: newVariant.id,
+        quantity: widget.item.quantity,
+      );
+
+      await widget.provider.removeItem(widget.item.id);
+      await widget.provider.fetchCart(notifyOnStart: false);
+
+      _showSnack('Đã đổi phân loại sản phẩm');
+    } catch (e) {
+      try {
+        await widget.provider.fetchCart(notifyOnStart: false);
+      } catch (_) {}
+      _showSnack('Không thể đổi phân loại: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isUpdating = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedOpacity(
@@ -726,9 +1098,22 @@ class _CartItemWidgetState extends State<CartItemWidget> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                _buildProductImage(),
+                InkWell(
+                  onTap: _openProductDetail,
+                  borderRadius: BorderRadius.circular(16),
+                  child: _buildProductImage(),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _buildItemInfo()),
+                Expanded(
+                  child: InkWell(
+                    onTap: _openProductDetail,
+                    borderRadius: BorderRadius.circular(14),
+                    child: Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: _buildItemInfo(),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -824,20 +1209,34 @@ class _CartItemWidgetState extends State<CartItemWidget> {
         ),
         if ((widget.item.variantName ?? '').trim().isNotEmpty) ...[
           const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.softPink,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              widget.item.variantName!.trim(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 12,
-                color: AppColors.primaryPink,
-                fontWeight: FontWeight.w800,
+          InkWell(
+            onTap: _isUpdating ? null : _showChangeVariantSheet,
+            borderRadius: BorderRadius.circular(999),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.softPink,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(color: AppColors.borderPink),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      widget.item.variantName!.trim(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.primaryPink,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 16, color: AppColors.primaryPink),
+                ],
               ),
             ),
           ),
