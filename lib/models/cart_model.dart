@@ -45,8 +45,8 @@ class CartData {
       itemsQuantity: json['itemsQuantity'] ?? 0,
       subtotal: double.tryParse(json['subtotal']?.toString() ?? '0') ?? 0.0,
       items: (json['items'] as List<dynamic>?)
-              ?.map((e) => CartItemModel.fromJson(e))
-              .toList() ??
+          ?.map((e) => CartItemModel.fromJson(e))
+          .toList() ??
           [],
     );
   }
