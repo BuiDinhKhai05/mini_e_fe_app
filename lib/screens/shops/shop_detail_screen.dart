@@ -9,34 +9,87 @@ class ShopDetailScreen extends StatelessWidget {
 
   const ShopDetailScreen({Key? key, required this.shop}) : super(key: key);
 
-  // --- LOGIC CŨ GIỮ NGUYÊN ---
+  // =========================
+  // Màu dùng chung theo format Soft Pink Card UI
+  // =========================
+  static const Color _primaryPink = Color(0xFFFF5C8A);
+  static const Color _softPink = Color(0xFFFFEEF4);
+  static const Color _lighterPink = Color(0xFFFFF7FA);
+  static const Color _borderPink = Color(0xFFFFD8E4);
+  static const Color _textDark = Color(0xFF222222);
+  static const Color _textGrey = Color(0xFF707070);
+
+  // =========================
+  // LOGIC CŨ: mở bản đồ xem vị trí shop
+  // =========================
   void _openMap(BuildContext context) {
     if (shop.shopLat == null || shop.shopLng == null) return;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        height: MediaQuery.of(context).size.height * 0.7,
-        padding: const EdgeInsets.all(16),
+        height: MediaQuery.of(context).size.height * 0.72,
+        padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        ),
         child: Column(
           children: [
+            // Thanh kéo nhỏ của bottom sheet
             Container(
-              width: 50,
+              width: 48,
               height: 5,
-              decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(10)),
+              decoration: BoxDecoration(
+                color: _borderPink,
+                borderRadius: BorderRadius.circular(99),
+              ),
             ),
             const SizedBox(height: 16),
-            Text('Vị trí: ${shop.name}', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            Text(shop.shopAddress ?? 'Chưa cập nhật địa chỉ', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey[600])),
+
+            // Header vị trí shop
+            Row(
+              children: [
+                _buildCircleIcon(Icons.location_on_rounded, size: 48, iconSize: 25),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Vị trí: ${shop.name}',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w900,
+                          color: _textDark,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        shop.shopAddress ?? 'Chưa cập nhật địa chỉ',
+                        style: const TextStyle(
+                          color: _textGrey,
+                          fontSize: 12,
+                          height: 1.35,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
+
+            // Bản đồ OSM giữ nguyên chức năng cũ
             Expanded(
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(20),
                 child: OsmLocationPicker(
                   initLat: shop.shopLat,
                   initLng: shop.shopLng,
@@ -52,34 +105,34 @@ class ShopDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const primaryBlue = Color(0xFF0D6EFD);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA),
+      backgroundColor: _lighterPink,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // 1. Header Cover Image (Đã thu nhỏ theo yêu cầu)
+          // =========================
+          // Header ảnh bìa của shop
+          // =========================
           SliverAppBar(
-            expandedHeight: 200.0, // Đã giảm từ 250 xuống 200 cho nhỏ gọn hơn
+            expandedHeight: 210,
             pinned: true,
             stretch: true,
             elevation: 0,
             scrolledUnderElevation: 0,
-            backgroundColor: primaryBlue,
+            backgroundColor: _primaryPink,
             systemOverlayStyle: SystemUiOverlayStyle.light,
             leading: Padding(
-              padding: const EdgeInsets.all(8.0),
+              padding: const EdgeInsets.all(8),
               child: CircleAvatar(
-                backgroundColor: Colors.black.withOpacity(0.3),
+                backgroundColor: Colors.black.withOpacity(0.28),
                 child: const BackButton(color: Colors.white),
               ),
             ),
             actions: [
               Padding(
-                padding: const EdgeInsets.all(8.0),
+                padding: const EdgeInsets.all(8),
                 child: CircleAvatar(
-                  backgroundColor: Colors.black.withOpacity(0.3),
+                  backgroundColor: Colors.black.withOpacity(0.28),
                   child: IconButton(
                     icon: const Icon(Icons.share_outlined, color: Colors.white, size: 20),
                     onPressed: () {},
@@ -93,11 +146,14 @@ class ShopDetailScreen extends StatelessWidget {
                 fit: StackFit.expand,
                 children: [
                   shop.coverUrl != null
-                      ? Image.network(shop.coverUrl!, fit: BoxFit.cover)
-                      : Container(
-                    color: Colors.grey[300],
-                    child: const Center(child: Icon(Icons.store, size: 60, color: Colors.grey)),
-                  ),
+                      ? Image.network(
+                    shop.coverUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _buildCoverPlaceholder(),
+                  )
+                      : _buildCoverPlaceholder(),
+
+                  // Lớp phủ gradient để chữ/nút trên ảnh dễ nhìn hơn
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -105,7 +161,7 @@ class ShopDetailScreen extends StatelessWidget {
                         end: Alignment.bottomCenter,
                         colors: [
                           Colors.transparent,
-                          Colors.black.withOpacity(0.5),
+                          _primaryPink.withOpacity(0.75),
                         ],
                       ),
                     ),
@@ -115,153 +171,145 @@ class ShopDetailScreen extends StatelessWidget {
             ),
           ),
 
-          // 2. Main Content Card
+          // =========================
+          // Nội dung chính của shop
+          // =========================
           SliverToBoxAdapter(
-            child: Column(
-              children: [
-                Container(
-                  // Đẩy lên nhẹ hơn (-20 thay vì -24) để tránh lỗi hiển thị
-                  transform: Matrix4.translationValues(0, -20, 0),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Column(
-                    children: [
-                      // --- CARD THÔNG TIN CHÍNH ---
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.08),
-                              blurRadius: 15,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Container(
-                                  width: 60,
-                                  height: 60,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: Colors.grey[200]!),
-                                    image: shop.logoUrl != null
-                                        ? DecorationImage(image: NetworkImage(shop.logoUrl!), fit: BoxFit.cover)
-                                        : null,
-                                    color: Colors.grey[100],
-                                  ),
-                                  child: shop.logoUrl == null
-                                      ? Icon(Icons.storefront, color: Colors.grey[400], size: 30)
-                                      : null,
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        shop.name,
-                                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, height: 1.2),
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Row(
-                                        children: [
-                                          const Icon(Icons.star, size: 16, color: Colors.amber),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            shop.stats.ratingAvg.toStringAsFixed(1),
-                                            style: const TextStyle(fontWeight: FontWeight.w600),
-                                          ),
-                                          Text(
-                                            ' (${shop.stats.reviewCount} đánh giá)',
-                                            style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Container(
-                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                            decoration: BoxDecoration(
-                                              color: Colors.blue[50],
-                                              borderRadius: BorderRadius.circular(4),
-                                            ),
-                                            child: Text(
-                                              shop.status,
-                                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blue[700]),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 24),
-                            const Divider(height: 1),
-                            const SizedBox(height: 16),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                _buildStatItem('Sản phẩm', '${shop.stats.productCount}'),
-                                Container(width: 1, height: 24, color: Colors.grey[300]),
-                                _buildStatItem('Đơn hàng', _formatKNumber(shop.stats.orderCount)),
-                                Container(width: 1, height: 24, color: Colors.grey[300]),
-                                _buildStatItem('Tham gia', '${shop.createdAt.year}'),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // --- SECTION: GIỚI THIỆU & LIÊN HỆ ---
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
-                          ],
-                        ),
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (shop.description != null && shop.description!.isNotEmpty) ...[
-                              const Text('Giới thiệu', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                              const SizedBox(height: 10),
-                              Text(
-                                shop.description!,
-                                style: TextStyle(color: Colors.grey[700], height: 1.5, fontSize: 14),
-                              ),
-                              const SizedBox(height: 24),
-                            ],
-                            const Text('Thông tin liên hệ', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 16),
-                            if (shop.phone != null) _buildContactRow(Icons.phone_outlined, 'Hotline', shop.phone!),
-                            if (shop.email != null) _buildContactRow(Icons.email_outlined, 'Email', shop.email!),
-                            const Divider(height: 32),
-                            const Text('Địa chỉ', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 12),
-                            _buildAddressWithMapBtn(context),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                    ],
-                  ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+              child: Transform.translate(
+                offset: const Offset(0, -22),
+                child: Column(
+                  children: [
+                    _buildMainInfoCard(),
+                    const SizedBox(height: 16),
+                    _buildAboutAndContactCard(context),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // Placeholder khi shop chưa có ảnh bìa
+  // =========================
+  Widget _buildCoverPlaceholder() {
+    return Container(
+      color: _softPink,
+      child: const Center(
+        child: Icon(Icons.storefront_rounded, size: 70, color: _primaryPink),
+      ),
+    );
+  }
+
+  // =========================
+  // Card thông tin chính: logo, tên shop, đánh giá, thống kê
+  // =========================
+  Widget _buildMainInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(radius: 24),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildShopLogo(size: 66),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      shop.name,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: _textDark,
+                        height: 1.2,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        _buildSmallBadge(
+                          icon: Icons.star_rounded,
+                          label: '${shop.stats.ratingAvg.toStringAsFixed(1)} (${shop.stats.reviewCount} đánh giá)',
+                          bg: const Color(0xFFFFF7E6),
+                          color: Colors.orange,
+                        ),
+                        _buildStatusBadge(shop.status),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Container(height: 1, color: _borderPink),
+          const SizedBox(height: 16),
+
+          // Ba chỉ số giống format card sạch, gọn
+          Row(
+            children: [
+              Expanded(child: _buildStatItem('Sản phẩm', '${shop.stats.productCount}')),
+              _buildVerticalDivider(),
+              Expanded(child: _buildStatItem('Đơn hàng', _formatKNumber(shop.stats.orderCount))),
+              _buildVerticalDivider(),
+              Expanded(child: _buildStatItem('Tham gia', '${shop.createdAt.year}')),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // Card giới thiệu, liên hệ và địa chỉ
+  // =========================
+  Widget _buildAboutAndContactCard(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(radius: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (shop.description != null && shop.description!.isNotEmpty) ...[
+            _buildSectionTitle(Icons.info_outline_rounded, 'Giới thiệu'),
+            const SizedBox(height: 10),
+            Text(
+              shop.description!,
+              style: const TextStyle(
+                color: _textGrey,
+                height: 1.5,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 22),
+          ],
+
+          _buildSectionTitle(Icons.support_agent_rounded, 'Thông tin liên hệ'),
+          const SizedBox(height: 14),
+          if (shop.phone != null) _buildContactRow(Icons.phone_outlined, 'Hotline', shop.phone!),
+          if (shop.email != null) _buildContactRow(Icons.email_outlined, 'Email', shop.email!),
+          const SizedBox(height: 10),
+          Container(height: 1, color: _borderPink),
+          const SizedBox(height: 18),
+
+          _buildSectionTitle(Icons.location_on_outlined, 'Địa chỉ'),
+          const SizedBox(height: 12),
+          _buildAddressWithMapBtn(context),
         ],
       ),
     );
@@ -274,31 +322,61 @@ class ShopDetailScreen extends StatelessWidget {
     return number.toString();
   }
 
+  // =========================
+  // Ô thống kê nhỏ trong card shop
+  // =========================
   Widget _buildStatItem(String label, String value) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.black87)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w900,
+            color: _primaryPink,
+          ),
+        ),
         const SizedBox(height: 4),
-        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            color: _textGrey,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
       ],
     );
   }
 
+  // =========================
+  // Dòng liên hệ: icon nhỏ + label + value
+  // =========================
   Widget _buildContactRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 14),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 22, color: Colors.grey[600]),
-          const SizedBox(width: 14),
+          _buildCircleIcon(icon, size: 42, iconSize: 20),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                const SizedBox(height: 2),
-                Text(value, style: const TextStyle(fontSize: 15, color: Colors.black87, fontWeight: FontWeight.w500)),
+                Text(
+                  label,
+                  style: const TextStyle(fontSize: 12, color: _textGrey),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: _textDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),
@@ -307,36 +385,230 @@ class ShopDetailScreen extends StatelessWidget {
     );
   }
 
+  // =========================
+  // Địa chỉ + nút mở bản đồ nếu có toạ độ
+  // =========================
   Widget _buildAddressWithMapBtn(BuildContext context) {
-    bool hasMap = shop.shopLat != null && shop.shopLng != null;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        Icon(Icons.location_on_outlined, size: 24, color: Colors.grey[600]),
-        const SizedBox(width: 14),
-        Expanded(
-          child: Text(
-            shop.shopAddress ?? 'Chưa cập nhật',
-            style: const TextStyle(fontSize: 15, color: Colors.black87, height: 1.4),
+    final bool hasMap = shop.shopLat != null && shop.shopLng != null;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _lighterPink,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _borderPink),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(Icons.place_outlined, size: 24, color: _primaryPink),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              shop.shopAddress ?? 'Chưa cập nhật',
+              style: const TextStyle(
+                fontSize: 14,
+                color: _textDark,
+                height: 1.4,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
-        ),
-        if (hasMap)
-          InkWell(
-            onTap: () => _openMap(context),
-            child: Container(
-              margin: const EdgeInsets.only(left: 12),
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                  color: const Color(0xFF0D6EFD),
+          if (hasMap)
+            InkWell(
+              onTap: () => _openMap(context),
+              borderRadius: BorderRadius.circular(99),
+              child: Container(
+                margin: const EdgeInsets.only(left: 12),
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _primaryPink,
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(color: const Color(0xFF0D6EFD).withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))
-                  ]
+                    BoxShadow(
+                      color: _primaryPink.withOpacity(0.28),
+                      blurRadius: 10,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: const Icon(Icons.map_outlined, color: Colors.white, size: 22),
               ),
-              child: const Icon(Icons.map, color: Colors.white, size: 22),
             ),
-          )
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // Logo shop dạng tròn, có viền hồng nhạt
+  // =========================
+  Widget _buildShopLogo({double size = 60}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: _softPink,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryPink.withOpacity(0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        image: shop.logoUrl != null
+            ? DecorationImage(
+          image: NetworkImage(shop.logoUrl!),
+          fit: BoxFit.cover,
+        )
+            : null,
+      ),
+      child: shop.logoUrl == null
+          ? const Icon(Icons.storefront_rounded, color: _primaryPink, size: 30)
+          : null,
+    );
+  }
+
+  // =========================
+  // Tiêu đề section trong card
+  // =========================
+  Widget _buildSectionTitle(IconData icon, String title) {
+    return Row(
+      children: [
+        Icon(icon, size: 20, color: _primaryPink),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: _textDark,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // =========================
+  // Badge nhỏ dùng cho đánh giá
+  // =========================
+  Widget _buildSmallBadge({
+    required IconData icon,
+    required String label,
+    required Color bg,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              color: color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // Badge trạng thái shop
+  // =========================
+  Widget _buildStatusBadge(String status) {
+    Color bg;
+    Color text;
+    String label;
+
+    switch (status) {
+      case 'ACTIVE':
+        bg = const Color(0xFFEAF8EF);
+        text = Colors.green;
+        label = 'Đang hoạt động';
+        break;
+      case 'PENDING':
+        bg = const Color(0xFFFFF4E5);
+        text = Colors.orange;
+        label = 'Chờ duyệt';
+        break;
+      case 'SUSPENDED':
+        bg = const Color(0xFFFFECEF);
+        text = Colors.redAccent;
+        label = 'Đang tạm nghỉ';
+        break;
+      default:
+        bg = _softPink;
+        text = _primaryPink;
+        label = status;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(99),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 12,
+          color: text,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  // =========================
+  // Icon tròn dùng chung theo format mẫu
+  // =========================
+  static Widget _buildCircleIcon(IconData icon, {double size = 54, double iconSize = 26}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: _softPink,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: _primaryPink, size: iconSize),
+    );
+  }
+
+  Widget _buildVerticalDivider() {
+    return Container(
+      height: 32,
+      width: 1,
+      color: _borderPink,
+    );
+  }
+
+  // =========================
+  // Decoration card dùng chung: nền trắng + viền hồng + shadow nhẹ
+  // =========================
+  BoxDecoration _cardDecoration({double radius = 20}) {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: _borderPink),
+      boxShadow: [
+        BoxShadow(
+          color: _primaryPink.withOpacity(0.06),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
       ],
     );
   }

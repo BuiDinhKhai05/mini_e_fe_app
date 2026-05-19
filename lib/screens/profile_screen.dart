@@ -281,7 +281,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.only(top: 26, bottom: 18),
       child: Center(
         child: Image.asset(
-          'assets/brand/bunny_bear_original.png',
+          'assets/images/mochi/bunny_bear_original.png',
           height: 112,
           fit: BoxFit.contain,
 

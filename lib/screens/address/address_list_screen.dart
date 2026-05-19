@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/address_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/address_provider.dart';
 import 'add_address_screen.dart';
 
 class AddressListScreen extends StatefulWidget {
-  final bool selectMode; // ✅ mới
-  final int? initialSelectedId; // ✅ mới (để highlight)
+  final bool selectMode; // Chế độ chọn địa chỉ khi đặt hàng
+  final int? initialSelectedId; // ID địa chỉ đang được chọn ban đầu
 
   const AddressListScreen({
     Key? key,
@@ -22,16 +23,30 @@ class AddressListScreen extends StatefulWidget {
 class _AddressListScreenState extends State<AddressListScreen> {
   int? _selectedId;
 
+  // =========================
+  // Màu dùng chung cho màn hình
+  // =========================
+  static const Color _primaryPink = Color(0xFFFF5C8A);
+  static const Color _softPink = Color(0xFFFFEEF4);
+  static const Color _lighterPink = Color(0xFFFFF7FA);
+  static const Color _borderPink = Color(0xFFFFD8E4);
+  static const Color _textDark = Color(0xFF222222);
+  static const Color _textGrey = Color(0xFF707070);
+
   @override
   void initState() {
     super.initState();
     _selectedId = widget.initialSelectedId;
 
+    // Sau khi màn hình dựng xong thì gọi API lấy danh sách địa chỉ
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshList();
     });
   }
 
+  // =========================
+  // Load lại danh sách địa chỉ
+  // =========================
   Future<void> _refreshList() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     if (auth.accessToken != null) {
@@ -40,20 +55,59 @@ class _AddressListScreenState extends State<AddressListScreen> {
     }
   }
 
+  // =========================
+  // Điều hướng sang màn hình thêm địa chỉ mới
+  // =========================
+  Future<void> _openAddAddressScreen() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const AddAddressScreen()),
+    );
+    _refreshList();
+  }
+
+  // =========================
+  // Điều hướng sang màn hình sửa địa chỉ
+  // =========================
+  Future<void> _openEditAddressScreen(AddressModel address) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddAddressScreen(address: address),
+      ),
+    );
+    _refreshList();
+  }
+
+  // =========================
+  // Xóa địa chỉ: giữ nguyên logic cũ, chỉ chỉnh giao diện dialog/snackbar
+  // =========================
   Future<void> _deleteAddress(int id) async {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Xóa địa chỉ'),
-        content: const Text('Bạn có chắc chắn muốn xóa địa chỉ này?'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Xóa địa chỉ',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        content: const Text('Bạn có chắc chắn muốn xóa địa chỉ này không?'),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         actions: [
           TextButton(
             child: const Text('Hủy'),
             onPressed: () => Navigator.pop(ctx, false),
           ),
-          TextButton(
-            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Xóa'),
           ),
         ],
       ),
@@ -70,18 +124,25 @@ class _AddressListScreenState extends State<AddressListScreen> {
           const SnackBar(content: Text('Đã xóa địa chỉ thành công')),
         );
 
-        // nếu đang chọn mà bị xóa thì clear chọn
+        // Nếu địa chỉ đang được chọn bị xóa thì bỏ trạng thái chọn
         if (_selectedId == id) setState(() => _selectedId = null);
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi xóa: $e'), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text('Lỗi xóa: $e'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }
   }
 
-  Future<void> _setAsDefault(int id) async {
+  // =========================
+  // Đặt địa chỉ mặc định
+  // closeSheet = true khi gọi từ bottom sheet chi tiết
+  // =========================
+  Future<void> _setAsDefault(int id, {bool closeSheet = false}) async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final provider = Provider.of<AddressProvider>(context, listen: false);
 
@@ -90,92 +151,143 @@ class _AddressListScreenState extends State<AddressListScreen> {
       await _refreshList();
 
       if (!mounted) return;
-      Navigator.pop(context); // đóng modal detail
+      if (closeSheet) Navigator.pop(context);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Đã đặt làm địa chỉ mặc định')),
       );
     } catch (e) {
       if (!mounted) return;
-      Navigator.pop(context);
+      if (closeSheet) Navigator.pop(context);
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.red),
+        SnackBar(
+          content: Text('Lỗi: $e'),
+          backgroundColor: Colors.red,
+        ),
       );
     }
   }
 
+  // =========================
+  // Hiển thị bottom sheet chi tiết địa chỉ
+  // =========================
   void _showAddressDetail(AddressModel addr) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return SingleChildScrollView(
-          child: Padding(
-            padding: EdgeInsets.only(
-              top: 20,
-              left: 20,
-              right: 20,
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Center(
-                  child: Text(
-                    'Thông tin địa chỉ',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                const Divider(),
-                const SizedBox(height: 10),
-                _buildDetailRow(Icons.person, 'Người nhận', addr.fullName),
-                _buildDetailRow(Icons.phone, 'Số điện thoại', addr.phone),
-                _buildDetailRow(Icons.location_on, 'Địa chỉ', addr.formattedAddress),
-                if (addr.isDefault)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Row(
-                      children: const [
-                        Icon(Icons.check_circle, color: Colors.green),
-                        SizedBox(width: 8),
-                        Text(
-                          'Đây là địa chỉ mặc định',
-                          style: TextStyle(
-                            color: Colors.green,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: EdgeInsets.only(
+                top: 18,
+                left: 20,
+                right: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 46,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: _borderPink,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
                     ),
                   ),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 18),
 
-                SizedBox(
-                  width: double.infinity,
-                  child: addr.isDefault
-                      ? ElevatedButton(
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.grey),
-                          onPressed: null,
-                          child: const Text('Đã là mặc định',
-                              style: TextStyle(color: Colors.white)),
-                        )
-                      : ElevatedButton(
-                          onPressed: () => _setAsDefault(addr.id),
-                          child: const Text('Đặt làm mặc định'),
+                  // Tiêu đề bottom sheet
+                  Row(
+                    children: [
+                      _buildCircleIcon(
+                        icon: Icons.location_on_rounded,
+                        size: 46,
+                        iconSize: 24,
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Thông tin địa chỉ',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w900,
+                            color: _textDark,
+                          ),
                         ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  width: double.infinity,
-                  child: TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text('Đóng'),
+                      ),
+                      if (addr.isDefault) _buildDefaultBadge(),
+                    ],
                   ),
-                ),
-              ],
+                  const SizedBox(height: 18),
+
+                  _buildDetailRow(Icons.person_rounded, 'Người nhận', addr.fullName),
+                  _buildDetailRow(Icons.phone_rounded, 'Số điện thoại', addr.phone),
+                  _buildDetailRow(
+                    Icons.place_rounded,
+                    'Địa chỉ',
+                    addr.formattedAddress,
+                  ),
+                  if (addr.lat != null && addr.lng != null)
+                    _buildDetailRow(
+                      Icons.my_location_rounded,
+                      'Tọa độ',
+                      '${addr.lat!.toStringAsFixed(6)}, ${addr.lng!.toStringAsFixed(6)}',
+                    ),
+
+                  const SizedBox(height: 22),
+
+                  // Nút đặt mặc định trong phần chi tiết
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: addr.isDefault ? Colors.grey.shade300 : _primaryPink,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: addr.isDefault
+                          ? null
+                          : () => _setAsDefault(addr.id, closeSheet: true),
+                      icon: Icon(
+                        addr.isDefault
+                            ? Icons.check_circle_rounded
+                            : Icons.star_border_rounded,
+                      ),
+                      label: Text(addr.isDefault ? 'Đã là mặc định' : 'Đặt làm mặc định'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: TextButton(
+                      style: TextButton.styleFrom(
+                        foregroundColor: _textGrey,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Đóng'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -183,24 +295,468 @@ class _AddressListScreenState extends State<AddressListScreen> {
     );
   }
 
+  // =========================
+  // Header giống format hình mẫu
+  // =========================
+  Widget _buildHeader(String title) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _borderPink),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryPink.withOpacity(0.08),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          if (Navigator.canPop(context)) ...[
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: _lighterPink,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  size: 18,
+                  color: _primaryPink,
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+          ],
+          _buildCircleIcon(
+            icon: Icons.location_on_rounded,
+            size: 54,
+            iconSize: 28,
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: _textDark,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  widget.selectMode
+                      ? 'Chọn địa chỉ giao hàng của bạn 💗'
+                      : 'Quản lý địa chỉ giao hàng của bạn 💗',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: _textGrey,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _primaryPink,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            onPressed: _openAddAddressScreen,
+            icon: const Icon(Icons.add_rounded, size: 18),
+            label: const Text(
+              'Thêm',
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // Card địa chỉ giống style hình mẫu
+  // =========================
+  Widget _buildAddressCard(AddressModel addr, bool isPicked) {
+    final hasCoordinates = addr.lat != null && addr.lng != null;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: () {
+        if (widget.selectMode) {
+          setState(() => _selectedId = addr.id);
+          Navigator.pop(context, addr); // Trả địa chỉ đã chọn về màn hình trước
+        } else {
+          _showAddressDetail(addr);
+        }
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: isPicked || addr.isDefault ? _primaryPink.withOpacity(0.45) : _borderPink,
+            width: isPicked ? 1.4 : 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _primaryPink.withOpacity(0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Nhãn mặc định nằm trên card như hình mẫu
+            if (addr.isDefault)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _buildDefaultBadge(),
+              ),
+
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (widget.selectMode) ...[
+                  Icon(
+                    isPicked
+                        ? Icons.radio_button_checked_rounded
+                        : Icons.radio_button_off_rounded,
+                    color: isPicked ? _primaryPink : Colors.grey.shade400,
+                  ),
+                  const SizedBox(width: 10),
+                ],
+
+                // Icon tròn bên trái giống hình mẫu
+                _buildCircleIcon(
+                  icon: addr.isDefault
+                      ? Icons.home_rounded
+                      : Icons.location_city_rounded,
+                  size: 58,
+                  iconSize: 30,
+                ),
+                const SizedBox(width: 14),
+
+                // Nội dung địa chỉ
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              addr.fullName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w900,
+                                color: _textDark,
+                              ),
+                            ),
+                          ),
+                          if (addr.isDefault)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 6),
+                              child: Text(
+                                'Mặc định',
+                                style: TextStyle(
+                                  color: _primaryPink,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      _buildInfoLine(Icons.phone_rounded, addr.phone),
+                      const SizedBox(height: 7),
+                      _buildInfoLine(
+                        Icons.place_outlined,
+                        addr.formattedAddress,
+                        maxLines: 2,
+                      ),
+                      if (hasCoordinates) ...[
+                        const SizedBox(height: 7),
+                        Text(
+                          'Tọa độ: ${addr.lat!.toStringAsFixed(6)}, ${addr.lng!.toStringAsFixed(6)}',
+                          style: const TextStyle(
+                            color: _primaryPink,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            // Chế độ chọn địa chỉ thì ẩn sửa/xóa để giao diện gọn hơn
+            if (!widget.selectMode) ...[
+              const SizedBox(height: 14),
+              Divider(height: 1, color: _borderPink.withOpacity(0.8)),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.end,
+                children: [
+                  _buildCardActionButton(
+                    icon: addr.isDefault
+                        ? Icons.check_circle_outline_rounded
+                        : Icons.star_border_rounded,
+                    label: addr.isDefault ? 'Mặc định' : 'Đặt mặc định',
+                    color: _primaryPink,
+                    isDisabled: addr.isDefault,
+                    onTap: () => _setAsDefault(addr.id),
+                  ),
+                  _buildCardActionButton(
+                    icon: Icons.edit_outlined,
+                    label: 'Sửa',
+                    color: _textDark,
+                    onTap: () => _openEditAddressScreen(addr),
+                  ),
+                  _buildCardActionButton(
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Xóa',
+                    color: Colors.redAccent,
+                    onTap: () => _deleteAddress(addr.id),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  // =========================
+  // Dòng thông tin nhỏ trong card
+  // =========================
+  Widget _buildInfoLine(IconData icon, String text, {int maxLines = 1}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 16, color: _textGrey),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: maxLines,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+              fontSize: 13,
+              height: 1.35,
+              color: _textDark,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // =========================
+  // Nút thao tác nhỏ: đặt mặc định, sửa, xóa
+  // =========================
+  Widget _buildCardActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+    bool isDisabled = false,
+  }) {
+    return OutlinedButton.icon(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: isDisabled ? _textGrey : color,
+        side: BorderSide(
+          color: isDisabled ? _borderPink : color.withOpacity(0.28),
+        ),
+        backgroundColor: isDisabled ? _lighterPink : Colors.white,
+        minimumSize: const Size(0, 36),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+      onPressed: isDisabled ? null : onTap,
+      icon: Icon(icon, size: 16),
+      label: Text(
+        label,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  // =========================
+  // Icon tròn màu hồng dùng ở header và card
+  // =========================
+  Widget _buildCircleIcon({
+    required IconData icon,
+    required double size,
+    required double iconSize,
+  }) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: _softPink,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: _primaryPink, size: iconSize),
+    );
+  }
+
+  // =========================
+  // Badge mặc định
+  // =========================
+  Widget _buildDefaultBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: _primaryPink,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: const Text(
+        'Mặc định',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  // =========================
+  // Dòng thông tin trong bottom sheet
+  // =========================
   Widget _buildDetailRow(IconData icon, String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: _lighterPink,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderPink),
+      ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: Colors.grey),
+          Icon(icon, size: 20, color: _primaryPink),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                Text(value, style: const TextStyle(fontSize: 16)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: _textGrey,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.35,
+                    color: _textDark,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // =========================
+  // Giao diện khi đang load dữ liệu
+  // =========================
+  Widget _buildLoadingState() {
+    return const Center(
+      child: CircularProgressIndicator(color: _primaryPink),
+    );
+  }
+
+  // =========================
+  // Giao diện khi chưa có địa chỉ nào
+  // =========================
+  Widget _buildEmptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildCircleIcon(
+              icon: Icons.location_off_rounded,
+              size: 74,
+              iconSize: 36,
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Chưa có địa chỉ nào',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                color: _textDark,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Thêm địa chỉ giao hàng để đặt hàng nhanh hơn nhé.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _textGrey),
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryPink,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+              onPressed: _openAddAddressScreen,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Thêm địa chỉ mới'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -210,128 +766,42 @@ class _AddressListScreenState extends State<AddressListScreen> {
     final title = widget.selectMode ? 'Chọn địa chỉ' : 'Địa chỉ của tôi';
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          IconButton(
-            tooltip: 'Thêm địa chỉ',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const AddAddressScreen()),
-              ).then((_) => _refreshList());
-            },
-            icon: const Icon(Icons.add),
-          ),
-        ],
-      ),
-
-      body: Consumer<AddressProvider>(
-        builder: (context, provider, child) {
-          if (provider.isLoading && provider.addresses.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          if (provider.addresses.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text('Chưa có địa chỉ nào'),
-                    const SizedBox(height: 12),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => const AddAddressScreen()),
-                        ).then((_) => _refreshList());
-                      },
-                      icon: const Icon(Icons.add),
-                      label: const Text('Thêm địa chỉ mới'),
-                    )
-                  ],
-                ),
-              ),
-            );
-          }
-
-          return ListView.separated(
-            padding: const EdgeInsets.all(12),
-            itemCount: provider.addresses.length,
-            separatorBuilder: (ctx, i) => const Divider(),
-            itemBuilder: (ctx, i) {
-              final addr = provider.addresses[i];
-              final isPicked = _selectedId == addr.id;
-
-              return ListTile(
-                onTap: () {
-                  if (widget.selectMode) {
-                    setState(() => _selectedId = addr.id);
-                    Navigator.pop(context, addr); // ✅ trả về địa chỉ đã chọn
-                  } else {
-                    _showAddressDetail(addr);
+      backgroundColor: _lighterPink,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(title),
+            Expanded(
+              child: Consumer<AddressProvider>(
+                builder: (context, provider, child) {
+                  if (provider.isLoading && provider.addresses.isEmpty) {
+                    return _buildLoadingState();
                   }
-                },
-                leading: widget.selectMode
-                    ? Icon(
-                        isPicked ? Icons.radio_button_checked : Icons.radio_button_off,
-                        color: isPicked ? Colors.blue : Colors.grey,
-                      )
-                    : null,
-                title: Text(addr.fullName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(addr.phone),
-                    Text(
-                      addr.formattedAddress,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (addr.isDefault)
-                      Container(
-                        margin: const EdgeInsets.only(top: 4),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.red[100],
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: const Text('Mặc định',
-                            style: TextStyle(color: Colors.red, fontSize: 10)),
-                      )
-                  ],
-                ),
-                isThreeLine: true,
 
-                // ✅ selectMode thì ẩn edit/delete (tránh rối)
-                trailing: widget.selectMode
-                    ? null
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit, color: Colors.blue),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => AddAddressScreen(address: addr),
-                                ),
-                              ).then((_) => _refreshList());
-                            },
-                          ),
-                          IconButton(
-                            icon: const Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteAddress(addr.id),
-                          ),
-                        ],
-                      ),
-              );
-            },
-          );
-        },
+                  if (provider.addresses.isEmpty) {
+                    return _buildEmptyState();
+                  }
+
+                  return RefreshIndicator(
+                    color: _primaryPink,
+                    onRefresh: _refreshList,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                      itemCount: provider.addresses.length,
+                      itemBuilder: (ctx, i) {
+                        final addr = provider.addresses[i];
+                        final isPicked = _selectedId == addr.id;
+
+                        return _buildAddressCard(addr, isPicked);
+                      },
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

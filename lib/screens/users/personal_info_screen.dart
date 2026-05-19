@@ -6,7 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
 import 'edit_personal_info_screen.dart';
 
-// Import màn hình Shop
+// Import màn hình Shop - giữ nguyên chức năng cũ.
 import '../shops/shop_register_screen.dart';
 import '../shops/shop_management_screen.dart';
 
@@ -18,68 +18,153 @@ class PersonalInfoScreen extends StatefulWidget {
 }
 
 class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
+  // =========================
+  // 1. MÀU CHỦ ĐẠO CỦA GIAO DIỆN
+  // =========================
+  static const Color _primaryPink = Color(0xFFE84D7A);
+  static const Color _softPink = Color(0xFFFFF4F7);
+  static const Color _lightPink = Color(0xFFFCE3EC);
+  static const Color _unselectedPink = Color(0xFFC8A6B0);
+  static const Color _textDark = Color(0xFF333333);
+  static const Color _textMuted = Color(0xFF8A7A80);
+
+  // Biến này giúp tránh gọi API fetchMe liên tục khi màn hình build lại.
   bool _hasFetched = false;
 
-  void _showSnackBar(BuildContext context, String message, {bool isError = false}) {
+  // =========================
+  // 2. HIỂN THỊ THÔNG BÁO
+  // =========================
+  void _showSnackBar(
+      BuildContext context,
+      String message, {
+        bool isError = false,
+      }) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : Colors.green,
+        backgroundColor: isError ? Colors.red : _primaryPink,
         duration: const Duration(seconds: 2),
       ),
     );
   }
 
-  // Hàm tải thông tin User
-  Future<void> _loadProfile(AuthProvider auth, UserProvider userProvider, {bool forceRefresh = false}) async {
-    // Nếu forceRefresh = true, bỏ qua kiểm tra _hasFetched để tải lại từ đầu
+  // =========================
+  // 3. GỌI API LẤY THÔNG TIN USER
+  // =========================
+  Future<void> _loadProfile(
+      AuthProvider auth,
+      UserProvider userProvider, {
+        bool forceRefresh = false,
+      }) async {
+    // Nếu không bắt buộc tải lại thì chỉ fetch một lần.
     if (_hasFetched && !forceRefresh) return;
     _hasFetched = true;
 
-    // await Future.delayed(const Duration(milliseconds: 400)); // Có thể bỏ delay này nếu không cần thiết
-
     if (auth.accessToken != null) {
       try {
-        // Luôn fetch lại mới nhất để cập nhật trạng thái Shop/Role
+        // Luôn fetch lại thông tin mới nhất để cập nhật profile/shop/role.
         await userProvider.fetchMe();
       } catch (e) {
-        if (mounted) _showSnackBar(context, 'Không tải được hồ sơ: $e', isError: true);
+        if (mounted) {
+          _showSnackBar(
+            context,
+            'Không tải được hồ sơ: $e',
+            isError: true,
+          );
+        }
       }
     } else {
+      // Nếu chưa đăng nhập thì chuyển về màn hình login.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) Navigator.pushReplacementNamed(context, '/login');
       });
     }
   }
 
-  Widget _buildInfoRowWithIcon(IconData icon, String label, String? value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+  // =========================
+  // 4. CHUYỂN SANG MÀN HÌNH CHỈNH SỬA
+  // =========================
+  Future<void> _openEditScreen(
+      AuthProvider auth,
+      UserProvider userProvider,
+      ) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const EditPersonalInfoScreen(),
+      ),
+    );
+
+    // Khi quay lại từ màn chỉnh sửa thì tải lại dữ liệu để hiển thị thông tin mới.
+    if (mounted) {
+      await _loadProfile(auth, userProvider, forceRefresh: true);
+    }
+  }
+
+  // =========================
+  // 5. FORMAT NGÀY SINH CHO DỄ NHÌN
+  // =========================
+  String _formatBirthday(String? birthday) {
+    if (birthday == null || birthday.trim().isEmpty) {
+      return 'Chưa cập nhật';
+    }
+
+    try {
+      final date = DateTime.parse(birthday);
+      final day = date.day.toString().padLeft(2, '0');
+      final month = date.month.toString().padLeft(2, '0');
+      return '$day/$month/${date.year}';
+    } catch (_) {
+      // Nếu backend đã trả sẵn dạng dd/MM/yyyy thì giữ nguyên.
+      return birthday;
+    }
+  }
+
+  // =========================
+  // 6. ĐỔI GIỚI TÍNH TỪ CODE SANG TEXT TIẾNG VIỆT
+  // =========================
+  String _formatGender(String? gender) {
+    switch (gender) {
+      case 'MALE':
+        return 'Nam';
+      case 'FEMALE':
+        return 'Nữ';
+      case 'OTHER':
+        return 'Khác';
+      default:
+        return 'Chưa cập nhật';
+    }
+  }
+
+  // =========================
+  // 7. AVATAR BÊN TRÁI THEO FORMAT ẢNH MẪU
+  // =========================
+  Widget _buildAvatarPanel(dynamic currentUser) {
+    final String name = currentUser.name ?? 'Người dùng';
+
+    return SizedBox(
+      width: 150,
+      child: Column(
         children: [
-          Icon(icon, size: 22, color: Colors.grey[600]),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (value == null || value.isEmpty)
-                  Text(
-                    label,
-                    style: TextStyle(fontSize: 15, color: Colors.grey[500]),
-                  )
-                else ...[
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.black87,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ]
-              ],
+          // Avatar chỉ dùng để hiển thị thông tin người dùng.
+          // Nút "Đổi ảnh đại diện" và dòng "JPG, PNG tối đa 2MB" đã được bỏ theo yêu cầu.
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: _lightPink,
+              shape: BoxShape.circle,
+            ),
+            child: CircleAvatar(
+              radius: 48,
+              backgroundColor: _primaryPink,
+              child: Text(
+                name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 34,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
           ),
         ],
@@ -87,47 +172,408 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     );
   }
 
+  // =========================
+  // 8. MỘT DÒNG THÔNG TIN CÁ NHÂN
+  // =========================
+  Widget _buildInfoRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            color: _textMuted,
+            size: 20,
+          ),
+          const SizedBox(width: 12),
+
+          // Label của thông tin, ví dụ: Họ và tên, Email...
+          SizedBox(
+            width: 105,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _textMuted,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+
+          // Giá trị thông tin của user.
+          Expanded(
+            child: Text(
+              value.isEmpty ? 'Chưa cập nhật' : value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: value.isEmpty ? _unselectedPink : _textDark,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // 9. CỤM THÔNG TIN Ở GIỮA
+  // =========================
+  Widget _buildInfoPanel({
+    required dynamic currentUser,
+    required VoidCallback onEdit,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header thông tin cá nhân.
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                'Thông tin cá nhân',
+                style: TextStyle(
+                  color: _textDark,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+            SizedBox(
+              height: 34,
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+
+        _buildInfoRow(
+          icon: Icons.person_outline,
+          label: 'Họ và tên',
+          value: currentUser.name ?? '',
+        ),
+        _buildInfoRow(
+          icon: Icons.email_outlined,
+          label: 'Email',
+          value: currentUser.email ?? '',
+        ),
+        _buildInfoRow(
+          icon: Icons.phone_outlined,
+          label: 'Số điện thoại',
+          value: currentUser.phone ?? '',
+        ),
+        _buildInfoRow(
+          icon: Icons.wc_outlined,
+          label: 'Giới tính',
+          value: _formatGender(currentUser.gender),
+        ),
+        _buildInfoRow(
+          icon: Icons.calendar_month_outlined,
+          label: 'Ngày sinh',
+          value: _formatBirthday(currentUser.birthday),
+        ),
+        _editInfoButton(context),
+      ],
+    );
+  }
+
+  // =========================
+  // NÚT CHỈNH SỬA THÔNG TIN
+  // =========================
+  Widget _editInfoButton(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 22),
+      child: Center(
+        child: SizedBox(
+          width: 210,
+          height: 44,
+          child: ElevatedButton.icon(
+            // Khi bấm nút thì chuyển sang màn hình chỉnh sửa thông tin.
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const EditPersonalInfoScreen(),
+                ),
+              );
+            },
+
+            icon: const Icon(
+              Icons.edit_outlined,
+              size: 20,
+            ),
+
+            label: const Text(
+              'Chỉnh sửa thông tin',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE84D7A),
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // =========================
+  // 10. HÌNH TRANG TRÍ BÊN PHẢI
+  // =========================
+  Widget _buildDecorationImage() {
+    return SizedBox(
+      width: 190,
+      child: Center(
+        child: Image.asset(
+          // Bạn có thể thay bằng ảnh thỏ/gấu thật trong assets của app.
+          'assets/images/mochi/bunny_bear_original.png',
+          height: 160,
+          fit: BoxFit.contain,
+          errorBuilder: (context, error, stackTrace) {
+            // Fallback để app không lỗi khi chưa thêm asset.
+            return Container(
+              width: 160,
+              height: 140,
+              decoration: BoxDecoration(
+                color: _softPink,
+                borderRadius: BorderRadius.circular(32),
+              ),
+              child: const Center(
+                child: Text(
+                  '🐰💗',
+                  style: TextStyle(fontSize: 54),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  // =========================
+  // 11. CARD THÔNG TIN CÁ NHÂN
+  // =========================
+  Widget _buildPersonalInfoCard({
+    required dynamic currentUser,
+    required VoidCallback onEdit,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: _primaryPink.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryPink.withOpacity(0.06),
+            blurRadius: 28,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          // Giao diện rộng: avatar trái - thông tin giữa - hình trang trí phải.
+          if (constraints.maxWidth >= 720) {
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                _buildAvatarPanel(currentUser),
+                const SizedBox(width: 28),
+                Expanded(
+                  child: _buildInfoPanel(
+                    currentUser: currentUser,
+                    onEdit: onEdit,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                _buildDecorationImage(),
+              ],
+            );
+          }
+
+          // Giao diện điện thoại: xếp dọc để không bị tràn màn hình.
+          return Column(
+            children: [
+              _buildAvatarPanel(currentUser),
+              const SizedBox(height: 26),
+              _buildInfoPanel(
+                currentUser: currentUser,
+                onEdit: onEdit,
+              ),
+              const SizedBox(height: 24),
+              _buildDecorationImage(),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // =========================
+  // 12. CARD ĐĂNG KÝ / QUẢN LÝ SHOP
+  // =========================
+  Widget _buildShopCard({
+    required bool hasShop,
+    required AuthProvider auth,
+    required UserProvider userProvider,
+  }) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _primaryPink.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryPink.withOpacity(0.05),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(24),
+          onTap: () {
+            if (hasShop) {
+              // Nếu user đã là seller/admin thì đi đến màn quản lý shop.
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ShopManagementScreen(),
+                ),
+              );
+            } else {
+              // Nếu user chưa có shop thì đi đến màn đăng ký shop.
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const ShopRegisterScreen(),
+                ),
+              ).then((_) {
+                // Khi quay lại thì fetch lại để cập nhật role/shop.
+                _loadProfile(auth, userProvider, forceRefresh: true);
+              });
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _primaryPink.withOpacity(0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    hasShop ? Icons.store_mall_directory : Icons.add_business,
+                    color: _primaryPink,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        hasShop ? 'Quản lý Shop' : 'Đăng ký Shop',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: _textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        hasShop
+                            ? 'Quản lý sản phẩm, đơn hàng và doanh thu'
+                            : 'Bắt đầu kinh doanh ngay hôm nay',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: _textMuted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 16,
+                  color: _unselectedPink,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // =========================
+  // 13. BUILD GIAO DIỆN CHÍNH
+  // =========================
   @override
   Widget build(BuildContext context) {
     return Consumer2<AuthProvider, UserProvider>(
       builder: (context, auth, userProvider, child) {
-        // Load profile lần đầu
+        // Load profile lần đầu sau khi frame hiện tại build xong.
         if (!_hasFetched) {
-          _loadProfile(auth, userProvider);
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _loadProfile(auth, userProvider);
+          });
         }
 
         final currentUser = userProvider.me ?? auth.user;
 
-        // ============================================================
-        // [QUAN TRỌNG] LOGIC KIỂM TRA ĐÃ CÓ SHOP HAY CHƯA
-        // ============================================================
+        // Kiểm tra trạng thái shop dựa vào role, giữ logic cũ của bạn.
         bool hasShop = false;
-
         if (currentUser != null) {
-          // Cách 1: Kiểm tra Role (Thường dùng nhất)
-          // Giả sử backend trả về role là 'SELLER' hoặc 'ADMIN' thì là có shop
           if (currentUser.role == 'SELLER' || currentUser.role == 'ADMIN') {
             hasShop = true;
           }
-
-          // Cách 2: Kiểm tra shopId (Nếu model user có trường shopId)
-          // if (currentUser.shopId != null && currentUser.shopId!.isNotEmpty) {
-          //   hasShop = true;
-          // }
         }
 
         return Scaffold(
-          backgroundColor: Colors.grey[100],
+          backgroundColor: Colors.white,
           appBar: AppBar(
             title: const Text(
-              'Hồ sơ của tôi',
-              style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold, fontSize: 18),
+              'Thông tin cá nhân',
+              style: TextStyle(
+                color: _textDark,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
             ),
             centerTitle: true,
-            backgroundColor: Colors.transparent,
+            backgroundColor: Colors.white,
+            surfaceTintColor: Colors.white,
             elevation: 0,
             leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+              icon: const Icon(
+                Icons.arrow_back_ios_new,
+                color: _textDark,
+                size: 20,
+              ),
               onPressed: () {
                 if (Navigator.canPop(context)) {
                   Navigator.pop(context);
@@ -137,289 +583,34 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               },
             ),
           ),
-          body: (currentUser == null)
-              ? const Center(child: CircularProgressIndicator())
+          body: currentUser == null
+              ? const Center(
+            child: CircularProgressIndicator(color: _primaryPink),
+          )
               : RefreshIndicator(
-            // Cho phép kéo xuống để tải lại profile (cập nhật trạng thái user -> seller)
+            color: _primaryPink,
             onRefresh: () async {
               await _loadProfile(auth, userProvider, forceRefresh: true);
             },
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
               physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
               child: Column(
                 children: [
-                  // 1. Header Avatar
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 24.0, top: 8.0),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(3),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            border: Border.all(color: const Color(0xFF0D6EFD), width: 2),
-                          ),
-                          child: CircleAvatar(
-                            radius: 35,
-                            backgroundColor: const Color(0xFF0D6EFD),
-                            child: Text(
-                              currentUser.name?.isNotEmpty == true
-                                  ? currentUser.name![0].toUpperCase()
-                                  : 'U',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      currentUser.name ?? 'Người dùng',
-                                      style: const TextStyle(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  // Nếu là Seller thì hiện tick xanh
-                                  if (hasShop)
-                                    const Icon(Icons.verified, color: Colors.blue, size: 18),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                currentUser.email ?? 'Chưa cập nhật email',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              // Badge hiển thị vai trò
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: hasShop ? Colors.orange[50] : Colors.blue[50],
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  hasShop ? 'NHÀ BÁN HÀNG' : 'KHÁCH HÀNG',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: hasShop ? Colors.orange : Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                  // Card thông tin cá nhân theo layout ảnh mẫu.
+                  _buildPersonalInfoCard(
+                    currentUser: currentUser,
+                    onEdit: () => _openEditScreen(auth, userProvider),
                   ),
 
-                  // 2. Thông tin cá nhân
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                'Thông tin cá nhân',
-                                style: TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                              SizedBox(
-                                height: 32,
-                                child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const EditPersonalInfoScreen(),
-                                      ),
-                                    );
-                                  },
-                                  icon: const Icon(Icons.edit, size: 14),
-                                  label: const Text('Chỉnh sửa', style: TextStyle(fontSize: 12)),
-                                  style: OutlinedButton.styleFrom(
-                                    foregroundColor: const Color(0xFF0D6EFD),
-                                    side: const BorderSide(color: Color(0xFF0D6EFD)),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 10),
-                          const Divider(height: 1, color: Color(0xFFEEEEEE)),
-                          const SizedBox(height: 10),
-                          _buildInfoRowWithIcon(
-                            Icons.phone_outlined,
-                            'Số điện thoại',
-                            currentUser.phone,
-                          ),
-                          _buildInfoRowWithIcon(
-                            Icons.cake_outlined,
-                            'Ngày sinh',
-                            currentUser.birthday,
-                          ),
-                          _buildInfoRowWithIcon(
-                            currentUser.gender == 'FEMALE'
-                                ? Icons.female
-                                : currentUser.gender == 'MALE' ? Icons.male : Icons.transgender,
-                            'Giới tính',
-                            currentUser.gender == 'MALE'
-                                ? 'Nam'
-                                : currentUser.gender == 'FEMALE'
-                                ? 'Nữ'
-                                : 'Khác',
-                          ),
-                          _buildInfoRowWithIcon(
-                            Icons.calendar_today_outlined,
-                            'Tên đăng nhập',
-                            currentUser.name,
-                          ),
-                        ],
-                      ),
-                    ),
+                  const SizedBox(height: 18),
+
+                  // Card shop vẫn giữ chức năng cũ.
+                  _buildShopCard(
+                    hasShop: hasShop,
+                    auth: auth,
+                    userProvider: userProvider,
                   ),
-
-                  const SizedBox(height: 20),
-
-                  // ============================================
-                  // 3. NÚT ĐIỀU HƯỚNG SHOP (DYNAMIC)
-                  // ============================================
-                  Container(
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(20),
-                        onTap: () {
-                          if (hasShop) {
-                            // --- ĐÃ CÓ SHOP (SELLER) ---
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ShopManagementScreen(),
-                              ),
-                            );
-                          } else {
-                            // --- CHƯA CÓ SHOP (USER) ---
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const ShopRegisterScreen(),
-                              ),
-                            ).then((_) {
-                              // [QUAN TRỌNG] Khi quay lại từ trang đăng ký, tải lại profile
-                              // để kiểm tra xem đã thành Seller chưa.
-                              _loadProfile(auth, userProvider, forceRefresh: true);
-                            });
-                          }
-                        },
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Row(
-                            children: [
-                              // Icon: Đổi icon tùy trạng thái
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: hasShop ? const Color(0xFFE3F2FD) : const Color(0xFFE8F5E9),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  hasShop ? Icons.store_mall_directory : Icons.add_business,
-                                  color: hasShop ? const Color(0xFF0D6EFD) : Colors.green,
-                                  size: 24,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-
-                              // Text: Đổi nội dung tùy trạng thái
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      hasShop ? 'Quản lý Shop' : 'Đăng ký Shop',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      hasShop
-                                          ? 'Quản lý sản phẩm, đơn hàng và doanh thu'
-                                          : 'Bắt đầu kinh doanh ngay hôm nay',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              // Arrow icon
-                              Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
                 ],
               ),
             ),

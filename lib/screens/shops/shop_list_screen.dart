@@ -16,6 +16,16 @@ class _ShopListScreenState extends State<ShopListScreen> {
   final _searchController = TextEditingController();
   String? _selectedStatus;
 
+  // =========================
+  // Màu dùng chung theo format Soft Pink Card UI
+  // =========================
+  static const Color _primaryPink = Color(0xFFFF5C8A);
+  static const Color _softPink = Color(0xFFFFEEF4);
+  static const Color _lighterPink = Color(0xFFFFF7FA);
+  static const Color _borderPink = Color(0xFFFFD8E4);
+  static const Color _textDark = Color(0xFF222222);
+  static const Color _textGrey = Color(0xFF707070);
+
   @override
   void initState() {
     super.initState();
@@ -24,9 +34,14 @@ class _ShopListScreenState extends State<ShopListScreen> {
     });
   }
 
+  // =========================
+  // LOGIC CŨ: tìm kiếm shop theo keyword và trạng thái
+  // =========================
   void _search() {
     context.read<ShopProvider>().fetchShops(
-      q: _searchController.text.trim().isEmpty ? null : _searchController.text.trim(),
+      q: _searchController.text.trim().isEmpty
+          ? null
+          : _searchController.text.trim(),
       status: _selectedStatus,
     );
   }
@@ -36,92 +51,152 @@ class _ShopListScreenState extends State<ShopListScreen> {
     final provider = context.watch<ShopProvider>();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5FA), // Màu nền xám nhẹ hiện đại
+      backgroundColor: _lighterPink,
       appBar: AppBar(
         elevation: 0,
         backgroundColor: Colors.white,
-        title: const Text('Khám phá Cửa hàng', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        iconTheme: const IconThemeData(color: Colors.black87),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(60),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    height: 45,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[100],
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: TextField(
-                      controller: _searchController,
-                      textInputAction: TextInputAction.search,
-                      onSubmitted: (_) => _search(),
-                      decoration: const InputDecoration(
-                        hintText: 'Tìm kiếm shop...',
-                        prefixIcon: Icon(Icons.search, color: Colors.grey),
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(vertical: 12),
-                      ),
-                    ),
+        foregroundColor: _textDark,
+        title: const Text(
+          'Khám phá cửa hàng',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // Header theo format hình mẫu
+            _buildHeaderCard(),
+            const SizedBox(height: 14),
+
+            // Thanh tìm kiếm + bộ lọc trạng thái
+            _buildSearchAndFilter(),
+            const SizedBox(height: 16),
+
+            // Nội dung danh sách shop
+            Expanded(
+              child: provider.isLoading
+                  ? const Center(
+                child: CircularProgressIndicator(color: _primaryPink),
+              )
+                  : provider.shops.isEmpty
+                  ? _buildEmptyState()
+                  : RefreshIndicator(
+                color: _primaryPink,
+                onRefresh: () async => _search(),
+                child: ListView.separated(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 20),
+                  itemCount: provider.shops.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  itemBuilder: (ctx, index) => _buildShopCard(
+                    context,
+                    provider.shops[index],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Container(
-                  height: 45,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // =========================
+  // Header đầu trang: icon tròn + tiêu đề + mô tả
+  // =========================
+  Widget _buildHeaderCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(radius: 24),
+      child: Row(
+        children: [
+          _buildCircleIcon(Icons.store_mall_directory_rounded, size: 54, iconSize: 28),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Danh sách shop',
+                  style: TextStyle(
+                    fontSize: 19,
+                    fontWeight: FontWeight.w900,
+                    color: _textDark,
                   ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _selectedStatus,
-                      hint: const Icon(Icons.filter_list, color: Colors.black54),
-                      icon: const SizedBox.shrink(),
-                      items: const [
-                        DropdownMenuItem(value: null, child: Text('Tất cả')),
-                        DropdownMenuItem(value: 'ACTIVE', child: Text('Hoạt động')),
-                        DropdownMenuItem(value: 'PENDING', child: Text('Chờ duyệt')),
-                        DropdownMenuItem(value: 'SUSPENDED', child: Text('Bị khóa')),
-                      ],
-                      onChanged: (val) {
-                        setState(() => _selectedStatus = val);
-                        _search();
-                      },
-                    ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Tìm kiếm và xem thông tin cửa hàng yêu thích 💗',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: _textGrey,
+                    height: 1.35,
                   ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
-      body: provider.isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : provider.shops.isEmpty
-          ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.store_mall_directory_outlined, size: 80, color: Colors.grey[300]),
-            const SizedBox(height: 16),
-            Text('Chưa tìm thấy shop nào', style: TextStyle(color: Colors.grey[600])),
-          ],
-        ),
-      )
-          : ListView.separated(
-        padding: const EdgeInsets.all(16),
-        itemCount: provider.shops.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 16),
-        itemBuilder: (ctx, index) => _buildShopCard(context, provider.shops[index]),
+        ],
       ),
     );
   }
 
+  // =========================
+  // Ô tìm kiếm + dropdown filter
+  // =========================
+  Widget _buildSearchAndFilter() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: _cardDecoration(radius: 20),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              textInputAction: TextInputAction.search,
+              onSubmitted: (_) => _search(),
+              decoration: _inputDecoration(
+                hintText: 'Tìm kiếm shop...',
+                icon: Icons.search_rounded,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            height: 48,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: _softPink,
+              border: Border.all(color: _borderPink),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _selectedStatus,
+                hint: const Icon(Icons.tune_rounded, color: _primaryPink),
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _primaryPink),
+                items: const [
+                  DropdownMenuItem(value: null, child: Text('Tất cả')),
+                  DropdownMenuItem(value: 'ACTIVE', child: Text('Hoạt động')),
+                  DropdownMenuItem(value: 'PENDING', child: Text('Chờ duyệt')),
+                  DropdownMenuItem(value: 'SUSPENDED', child: Text('Bị khóa')),
+                ],
+                onChanged: (val) {
+                  setState(() => _selectedStatus = val);
+                  _search();
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // Card shop: giữ nguyên chức năng nhấn để xem chi tiết shop
+  // =========================
   Widget _buildShopCard(BuildContext context, ShopModel shop) {
     return InkWell(
       onTap: () {
@@ -130,100 +205,81 @@ class _ShopListScreenState extends State<ShopListScreen> {
           MaterialPageRoute(builder: (_) => ShopDetailScreen(shop: shop)),
         );
       },
-      borderRadius: BorderRadius.circular(16),
+      borderRadius: BorderRadius.circular(22),
       child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        decoration: _cardDecoration(radius: 22),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Cover Image Area
+            // Ảnh bìa shop
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  child: Container(
-                    height: 120,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                  child: SizedBox(
+                    height: 122,
                     width: double.infinity,
-                    color: Colors.grey[200],
                     child: shop.coverUrl != null
-                        ? Image.network(shop.coverUrl!, fit: BoxFit.cover)
-                        : Image.network('https://via.placeholder.com/400x120?text=No+Cover', fit: BoxFit.cover),
+                        ? Image.network(
+                      shop.coverUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildCoverPlaceholder(),
+                    )
+                        : _buildCoverPlaceholder(),
                   ),
                 ),
                 Positioned(
-                  top: 8,
-                  right: 8,
+                  top: 10,
+                  right: 10,
                   child: _buildStatusBadge(shop.status),
                 ),
               ],
             ),
+
+            // Thông tin shop
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(14),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Logo
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.grey.shade200),
-                      image: DecorationImage(
-                        image: shop.logoUrl != null
-                            ? NetworkImage(shop.logoUrl!)
-                            : const NetworkImage('https://via.placeholder.com/100') as ImageProvider,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
+                  _buildShopLogo(shop),
                   const SizedBox(width: 12),
-                  // Info
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           shop.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            color: _textDark,
+                          ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 4),
-                        Row(
+                        const SizedBox(height: 7),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
-                            const Icon(Icons.star, size: 14, color: Colors.amber),
-                            const SizedBox(width: 4),
-                            Text(
-                              '${shop.stats.ratingAvg.toStringAsFixed(1)} | ${shop.stats.reviewCount} đánh giá',
-                              style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                            _buildInfoChip(
+                              icon: Icons.star_rounded,
+                              label: '${shop.stats.ratingAvg.toStringAsFixed(1)} | ${shop.stats.reviewCount} đánh giá',
+                              iconColor: Colors.orange,
                             ),
+                            if (shop.phone != null)
+                              _buildInfoChip(
+                                icon: Icons.phone_outlined,
+                                label: shop.phone!,
+                              ),
                           ],
                         ),
-                        const SizedBox(height: 4),
-                        if (shop.phone != null) // Hiển thị số điện thoại nếu có
-                          Row(
-                            children: [
-                              const Icon(Icons.phone, size: 12, color: Colors.grey),
-                              const SizedBox(width: 4),
-                              Text(shop.phone!, style: TextStyle(color: Colors.grey[600], fontSize: 12)),
-                            ],
-                          ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right, color: Colors.grey),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right_rounded, color: _primaryPink),
                 ],
               ),
             ),
@@ -233,6 +289,52 @@ class _ShopListScreenState extends State<ShopListScreen> {
     );
   }
 
+  // =========================
+  // Placeholder ảnh bìa nếu shop chưa có ảnh
+  // =========================
+  Widget _buildCoverPlaceholder() {
+    return Container(
+      color: _softPink,
+      child: const Center(
+        child: Icon(Icons.storefront_rounded, color: _primaryPink, size: 42),
+      ),
+    );
+  }
+
+  // =========================
+  // Logo shop dạng tròn
+  // =========================
+  Widget _buildShopLogo(ShopModel shop) {
+    return Container(
+      width: 54,
+      height: 54,
+      decoration: BoxDecoration(
+        color: _softPink,
+        shape: BoxShape.circle,
+        border: Border.all(color: Colors.white, width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryPink.withOpacity(0.12),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        image: shop.logoUrl != null
+            ? DecorationImage(
+          image: NetworkImage(shop.logoUrl!),
+          fit: BoxFit.cover,
+        )
+            : null,
+      ),
+      child: shop.logoUrl == null
+          ? const Icon(Icons.storefront_rounded, color: _primaryPink, size: 28)
+          : null,
+    );
+  }
+
+  // =========================
+  // Badge trạng thái shop
+  // =========================
   Widget _buildStatusBadge(String status) {
     Color bg;
     Color text;
@@ -240,30 +342,165 @@ class _ShopListScreenState extends State<ShopListScreen> {
 
     switch (status) {
       case 'ACTIVE':
-        bg = Colors.green;
-        text = Colors.white;
-        label = 'Yêu thích';
+        bg = const Color(0xFFEAF8EF);
+        text = Colors.green;
+        label = 'Hoạt động';
         break;
       case 'PENDING':
-        bg = Colors.orange;
-        text = Colors.white;
+        bg = const Color(0xFFFFF4E5);
+        text = Colors.orange;
         label = 'Chờ duyệt';
         break;
+      case 'SUSPENDED':
+        bg = const Color(0xFFFFECEF);
+        text = Colors.redAccent;
+        label = 'Bị khóa';
+        break;
       default:
-        bg = Colors.red;
-        text = Colors.white;
-        label = 'Đã khóa';
+        bg = _softPink;
+        text = _primaryPink;
+        label = status;
     }
 
-    if (status == 'ACTIVE') return const SizedBox.shrink(); // Ẩn badge nếu active cho sạch, hoặc hiện "Mall"
-
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(99),
       ),
-      child: Text(label, style: TextStyle(color: text, fontSize: 10, fontWeight: FontWeight.bold)),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: text,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+
+  // =========================
+  // Chip thông tin nhỏ trong card shop
+  // =========================
+  Widget _buildInfoChip({
+    required IconData icon,
+    required String label,
+    Color iconColor = _primaryPink,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: _lighterPink,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: _borderPink),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: iconColor),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: _textGrey,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // =========================
+  // Empty state khi không tìm thấy shop
+  // =========================
+  Widget _buildEmptyState() {
+    return Center(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: _cardDecoration(radius: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildCircleIcon(Icons.store_mall_directory_outlined, size: 76, iconSize: 38),
+            const SizedBox(height: 16),
+            const Text(
+              'Chưa tìm thấy shop nào',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: _textDark,
+              ),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Thử đổi từ khóa tìm kiếm hoặc bộ lọc nhé.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _textGrey, height: 1.4),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // =========================
+  // Input decoration dùng cho ô tìm kiếm
+  // =========================
+  InputDecoration _inputDecoration({required String hintText, required IconData icon}) {
+    return InputDecoration(
+      hintText: hintText,
+      prefixIcon: Icon(icon, color: _primaryPink),
+      filled: true,
+      fillColor: _lighterPink,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _borderPink),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _borderPink),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _primaryPink, width: 1.4),
+      ),
+    );
+  }
+
+  // =========================
+  // Icon tròn dùng chung theo format mẫu
+  // =========================
+  Widget _buildCircleIcon(IconData icon, {double size = 54, double iconSize = 26}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        color: _softPink,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(icon, color: _primaryPink, size: iconSize),
+    );
+  }
+
+  // =========================
+  // Decoration card dùng chung: nền trắng + viền hồng + shadow nhẹ
+  // =========================
+  BoxDecoration _cardDecoration({double radius = 20}) {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: _borderPink),
+      boxShadow: [
+        BoxShadow(
+          color: _primaryPink.withOpacity(0.06),
+          blurRadius: 18,
+          offset: const Offset(0, 8),
+        ),
+      ],
     );
   }
 
