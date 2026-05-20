@@ -7,6 +7,7 @@ import '../../providers/product_provider.dart';
 import 'seller_product_list_screen.dart';
 import 'shop_register_screen.dart';
 import 'shop_detail_screen.dart';
+import 'seller_order_list_screen.dart';
 
 // Widgets cho địa chỉ và bản đồ
 import '../../widgets/vietnam_address_selector.dart';
@@ -364,7 +365,19 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
           },
           badgeCount: productCount,
         ),
-        _buildMenuItem(Icons.shopping_bag_outlined, 'Đơn hàng', () {}, badgeCount: orderCount),
+        _buildMenuItem(
+          Icons.shopping_bag_outlined,
+          'Đơn hàng',
+              () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SellerOrderListScreen(),
+              ),
+            );
+          },
+          badgeCount: orderCount,
+        ),
         _buildMenuItem(Icons.campaign_outlined, 'Marketing', () {}),
         _buildMenuItem(Icons.account_balance_wallet_outlined, 'Tài chính', () {}),
         _buildMenuItem(Icons.bar_chart_outlined, 'Phân tích', () {}),

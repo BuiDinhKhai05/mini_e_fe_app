@@ -118,4 +118,57 @@ class OrderService {
 
     throw Exception(response.data['message'] ?? 'Yêu cầu trả hàng thất bại');
   }
+// ==================== SELLER / SHOP ORDERS ====================
+
+// Seller lấy danh sách đơn hàng thuộc shop của mình.
+// BE: GET /shops/me/orders?page=1&limit=30
+  Future<List<OrderModel>> getMyShopOrders({
+    int page = 1,
+    int limit = 30,
+  }) async {
+    final response = await _apiClient.get(
+      '${ShopsApi.myShopOrders}?page=$page&limit=$limit',
+    );
+
+    if (response.data['success'] == true) {
+      final List<dynamic> listData = response.data['data']?['items'] ?? [];
+      return listData.map((item) => OrderModel.fromJson(item)).toList();
+    }
+
+    throw Exception(response.data['message'] ?? 'Lỗi tải đơn hàng của shop');
+  }
+
+// Seller xem chi tiết một đơn hàng thuộc shop.
+// BE: GET /shops/me/orders/:id
+  Future<OrderModel> getMyShopOrderDetail(String orderId) async {
+    final response = await _apiClient.get(
+      ShopsApi.myShopOrderDetail(orderId),
+    );
+
+    if (response.data['success'] == true) {
+      return OrderModel.fromJson(response.data['data']);
+    }
+
+    throw Exception(response.data['message'] ?? 'Không tìm thấy đơn hàng của shop');
+  }
+
+// Seller cập nhật trạng thái giao hàng.
+// BE: PATCH /shops/me/orders/:id/shipping-status
+  Future<OrderModel> updateMyShopOrderShippingStatus({
+    required String orderId,
+    required String shippingStatus,
+  }) async {
+    final response = await _apiClient.patch(
+      ShopsApi.myShopOrderShippingStatus(orderId),
+      data: {
+        'shippingStatus': shippingStatus,
+      },
+    );
+
+    if (response.data['success'] == true) {
+      return OrderModel.fromJson(response.data['data']);
+    }
+
+    throw Exception(response.data['message'] ?? 'Cập nhật trạng thái thất bại');
+  }
 }

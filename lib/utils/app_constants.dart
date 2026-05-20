@@ -40,6 +40,14 @@ class ShopsApi {
   static const String register = '/shops/register';
   static const String myShop = '/shops/me';
 
+  // Seller / Shop orders
+  static const String myShopOrders = '/shops/me/orders';
+
+  static String myShopOrderDetail(String id) => '/shops/me/orders/$id';
+
+  static String myShopOrderShippingStatus(String id) =>
+      '/shops/me/orders/$id/shipping-status';
+
   // Owner / Admin
   static String byId(String id) => '/shops/$id';
 }
@@ -59,7 +67,7 @@ class ProductApi {
       '/products/$productId/variants/$variantId';
 }
 
-// ✅ CATEGORY API (MỚI)
+// ✅ CATEGORY API
 class CategoryApi {
   static const String categories = '/categories';
   static const String tree = '/categories/tree';
@@ -85,7 +93,11 @@ class OrderApi {
   static const String preview = '/orders/preview';
   static const String create = '/orders';
   static const String mine = '/orders';
+
   static String detail(String id) => '/orders/$id';
+  static String cancel(String id) => '/orders/$id/cancel';
+  static String confirmReceived(String id) => '/orders/$id/confirm-received';
+  static String requestReturn(String id) => '/orders/$id/request-return';
 }
 
 // Payment API

@@ -80,7 +80,7 @@ class ShopStatsModel {
   factory ShopStatsModel.fromJson(Map<String, dynamic> json) {
     return ShopStatsModel(
       productCount: json['productCount'] ?? 0,
-      orderCount: json['orderCount'] ?? 0,
+      orderCount: json['totalOrders'] ?? json['orderCount'] ?? 0,
       ratingAvg: double.tryParse(json['ratingAvg']?.toString() ?? '0') ?? 0.0,
       reviewCount: json['reviewCount'] ?? 0,
     );
