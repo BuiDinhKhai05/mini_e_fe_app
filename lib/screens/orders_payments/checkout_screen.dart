@@ -1,9 +1,12 @@
+// lib/screens/orders/checkout_screen.dart
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/address_model.dart';
 import '../../models/cart_model.dart';
+import '../../models/order_model.dart';
 import '../../providers/address_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
@@ -35,7 +38,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) => _initData());
   }
 
-  /// Khởi tạo dữ liệu checkout: lấy địa chỉ mặc định rồi gọi API preview.
+  // Load địa chỉ, chọn địa chỉ mặc định và gọi /orders/preview.
   Future<void> _initData() async {
     final addressProvider = Provider.of<AddressProvider>(context, listen: false);
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -47,7 +50,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _setDefaultAddress();
   }
 
-  /// Chọn địa chỉ mặc định nếu có, sau đó tính lại tổng tiền đơn hàng.
   void _setDefaultAddress() {
     final addressProvider = Provider.of<AddressProvider>(context, listen: false);
     if (addressProvider.addresses.isEmpty) return;
@@ -61,7 +63,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     _loadPreview();
   }
 
-  /// Gọi backend /orders/preview để lấy tổng tiền hàng, phí ship và tổng thanh toán.
+  // Gửi đúng itemIds đã tick trong giỏ hàng lên BE preview.
   void _loadPreview() {
     if (_selectedAddressId == null) return;
 
@@ -73,11 +75,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
     if (itemIds.isEmpty) return;
 
-    Provider.of<OrderProvider>(context, listen: false)
-        .previewOrder(_selectedAddressId!, itemIds);
+    Provider.of<OrderProvider>(context, listen: false).previewOrder(
+      _selectedAddressId!,
+      itemIds,
+    );
   }
 
-  /// Bottom sheet chọn địa chỉ, giữ phong cách card hồng giống product/cart.
   void _showAddressPicker() {
     showModalBottomSheet(
       context: context,
@@ -193,7 +196,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     child: OutlinedButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
-                        // Gợi ý: nếu app đã có route quản lý địa chỉ thì mở tại đây.
+                        // Nếu app đã có route quản lý địa chỉ thì mở tại đây.
                         // Navigator.pushNamed(context, '/address-list');
                       },
                       icon: const Icon(Icons.add_location_alt_outlined),
@@ -247,17 +250,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       return;
     }
 
-    final List orders = result['orders'] is List ? result['orders'] as List : [];
-    final firstOrderCode = orders.isNotEmpty ? (orders[0]['code'] ?? '').toString() : '';
-
     if (_paymentMethod == 'VNPAY') {
-      // Backend hiện tại trả về: { session: {...}, paymentUrl: "..." }
-      // Giữ fallback qrInfo/paymentQr để không vỡ nếu BE cũ vẫn còn dùng.
+      // BE hiện tại trả: { session: { code, amount, status }, paymentUrl }
       final session = result['session'] is Map ? result['session'] as Map : null;
-      final qrInfo = result['qrInfo'] is Map ? result['qrInfo'] as Map : null;
-      final paymentUrl = (result['paymentUrl'] ?? result['paymentQr'] ?? '').toString();
-      final amountRaw = session?['amount'] ?? qrInfo?['amount'] ?? 0;
-      final sessionCode = (session?['code'] ?? qrInfo?['code'] ?? '').toString();
+      final paymentUrl = (result['paymentUrl'] ?? '').toString();
+      final sessionCode = (session?['code'] ?? '').toString();
+      final amount = double.tryParse((session?['amount'] ?? 0).toString()) ?? 0.0;
 
       if (paymentUrl.isEmpty || sessionCode.isEmpty) {
         _showSnack('Không lấy được link thanh toán VNPAY');
@@ -266,12 +264,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
       Navigator.pushNamed(context, '/payment-gateway', arguments: {
         'qrData': paymentUrl,
-        'amount': double.tryParse(amountRaw.toString()) ?? 0.0,
+        'amount': amount,
         'sessionCode': sessionCode,
         'orderIdToCheck': '',
       });
       return;
     }
+
+    final List orders = result['orders'] is List ? result['orders'] as List : [];
+    final firstOrderCode = orders.isNotEmpty ? (orders[0]['code'] ?? '').toString() : '';
 
     Navigator.pushReplacementNamed(context, '/payment-result', arguments: {
       'success': true,
@@ -337,8 +338,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             AddressModel? selectedAddress;
                             if (_selectedAddressId != null && addressProvider.addresses.isNotEmpty) {
                               try {
-                                selectedAddress = addressProvider.addresses
-                                    .firstWhere((address) => address.id == _selectedAddressId);
+                                selectedAddress = addressProvider.addresses.firstWhere(
+                                      (address) => address.id == _selectedAddressId,
+                                );
                               } catch (_) {
                                 selectedAddress = null;
                               }
@@ -352,15 +354,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                           },
                         ),
                         const SizedBox(height: 18),
-
                         _buildSectionTitle('Sản phẩm đã chọn', Icons.shopping_bag_outlined),
                         _buildProductsCard(selectedItems),
                         const SizedBox(height: 18),
-
                         _buildSectionTitle('Chi tiết thanh toán', Icons.receipt_long_outlined),
                         _buildPaymentSummaryCard(orderProvider, preview),
                         const SizedBox(height: 18),
-
                         _buildSectionTitle('Phương thức thanh toán', Icons.payments_outlined),
                         _buildPaymentMethodsCard(),
                       ],
@@ -450,10 +449,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             Container(
               width: 42,
               height: 42,
-              decoration: const BoxDecoration(
-                color: _softPink,
-                shape: BoxShape.circle,
-              ),
+              decoration: const BoxDecoration(color: _softPink, shape: BoxShape.circle),
               child: const Icon(Icons.location_on_rounded, color: _primaryPink),
             ),
             const SizedBox(width: 12),
@@ -535,7 +531,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   ? Image.network(
                 item.imageUrl!,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(Icons.image_not_supported_outlined, color: _textMuted),
+                errorBuilder: (_, __, ___) =>
+                const Icon(Icons.image_not_supported_outlined, color: _textMuted),
               )
                   : const Icon(Icons.shopping_bag_outlined, color: _primaryPink),
             ),
@@ -604,7 +601,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildPaymentSummaryCard(OrderProvider provider, dynamic preview) {
+  Widget _buildPaymentSummaryCard(OrderProvider provider, OrderPreview? preview) {
     return _buildCard(
       child: provider.isLoading && preview == null
           ? const Padding(
@@ -707,7 +704,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  Widget _buildBottomBar(OrderProvider provider, dynamic preview) {
+  Widget _buildBottomBar(OrderProvider provider, OrderPreview? preview) {
     final isLoading = provider.isLoading;
 
     return Container(
