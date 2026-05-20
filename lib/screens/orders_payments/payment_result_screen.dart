@@ -16,76 +16,147 @@ class PaymentResultScreen extends StatelessWidget {
     required this.orderId,
   }) : super(key: key);
 
+  static const Color _primaryPink = Color(0xFFFF4F8B);
+  static const Color _pageBg = Color(0xFFFFF7FA);
+  static const Color _softPink = Color(0xFFFFEEF5);
+  static const Color _textDark = Color(0xFF4A2F38);
+  static const Color _textMuted = Color(0xFF9A7B86);
+
   @override
   Widget build(BuildContext context) {
+    final codeLabel = orderId.startsWith('PM') ? 'Mã giao dịch' : 'Mã đơn';
+
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: _pageBg,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.all(32.0),
+          padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // ICON
-              Icon(
-                success ? Icons.check_circle : Icons.error,
-                size: 100,
-                color: success ? Colors.green : Colors.red,
-              ),
-              const SizedBox(height: 24),
-
-              // TITLE
-              Text(
-                success ? 'Thanh toán thành công!' : 'Thanh toán thất bại',
-                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 12),
-
-              // MESSAGE & INFO
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-              const SizedBox(height: 8),
-              if (success)
-                Text(
-                  'Mã đơn: $orderId',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-
               const Spacer(),
-
-              // BUTTONS
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 28, 20, 26),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(28),
+                  border: Border.all(color: _primaryPink.withOpacity(0.12)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _primaryPink.withOpacity(0.10),
+                      blurRadius: 24,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 106,
+                      height: 106,
+                      decoration: BoxDecoration(
+                        color: success ? _softPink : const Color(0xFFFFF1F1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        success ? Icons.check_circle_rounded : Icons.error_rounded,
+                        size: 76,
+                        color: success ? _primaryPink : const Color(0xFFFF5B5B),
+                      ),
+                    ),
+                    const SizedBox(height: 22),
+                    Text(
+                      success ? 'Thanh toán thành công!' : 'Thanh toán thất bại',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: _textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      message,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(color: _textMuted, fontSize: 15, height: 1.4),
+                    ),
+                    if (success && orderId.isNotEmpty) ...[
+                      const SizedBox(height: 18),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: _softPink,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '$codeLabel: ',
+                              style: const TextStyle(
+                                color: _textMuted,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            Flexible(
+                              child: Text(
+                                orderId,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: _primaryPink,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const Spacer(),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 54,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Navigate về trang chi tiết đơn hàng (replace để không back lại trang result)
-                    Navigator.pushNamedAndRemoveUntil(context, '/orders', (route) => route.isFirst);
+                    Navigator.pushNamedAndRemoveUntil(
+                      context,
+                      '/orders',
+                          (route) => route.isFirst,
+                    );
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: success ? Colors.blue : Colors.grey,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    backgroundColor: _primaryPink,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   ),
-                  child: const Text('Xem đơn hàng của tôi'),
+                  child: const Text(
+                    'Xem đơn hàng của tôi',
+                    style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                  ),
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                height: 50,
+                height: 54,
                 child: OutlinedButton(
                   onPressed: () {
-                    Navigator.popUntil(context, (route) => route.isFirst); // Về Home
+                    Navigator.popUntil(context, (route) => route.isFirst);
                   },
                   style: OutlinedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    foregroundColor: _primaryPink,
+                    side: BorderSide(color: _primaryPink.withOpacity(0.35)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   ),
-                  child: const Text('Tiếp tục mua sắm'),
+                  child: const Text(
+                    'Tiếp tục mua sắm',
+                    style: TextStyle(fontWeight: FontWeight.w800),
+                  ),
                 ),
               ),
             ],

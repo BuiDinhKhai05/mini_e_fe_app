@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+
 import '../../models/order_model.dart';
 import '../../providers/order_provider.dart';
 
@@ -13,7 +14,13 @@ class MyOrdersScreen extends StatefulWidget {
 }
 
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
-  final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
+  static const Color _primaryPink = Color(0xFFFF4F8B);
+  static const Color _softPink = Color(0xFFFFEEF5);
+  static const Color _pageBg = Color(0xFFFFF7FA);
+  static const Color _textDark = Color(0xFF4A2F38);
+  static const Color _textMuted = Color(0xFF9A7B86);
+
+  final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'VND');
 
   @override
   void initState() {
@@ -28,58 +35,65 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     return DefaultTabController(
       length: 3,
       child: Scaffold(
+        backgroundColor: _pageBg,
         appBar: AppBar(
-          title: const Text('Đơn hàng của tôi'),
+          title: const Column(
+            children: [
+              Text(
+                'Đơn hàng của tôi',
+                style: TextStyle(color: _textDark, fontWeight: FontWeight.w900),
+              ),
+              SizedBox(height: 2),
+              Text(
+                'Theo dõi trạng thái mua hàng',
+                style: TextStyle(color: _textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
           backgroundColor: Colors.white,
           elevation: 0,
-          foregroundColor: Colors.black,
-          bottom: const TabBar(
-            labelColor: Colors.blue,
-            unselectedLabelColor: Colors.grey,
-            indicatorColor: Colors.blue,
-            labelStyle: TextStyle(fontWeight: FontWeight.bold),
-            tabs: [
-              Tab(text: 'Chờ thanh toán'),
-              Tab(text: 'Đang vận chuyển'),
-              Tab(text: 'Đã nhận'),
+          centerTitle: true,
+          foregroundColor: _textDark,
+          bottom: TabBar(
+            labelColor: _primaryPink,
+            unselectedLabelColor: _textMuted,
+            indicatorColor: _primaryPink,
+            indicatorWeight: 3,
+            labelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            tabs: const [
+              Tab(text: 'Chờ xử lý'),
+              Tab(text: 'Đang giao'),
+              Tab(text: 'Hoàn thành'),
             ],
           ),
         ),
         body: Consumer<OrderProvider>(
           builder: (context, orderProvider, child) {
             if (orderProvider.isLoading && orderProvider.myOrders.isEmpty) {
-              return const Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator(color: _primaryPink));
             }
 
             final allOrders = orderProvider.myOrders;
 
-            final pendingOrders = allOrders.where((o) {
-              // VNPAY chờ thanh toán: order chỉ xuất hiện sau PAID,
-              // nên tab này chủ yếu dùng cho (nếu sau này bạn tạo order UNPAID) hoặc COD pending
-              return o.paymentStatus == 'UNPAID' || o.status == 'PENDING';
-            }).toList();
+            final completedOrders = allOrders.where(_isCompletedOrder).toList();
+            final shippingOrders = allOrders
+                .where((order) => !_isCompletedOrder(order) && _isShippingOrder(order))
+                .toList();
+            final pendingOrders = allOrders
+                .where((order) => !_isCompletedOrder(order) && !_isShippingOrder(order))
+                .toList();
 
-            final shippingOrders = allOrders.where((o) {
-              return o.status == 'PAID' ||
-                  o.status == 'PROCESSING' ||
-                  o.status == 'SHIPPED' ||
-                  (o.shippingStatus == 'PENDING' || o.shippingStatus == 'PICKED' || o.shippingStatus == 'IN_TRANSIT');
-            }).toList();
-
-            final completedOrders = allOrders.where((o) {
-              return o.status == 'COMPLETED' ||
-                  o.status == 'CANCELLED' ||
-                  o.shippingStatus == 'DELIVERED' ||
-                  o.shippingStatus == 'RETURNED' ||
-                  o.shippingStatus == 'CANCELED';
-            }).toList();
-
-            return TabBarView(
-              children: [
-                _buildOrderList(pendingOrders, 'Chưa có đơn hàng chờ thanh toán'),
-                _buildOrderList(shippingOrders, 'Chưa có đơn hàng đang vận chuyển'),
-                _buildOrderList(completedOrders, 'Chưa có đơn hàng hoàn thành'),
-              ],
+            return RefreshIndicator(
+              color: _primaryPink,
+              onRefresh: () => orderProvider.fetchMyOrders(refresh: true),
+              child: TabBarView(
+                children: [
+                  _buildOrderList(pendingOrders, 'Chưa có đơn hàng chờ xử lý'),
+                  _buildOrderList(shippingOrders, 'Chưa có đơn hàng đang giao'),
+                  _buildOrderList(completedOrders, 'Chưa có đơn hàng hoàn thành'),
+                ],
+              ),
             );
           },
         ),
@@ -87,132 +101,317 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     );
   }
 
+  bool _isCompletedOrder(OrderModel order) {
+    return order.status == 'COMPLETED' ||
+        order.status == 'CANCELLED' ||
+        order.shippingStatus == 'DELIVERED' ||
+        order.shippingStatus == 'RETURNED' ||
+        order.shippingStatus == 'CANCELED';
+  }
+
+  bool _isShippingOrder(OrderModel order) {
+    return order.status == 'PAID' ||
+        order.status == 'PROCESSING' ||
+        order.status == 'SHIPPED' ||
+        order.shippingStatus == 'PICKED' ||
+        order.shippingStatus == 'IN_TRANSIT';
+  }
+
   Widget _buildOrderList(List<OrderModel> orders, String emptyMessage) {
     if (orders.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.assignment_outlined, size: 60, color: Colors.grey),
-            const SizedBox(height: 16),
-            Text(emptyMessage, style: const TextStyle(color: Colors.grey)),
-          ],
-        ),
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          SizedBox(height: MediaQuery.of(context).size.height * 0.18),
+          _buildEmptyState(emptyMessage),
+        ],
       );
     }
 
     return ListView.separated(
-      padding: const EdgeInsets.all(12),
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       itemCount: orders.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, __) => const SizedBox(height: 14),
       itemBuilder: (context, index) => _buildOrderItem(orders[index]),
     );
   }
 
-  Widget _buildOrderItem(OrderModel order) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Column(
+        children: [
+          Container(
+            width: 88,
+            height: 88,
+            decoration: const BoxDecoration(color: _softPink, shape: BoxShape.circle),
+            child: const Icon(Icons.receipt_long_outlined, size: 42, color: _primaryPink),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _textMuted, fontWeight: FontWeight.w700),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildOrderItem(OrderModel order) {
+    final statusColor = _getStatusColor(order.status, order.shippingStatus);
+    final statusLabel = _getStatusLabel(order.status, order.shippingStatus);
+
+    return Container(
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _primaryPink.withOpacity(0.10)),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryPink.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('#${order.code}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                width: 42,
+                height: 42,
+                decoration: const BoxDecoration(color: _softPink, shape: BoxShape.circle),
+                child: const Icon(Icons.local_mall_outlined, color: _primaryPink),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '#${order.code}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 15,
+                        color: _textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _formatDate(order.createdAt),
+                      style: const TextStyle(fontSize: 12, color: _textMuted, fontWeight: FontWeight.w600),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(order.status).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(4),
+                  color: statusColor.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(99),
                 ),
                 child: Text(
-                  order.status,
+                  statusLabel,
                   style: TextStyle(
-                    color: _getStatusColor(order.status),
+                    color: statusColor,
                     fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
               ),
             ],
           ),
-          const Divider(height: 24),
-
-          Row(
-            children: [
-              const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
-              const SizedBox(width: 4),
-              Text(
-                _formatDate(order.createdAt),
-                style: const TextStyle(fontSize: 13, color: Colors.grey),
-              ),
-            ],
-          ),
+          const SizedBox(height: 14),
+          Divider(height: 1, color: _primaryPink.withOpacity(0.12)),
+          const SizedBox(height: 14),
+          _buildInfoRow('Thanh toán', '${order.paymentMethod} • ${_paymentLabel(order.paymentStatus)}'),
           const SizedBox(height: 8),
-
+          _buildInfoRow('Vận chuyển', _shippingLabel(order.shippingStatus)),
+          const SizedBox(height: 14),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Tổng thanh toán:'),
+              const Expanded(
+                child: Text(
+                  'Tổng thanh toán',
+                  style: TextStyle(color: _textMuted, fontWeight: FontWeight.w700),
+                ),
+              ),
               Text(
                 currencyFormat.format(order.total),
                 style: const TextStyle(
-                  color: Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                  color: _primaryPink,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 17,
                 ),
               ),
             ],
           ),
-
-          const SizedBox(height: 8),
-          Text('Thanh toán: ${order.paymentMethod} • ${order.paymentStatus}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-          Text('Vận chuyển: ${order.shippingStatus}', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-
-          const SizedBox(height: 12),
-
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              OutlinedButton(
-                onPressed: () {
-                  // TODO: Order detail screen
-                },
-                style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.grey.shade300)),
-                child: const Text('Xem chi tiết', style: TextStyle(color: Colors.black)),
+          const SizedBox(height: 14),
+          Align(
+            alignment: Alignment.centerRight,
+            child: OutlinedButton(
+              onPressed: () => _showOrderInfo(order),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _primaryPink,
+                side: BorderSide(color: _primaryPink.withOpacity(0.35)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-            ],
-          )
+              child: const Text('Xem chi tiết', style: TextStyle(fontWeight: FontWeight.w800)),
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Color _getStatusColor(String status) {
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 86,
+          child: Text(
+            label,
+            style: const TextStyle(color: _textMuted, fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(color: _textDark, fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showOrderInfo(OrderModel order) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 42,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.black12,
+                      borderRadius: BorderRadius.circular(99),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  '#${order.code}',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _textDark),
+                ),
+                const SizedBox(height: 14),
+                _buildInfoRow('Ngày đặt', _formatDate(order.createdAt)),
+                const SizedBox(height: 10),
+                _buildInfoRow('Trạng thái', _getStatusLabel(order.status, order.shippingStatus)),
+                const SizedBox(height: 10),
+                _buildInfoRow('Thanh toán', '${order.paymentMethod} • ${_paymentLabel(order.paymentStatus)}'),
+                const SizedBox(height: 10),
+                _buildInfoRow('Vận chuyển', _shippingLabel(order.shippingStatus)),
+                const SizedBox(height: 16),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: _softPink,
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          'Tổng thanh toán',
+                          style: TextStyle(color: _textDark, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      Text(
+                        currencyFormat.format(order.total),
+                        style: const TextStyle(color: _primaryPink, fontWeight: FontWeight.w900, fontSize: 17),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getStatusColor(String status, String shippingStatus) {
+    if (status == 'CANCELLED' || shippingStatus == 'CANCELED' || shippingStatus == 'RETURNED') {
+      return const Color(0xFFFF5B5B);
+    }
+    if (status == 'COMPLETED' || shippingStatus == 'DELIVERED') {
+      return const Color(0xFF22B573);
+    }
+    if (status == 'PAID' || status == 'PROCESSING' || status == 'SHIPPED') {
+      return _primaryPink;
+    }
+    return const Color(0xFFFF8A00);
+  }
+
+  String _getStatusLabel(String status, String shippingStatus) {
+    if (status == 'CANCELLED' || shippingStatus == 'CANCELED') return 'Đã hủy';
+    if (shippingStatus == 'RETURNED') return 'Đã trả hàng';
+    if (status == 'COMPLETED' || shippingStatus == 'DELIVERED') return 'Hoàn thành';
+    if (status == 'SHIPPED' || shippingStatus == 'IN_TRANSIT') return 'Đang giao';
+    if (status == 'PROCESSING' || shippingStatus == 'PICKED') return 'Đang xử lý';
+    if (status == 'PAID') return 'Đã thanh toán';
+    return 'Chờ xử lý';
+  }
+
+  String _paymentLabel(String status) {
     switch (status) {
-      case 'PENDING':
-        return Colors.orange;
       case 'PAID':
-      case 'PROCESSING':
-      case 'SHIPPED':
-        return Colors.blue;
-      case 'COMPLETED':
-        return Colors.green;
-      case 'CANCELLED':
-        return Colors.red;
+        return 'Đã thanh toán';
+      case 'REFUNDED':
+        return 'Đã hoàn tiền';
+      case 'UNPAID':
       default:
-        return Colors.grey;
+        return 'Chưa thanh toán';
+    }
+  }
+
+  String _shippingLabel(String status) {
+    switch (status) {
+      case 'PICKED':
+        return 'Đã lấy hàng';
+      case 'IN_TRANSIT':
+        return 'Đang vận chuyển';
+      case 'DELIVERED':
+        return 'Đã giao hàng';
+      case 'RETURNED':
+        return 'Đã trả hàng';
+      case 'CANCELED':
+        return 'Đã hủy giao';
+      case 'PENDING':
+      default:
+        return 'Chờ xử lý';
     }
   }
 

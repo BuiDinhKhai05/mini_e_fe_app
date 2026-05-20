@@ -1,4 +1,6 @@
 import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -9,12 +11,12 @@ import '../../providers/order_provider.dart';
 class PaymentQrScreen extends StatefulWidget {
   static const routeName = '/payment-gateway';
 
-  // Giữ nguyên field cũ để khỏi sửa route generator:
-  // qrData bây giờ là paymentUrl
-  final String qrData;        // paymentUrl (VNPAY)
+  // Giữ nguyên field cũ để không cần sửa route generator.
+  // qrData hiện được hiểu là paymentUrl VNPAY do backend trả về.
+  final String qrData;
   final double amount;
   final String sessionCode;
-  final String orderIdToCheck; // không dùng nữa (giữ để tương thích)
+  final String orderIdToCheck;
 
   const PaymentQrScreen({
     Key? key,
@@ -29,10 +31,16 @@ class PaymentQrScreen extends StatefulWidget {
 }
 
 class _PaymentQrScreenState extends State<PaymentQrScreen> {
+  static const Color _primaryPink = Color(0xFFFF4F8B);
+  static const Color _softPink = Color(0xFFFFEEF5);
+  static const Color _pageBg = Color(0xFFFFF7FA);
+  static const Color _textDark = Color(0xFF4A2F38);
+  static const Color _textMuted = Color(0xFF9A7B86);
+
   late Timer _timer;
   late Timer _pollingTimer;
 
-  int _timeLeft = 900; // 15 phút
+  int _timeLeft = 900;
   bool _isChecking = false;
 
   @override
@@ -40,6 +48,7 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
     super.initState();
 
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) return;
       if (_timeLeft > 0) {
         setState(() => _timeLeft--);
       } else {
@@ -49,7 +58,7 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
       }
     });
 
-    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) {
+    _pollingTimer = Timer.periodic(const Duration(seconds: 3), (_) {
       _checkPaymentStatus();
     });
   }
@@ -62,26 +71,24 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
       final isPaid = await Provider.of<OrderProvider>(context, listen: false)
           .checkPaidBySessionCode(widget.sessionCode);
 
-      if (isPaid) {
+      if (isPaid && mounted) {
         await Provider.of<OrderProvider>(context, listen: false).fetchMyOrders(refresh: true);
         _navigateToResult(true);
       }
     } catch (_) {
-      // ignore
+      // Polling lỗi tạm thời thì bỏ qua để tiếp tục kiểm tra ở lượt sau.
     } finally {
       _isChecking = false;
     }
   }
 
   void _navigateToResult(bool success, {String? message}) {
-    _pollingTimer.cancel();
-    _timer.cancel();
+    if (_timer.isActive) _timer.cancel();
+    if (_pollingTimer.isActive) _pollingTimer.cancel();
 
     Navigator.pushReplacementNamed(context, '/payment-result', arguments: {
       'success': success,
       'message': message ?? (success ? 'Thanh toán thành công!' : 'Thanh toán thất bại'),
-      // Không có orderCode ở đây (BE chưa tạo order khi create VNPAY),
-      // nên hiển thị mã phiên thanh toán cho chắc
       'orderId': widget.sessionCode,
     });
   }
@@ -101,137 +108,231 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: '₫');
+    final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'VND');
     final paymentUrl = widget.qrData;
 
     return Scaffold(
-      backgroundColor: Colors.blue[50],
+      backgroundColor: _pageBg,
       appBar: AppBar(
-        title: const Text("Thanh toán VNPAY", style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.transparent,
+        title: const Column(
+          children: [
+            Text(
+              'Thanh toán VNPAY',
+              style: TextStyle(color: _textDark, fontWeight: FontWeight.w900),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'Quét QR để hoàn tất đơn hàng',
+              style: TextStyle(color: _textMuted, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.black),
+        foregroundColor: _textDark,
       ),
-      body: Center(
+      body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 18, 18, 24),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 15, offset: Offset(0, 5))],
+              _buildQrCard(currencyFormat, paymentUrl),
+              const SizedBox(height: 18),
+              _buildTimerChip(),
+              const SizedBox(height: 18),
+              _buildWaitingBox(),
+              if (kDebugMode) ...[
+                const SizedBox(height: 12),
+                TextButton(
+                  onPressed: () => _navigateToResult(
+                    true,
+                    message: '(DEV) Giả lập thanh toán thành công',
+                  ),
+                  child: const Text(
+                    '(DEV ONLY) Giả lập: Đã thanh toán',
+                    style: TextStyle(color: _textMuted, fontSize: 12),
+                  ),
                 ),
-                child: Column(
-                  children: [
-                    const Text('VNPAY', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Colors.blue)),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: const [
-                        Icon(Icons.shield, color: Colors.green, size: 16),
-                        SizedBox(width: 4),
-                        Text('Giao dịch bảo mật', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-
-                    // ✅ QR từ paymentUrl
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: QrImageView(
-                        data: paymentUrl,
-                        size: 220,
-                        gapless: false,
-                        errorStateBuilder: (cxt, err) {
-                          return const SizedBox(
-                            width: 220,
-                            height: 220,
-                            child: Center(child: Text("Không tạo được QR")),
-                          );
-                        },
-                      ),
-                    ),
-
-                    const SizedBox(height: 24),
-                    Text(
-                      currencyFormat.format(widget.amount),
-                      style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Colors.black87),
-                    ),
-                    const SizedBox(height: 8),
-                    Text('Mã GD: ${widget.sessionCode}', style: const TextStyle(color: Colors.grey, fontSize: 13)),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Sử dụng App Ngân hàng hoặc VNPAY để quét mã',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.black54),
-                    ),
-                    const SizedBox(height: 10),
-
-                    // hiển thị link (debug)
-                    ExpansionTile(
-                      title: const Text('Xem link thanh toán', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: SelectableText(paymentUrl, style: const TextStyle(fontSize: 12)),
-                        )
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.orange[50],
-                  borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.timer_outlined, color: Colors.deepOrange),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Hết hạn sau: $_timerString',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.deepOrange, fontSize: 16),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: const [
-                  SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
-                  SizedBox(width: 10),
-                  Text("Đang chờ xác nhận thanh toán...", style: TextStyle(color: Colors.grey)),
-                ],
-              ),
-
-              const SizedBox(height: 20),
-
-              TextButton(
-                onPressed: () => _navigateToResult(true, message: '(DEV) Giả lập thanh toán thành công'),
-                child: const Text("(DEV ONLY) Giả lập: Đã thanh toán", style: TextStyle(color: Colors.grey, fontSize: 12)),
-              )
+              ],
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildQrCard(NumberFormat currencyFormat, String paymentUrl) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: _primaryPink.withOpacity(0.12)),
+        boxShadow: [
+          BoxShadow(
+            color: _primaryPink.withOpacity(0.10),
+            blurRadius: 24,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: _softPink,
+              borderRadius: BorderRadius.circular(99),
+            ),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.shield_outlined, color: _primaryPink, size: 16),
+                SizedBox(width: 6),
+                Text(
+                  'Giao dịch bảo mật',
+                  style: TextStyle(color: _primaryPink, fontWeight: FontWeight.w800, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'VNPAY',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+              color: _textDark,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: _primaryPink.withOpacity(0.18)),
+            ),
+            child: QrImageView(
+              data: paymentUrl,
+              size: 220,
+              gapless: false,
+              errorStateBuilder: (context, error) {
+                return const SizedBox(
+                  width: 220,
+                  height: 220,
+                  child: Center(child: Text('Không tạo được QR')),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 22),
+          Text(
+            currencyFormat.format(widget.amount),
+            style: const TextStyle(
+              fontSize: 27,
+              fontWeight: FontWeight.w900,
+              color: _primaryPink,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Mã giao dịch: ${widget.sessionCode}',
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: _textMuted, fontSize: 13, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 14),
+          const Text(
+            'Sử dụng ứng dụng ngân hàng hoặc VNPAY để quét mã. Sau khi thanh toán, app sẽ tự cập nhật trạng thái.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _textMuted, height: 1.4),
+          ),
+          const SizedBox(height: 10),
+          Theme(
+            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+            child: ExpansionTile(
+              tilePadding: EdgeInsets.zero,
+              collapsedIconColor: _textMuted,
+              iconColor: _primaryPink,
+              title: const Text(
+                'Xem link thanh toán',
+                style: TextStyle(fontSize: 13, color: _textMuted, fontWeight: FontWeight.w700),
+              ),
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _softPink,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: SelectableText(
+                    paymentUrl,
+                    style: const TextStyle(fontSize: 12, color: _textDark),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimerChip() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF5E8),
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: const Color(0xFFFFB866).withOpacity(0.45)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.timer_outlined, color: Color(0xFFFF8A00), size: 20),
+          const SizedBox(width: 8),
+          Text(
+            'Hết hạn sau: $_timerString',
+            style: const TextStyle(
+              fontWeight: FontWeight.w900,
+              color: Color(0xFFFF8A00),
+              fontSize: 15,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWaitingBox() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _primaryPink.withOpacity(0.10)),
+      ),
+      child: const Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: _primaryPink),
+          ),
+          SizedBox(width: 12),
+          Flexible(
+            child: Text(
+              'Đang chờ xác nhận thanh toán...',
+              style: TextStyle(color: _textMuted, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
       ),
     );
   }
