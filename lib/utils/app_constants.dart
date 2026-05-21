@@ -104,3 +104,31 @@ class OrderApi {
 class PaymentApi {
   // Backend trả về URL để QR...
 }
+
+// REVIEW API
+// Chứa các endpoint liên quan đến đánh giá sản phẩm.
+class ReviewApi {
+  // Public: lấy danh sách đánh giá của một sản phẩm.
+  // BE: GET /products/:productId/reviews?page=1&limit=20
+  static String productReviews(int productId) =>
+      '/products/$productId/reviews';
+
+  // User tạo đánh giá theo đơn hàng.
+  // BE: POST /orders/:id/review
+  static String createOrderReview(String orderId) =>
+      '/orders/$orderId/review';
+
+  // User xem đánh giá của một đơn hàng.
+  // BE: GET /orders/:id/review
+  static String orderReview(String orderId) =>
+      '/orders/$orderId/review';
+
+  // API v2 tạo review.
+  // BE: POST /product-reviews
+  static const String productReviewsV2 = '/product-reviews';
+
+  // API v2 lấy review theo order.
+  // BE: GET /product-reviews/by-order/:orderId
+  static String productReviewByOrder(String orderId) =>
+      '/product-reviews/by-order/$orderId';
+}

@@ -10,6 +10,7 @@ import 'package:mini_e_fe_app/providers/shop_provider.dart';
 import 'package:mini_e_fe_app/providers/cart_provider.dart';
 
 import 'edit_product_screen.dart';
+import 'widgets/product_review_section.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final ProductModel product;
@@ -1597,6 +1598,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                   ),
                               ],
                             ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // =======================================================
+                          // ĐÁNH GIÁ SẢN PHẨM
+                          // Widget này lấy dữ liệu thật từ ReviewProvider/ReviewService.
+                          // BE: GET /products/:productId/reviews?page=1&limit=20
+                          // =======================================================
+                          ProductReviewSection(
+                            productId: _currentProduct.id,
+                            productTitle: _currentProduct.title,
                           ),
 
                           if (canManage) ...[

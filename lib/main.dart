@@ -11,7 +11,8 @@ import 'providers/shop_provider.dart';
 import 'providers/cart_provider.dart';
 import 'providers/address_provider.dart';
 import 'providers/order_provider.dart';
-import 'providers/category_provider.dart'; // ✅ MỚI
+import 'providers/category_provider.dart';
+import 'providers/review_provider.dart';
 
 // Services
 import 'service/api_client.dart';
@@ -67,25 +68,14 @@ void main() async {
         ChangeNotifierProvider(create: (_) => CartProvider()),
         ChangeNotifierProvider(create: (_) => AddressProvider()),
         ChangeNotifierProvider(create: (_) => OrderProvider()),
-        ChangeNotifierProvider(create: (_) => CategoryProvider()), // ✅ MỚI
+        ChangeNotifierProvider(create: (_) => CategoryProvider()),
+        ChangeNotifierProvider(create: (_) => ReviewProvider()),
       ],
       child: const MyApp(),
     ),
   );
 
   // SAU KHI KHỞI TẠO ỨNG DỤNG → TỰ ĐỘNG TẢI DATA HOME
-  // WidgetsBinding.instance.addPostFrameCallback((_) async {
-  //   await authProvider.init();
-  //
-  //   final context = AuthProvider.navigatorKey.currentContext;
-  //   if (context != null) {
-  //     // ✅ load category tree cho Home filter
-  //     Provider.of<CategoryProvider>(context, listen: false).fetchTree();
-  //
-  //     // ✅ load sản phẩm public
-  //     Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
-  //   }
-  // });
   WidgetsBinding.instance.addPostFrameCallback((_) async {
     await authProvider.init();
 
@@ -114,13 +104,6 @@ class MyApp extends StatelessWidget {
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(),
-        // '/home': (context) {
-        //   WidgetsBinding.instance.addPostFrameCallback((_) {
-        //     Provider.of<CategoryProvider>(context, listen: false).fetchTree();
-        //     Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
-        //   });
-        //   return const HomeScreen();
-        // },
         '/home': (context) {
           WidgetsBinding.instance.addPostFrameCallback((_) async {
             final auth = Provider.of<AuthProvider>(context, listen: false);
@@ -198,6 +181,7 @@ class MyApp extends StatelessWidget {
           }
           return const HomeScreen();
         },
+
 
         // === CART ===
         '/cart': (context) => const CartScreen(),
