@@ -45,7 +45,8 @@ class UserProvider extends ChangeNotifier {
       _me = await _userService.getMe();
       _setError(null);
     } catch (e) {
-      _me = null;
+      // Không xóa _me khi API lỗi để màn thông tin cá nhân không bị trắng/spinner vô hạn.
+      // Nếu trước đó đã có user trong state thì vẫn giữ lại để hiển thị.
       _setError(e.toString());
       rethrow;
     } finally {

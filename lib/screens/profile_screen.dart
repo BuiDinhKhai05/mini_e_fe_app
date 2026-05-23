@@ -273,39 +273,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // =========================
-  // 6. HÌNH TRANG TRÍ CUỐI MENU
-  // =========================
-  Widget _bottomDecoration() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 26, bottom: 18),
-      child: Center(
-        child: Image.asset(
-          'assets/images/mochi/bunny_bear_original.png',
-          height: 112,
-          fit: BoxFit.contain,
-
-          // Nếu chưa có ảnh trong assets thì hiện emoji tạm.
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: 150,
-              height: 112,
-              decoration: BoxDecoration(
-                color: _softPink,
-                borderRadius: BorderRadius.circular(28),
-              ),
-              child: const Center(
-                child: Text(
-                  '🐰  🧸',
-                  style: TextStyle(fontSize: 42),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
 
   // =========================
   // 7. KHUNG MENU CHÍNH
@@ -434,8 +401,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             },
           ),
 
-          // Hình trang trí phía dưới.
-          _bottomDecoration(),
         ],
       ),
     );

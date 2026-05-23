@@ -1,10 +1,8 @@
 // lib/screens/edit_personal_info_screen.dart
 
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../providers/user_provider.dart';
 
 class EditPersonalInfoScreen extends StatefulWidget {
@@ -31,16 +29,11 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
+  late TextEditingController _avatarUrlController;
 
   String? _selectedGender;
   DateTime? _selectedBirthDate;
   bool _isLoading = false;
-
-  // =========================
-  // 3. BIẾN QUẢN LÝ ẢNH ĐẠI DIỆN
-  // =========================
-  File? _selectedImageFile;
-  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -51,7 +44,13 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
 
     _nameController = TextEditingController(text: user?.name ?? '');
     _phoneController = TextEditingController(text: user?.phone ?? '');
+    _avatarUrlController = TextEditingController(text: user?.avatarUrl ?? '');
     _selectedGender = user?.gender;
+
+    // Cập nhật preview avatar mỗi khi người dùng nhập URL ảnh mới.
+    _avatarUrlController.addListener(() {
+      if (mounted) setState(() {});
+    });
 
     // Parse ngày sinh từ backend. Hỗ trợ cả yyyy-MM-dd và dd/MM/yyyy.
     final birthday = user?.birthday;
@@ -70,23 +69,44 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _avatarUrlController.dispose();
     super.dispose();
   }
 
   // =========================
-  // 4. CHỌN ẢNH ĐẠI DIỆN TỪ THƯ VIỆN
+  // 4. HELPER XỬ LÝ AVATAR URL
   // =========================
-  Future<void> _pickImage() async {
-    final XFile? pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-    );
+  bool _isValidAvatarUrl(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return false;
 
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImageFile = File(pickedFile.path);
-      });
-    }
+    final uri = Uri.tryParse(text);
+    return uri != null &&
+        uri.isAbsolute &&
+        (uri.scheme == 'http' || uri.scheme == 'https');
+  }
+
+  String? _validateAvatarUrl(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+
+    return _isValidAvatarUrl(text)
+        ? null
+        : 'Avatar URL phải bắt đầu bằng http:// hoặc https://';
+  }
+
+  String? _currentAvatarPreviewUrl(dynamic currentUser) {
+    final typedUrl = _avatarUrlController.text.trim();
+    if (_isValidAvatarUrl(typedUrl)) return typedUrl;
+
+    try {
+      final oldUrl = currentUser?.avatarUrl;
+      if (oldUrl is String && _isValidAvatarUrl(oldUrl)) {
+        return oldUrl.trim();
+      }
+    } catch (_) {}
+
+    return null;
   }
 
   // =========================
@@ -131,6 +151,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
 
       final newName = _nameController.text.trim();
       final newPhone = _phoneController.text.trim();
+      final newAvatarUrl = _avatarUrlController.text.trim();
 
       // Chỉ gửi field nào thật sự thay đổi để tránh update thừa.
       if (newName.isNotEmpty && newName != originalUser?.name) {
@@ -152,12 +173,14 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
         }
       }
 
-      if (_selectedImageFile != null) {
-        updates['avatar'] = _selectedImageFile;
+      // BE hiện tại chỉ nhận avatarUrl, không nhận File ảnh trực tiếp.
+      if (newAvatarUrl != (originalUser?.avatarUrl ?? '')) {
+        updates['avatarUrl'] = newAvatarUrl.isEmpty ? null : newAvatarUrl;
       }
 
       if (updates.isNotEmpty) {
         await userProvider.updateProfile(updates);
+        await userProvider.fetchMe(force: true);
       }
 
       if (mounted) {
@@ -167,7 +190,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
             backgroundColor: _primaryPink,
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted) {
@@ -188,96 +211,58 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
   // =========================
   Widget _buildAvatarPicker(dynamic currentUser) {
     final String name = currentUser?.name ?? 'Người dùng';
+    final String? avatarUrl = _currentAvatarPreviewUrl(currentUser);
 
     return SizedBox(
       width: 160,
       child: Column(
         children: [
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: const BoxDecoration(
-                  color: _lightPink,
-                  shape: BoxShape.circle,
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: const BoxDecoration(
+              color: _lightPink,
+              shape: BoxShape.circle,
+            ),
+            child: CircleAvatar(
+              radius: 52,
+              backgroundColor: _primaryPink,
+              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+              onBackgroundImageError: avatarUrl != null ? (_, __) {} : null,
+              child: avatarUrl == null
+                  ? Text(
+                name.isNotEmpty ? name[0].toUpperCase() : 'U',
+                style: const TextStyle(
+                  fontSize: 36,
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
                 ),
-                child: CircleAvatar(
-                  radius: 52,
-                  backgroundColor: _primaryPink,
-                  backgroundImage: _selectedImageFile != null
-                      ? FileImage(_selectedImageFile!)
-                      : null,
-                  child: _selectedImageFile == null
-                      ? Text(
-                    name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                    style: const TextStyle(
-                      fontSize: 36,
-                      color: Colors.white,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  )
-                      : null,
-                ),
-              ),
-
-              // Nút camera nhỏ để chọn ảnh.
-              Positioned(
-                right: 2,
-                bottom: 4,
-                child: InkWell(
-                  onTap: _pickImage,
-                  borderRadius: BorderRadius.circular(100),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: _primaryPink,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 17,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 16),
-
-          SizedBox(
-            height: 34,
-            child: OutlinedButton(
-              onPressed: _pickImage,
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _primaryPink,
-                side: BorderSide(color: _primaryPink.withOpacity(0.35)),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-              ),
-              child: const Text(
-                'Đổi ảnh đại diện',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
+              )
+                  : null,
             ),
           ),
 
-          const SizedBox(height: 8),
+          const SizedBox(height: 14),
 
           const Text(
-            'JPG, PNG tối đa 2MB',
+            'Ảnh đại diện',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _textDark,
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+
+          const SizedBox(height: 6),
+
+          const Text(
+            'BE hiện nhận avatarUrl, không nhận File ảnh trực tiếp.',
             textAlign: TextAlign.center,
             style: TextStyle(
               color: _textMuted,
               fontSize: 11,
               fontWeight: FontWeight.w500,
+              height: 1.35,
             ),
           ),
         ],
@@ -456,6 +441,16 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
         ),
         const SizedBox(height: 16),
 
+        // Avatar URL. BE hiện tại nhận URL ảnh qua field avatarUrl.
+        _buildTextFieldRow(
+          icon: Icons.image_outlined,
+          label: 'Avatar URL',
+          controller: _avatarUrlController,
+          hint: 'https://domain.com/avatar.jpg',
+          keyboardType: TextInputType.url,
+          validator: _validateAvatarUrl,
+        ),
+
         // Họ và tên.
         _buildTextFieldRow(
           icon: Icons.person_outline,
@@ -474,9 +469,9 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
           keyboardType: TextInputType.phone,
           validator: (v) {
             if (v == null || v.isEmpty) return null;
-            return RegExp(r'^[0-9]{9,11}$').hasMatch(v)
+            return RegExp(r'^\+?[0-9]{8,15}$').hasMatch(v)
                 ? null
-                : 'SĐT không hợp lệ';
+                : 'SĐT không hợp lệ. Có thể nhập 0..., +84...';
           },
         ),
 
@@ -508,37 +503,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
     );
   }
 
-  // =========================
-  // 12. HÌNH TRANG TRÍ BÊN PHẢI
-  // =========================
-  Widget _buildDecorationImage() {
-    return SizedBox(
-      width: 190,
-      child: Center(
-        child: Image.asset(
-          'assets/brand/bunny_bear_original.png',
-          height: 160,
-          fit: BoxFit.contain,
-          errorBuilder: (context, error, stackTrace) {
-            return Container(
-              width: 160,
-              height: 140,
-              decoration: BoxDecoration(
-                color: _softPink,
-                borderRadius: BorderRadius.circular(32),
-              ),
-              child: const Center(
-                child: Text(
-                  '🐰💗',
-                  style: TextStyle(fontSize: 54),
-                ),
-              ),
-            );
-          },
-        ),
-      ),
-    );
-  }
+
 
   // =========================
   // 13. CARD FORM THEO FORMAT ẢNH MẪU
@@ -570,7 +535,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
                 const SizedBox(width: 32),
                 Expanded(child: _buildFormPanel()),
                 const SizedBox(width: 22),
-                _buildDecorationImage(),
+
               ],
             );
           }
@@ -582,7 +547,6 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
               const SizedBox(height: 26),
               _buildFormPanel(),
               const SizedBox(height: 24),
-              _buildDecorationImage(),
             ],
           );
         },

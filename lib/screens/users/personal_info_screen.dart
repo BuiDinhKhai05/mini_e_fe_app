@@ -62,8 +62,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
 
     if (auth.accessToken != null) {
       try {
-        // Luôn fetch lại thông tin mới nhất để cập nhật profile/shop/role.
-        await userProvider.fetchMe();
+        // Nếu forceRefresh = true thì bắt buộc gọi lại API, không dùng cache _me cũ.
+        await userProvider.fetchMe(force: forceRefresh);
       } catch (e) {
         if (mounted) {
           _showSnackBar(
@@ -139,15 +139,43 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   // =========================
   // 7. AVATAR BÊN TRÁI THEO FORMAT ẢNH MẪU
   // =========================
+  String? _getAvatarUrl(dynamic currentUser) {
+    try {
+      final value = currentUser.avatarUrl;
+      if (value is String && value.trim().isNotEmpty) {
+        final uri = Uri.tryParse(value.trim());
+        final isNetworkUrl = uri != null &&
+            uri.isAbsolute &&
+            (uri.scheme == 'http' || uri.scheme == 'https');
+
+        return isNetworkUrl ? value.trim() : null;
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  int _getShopId(dynamic currentUser) {
+    try {
+      final value = currentUser.shopId;
+      if (value is int) return value;
+      if (value is num) return value.toInt();
+      return int.tryParse(value.toString()) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   Widget _buildAvatarPanel(dynamic currentUser) {
     final String name = currentUser.name ?? 'Người dùng';
+    final String? avatarUrl = _getAvatarUrl(currentUser);
 
     return SizedBox(
       width: 150,
       child: Column(
         children: [
-          // Avatar chỉ dùng để hiển thị thông tin người dùng.
-          // Nút "Đổi ảnh đại diện" và dòng "JPG, PNG tối đa 2MB" đã được bỏ theo yêu cầu.
+          // BE hiện tại trả avatarUrl, nên FE hiển thị ảnh bằng NetworkImage.
+          // Nếu avatarUrl rỗng hoặc không hợp lệ thì fallback về chữ cái đầu tên.
           Container(
             padding: const EdgeInsets.all(8),
             decoration: const BoxDecoration(
@@ -157,14 +185,18 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             child: CircleAvatar(
               radius: 48,
               backgroundColor: _primaryPink,
-              child: Text(
+              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+              onBackgroundImageError: avatarUrl != null ? (_, __) {} : null,
+              child: avatarUrl == null
+                  ? Text(
                 name.isNotEmpty ? name[0].toUpperCase() : 'U',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 34,
                   fontWeight: FontWeight.w900,
                 ),
-              ),
+              )
+                  : null,
             ),
           ),
         ],
@@ -277,7 +309,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
           label: 'Ngày sinh',
           value: _formatBirthday(currentUser.birthday),
         ),
-        _editInfoButton(context),
+        _editInfoButton(context, onEdit),
       ],
     );
   }
@@ -285,7 +317,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   // =========================
   // NÚT CHỈNH SỬA THÔNG TIN
   // =========================
-  Widget _editInfoButton(BuildContext context) {
+  Widget _editInfoButton(BuildContext context, VoidCallback onEdit) {
     return Padding(
       padding: const EdgeInsets.only(top: 22),
       child: Center(
@@ -293,15 +325,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
           width: 210,
           height: 44,
           child: ElevatedButton.icon(
-            // Khi bấm nút thì chuyển sang màn hình chỉnh sửa thông tin.
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const EditPersonalInfoScreen(),
-                ),
-              );
-            },
+            // Gọi callback từ màn cha để sau khi quay lại có thể fetchMe(force: true).
+            onPressed: onEdit,
 
             icon: const Icon(
               Icons.edit_outlined,
@@ -548,7 +573,9 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         // Kiểm tra trạng thái shop dựa vào role, giữ logic cũ của bạn.
         bool hasShop = false;
         if (currentUser != null) {
-          if (currentUser.role == 'SELLER' || currentUser.role == 'ADMIN') {
+          if (currentUser.role == 'SELLER' ||
+              currentUser.role == 'ADMIN' ||
+              _getShopId(currentUser) > 0) {
             hasShop = true;
           }
         }
