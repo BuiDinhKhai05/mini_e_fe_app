@@ -1,9 +1,13 @@
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/shop_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/product_provider.dart';
+import '../../utils/app_constants.dart';
 import 'seller_product_list_screen.dart';
 import 'shop_register_screen.dart';
 import 'shop_detail_screen.dart';
@@ -62,15 +66,22 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
       return;
     }
 
-    if (clearProductsFirst) {
-      productProvider.clearProductsCache(notify: false);
-    }
+    final previousShopId = shopProvider.shop?.id;
 
     await shopProvider.loadMyShop();
 
     if (!mounted) return;
 
     if (shopProvider.shop != null) {
+      // Không xóa cache nếu vẫn là cùng shop để các sản phẩm DRAFT vừa ẩn
+      // không biến mất ngay trong phiên hiện tại. Nếu đổi sang shop khác thì
+      // mới clear để tránh lẫn dữ liệu.
+      if (clearProductsFirst &&
+          previousShopId != null &&
+          previousShopId != shopProvider.shop!.id) {
+        productProvider.clearProductsCache(notify: false);
+      }
+
       await productProvider.fetchAllProductsForSeller(showLoading: showLoading);
     } else {
       productProvider.clearProductsCache(notify: false);
@@ -225,11 +236,24 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
   Widget _buildShopHeaderCard(BuildContext context, ShopProvider shopProvider) {
     final myShop = shopProvider.shop!;
 
+    // BE GET /shops/:id hiện tại chỉ trả thông tin shop + stats,
+    // không load relation products. Vì vậy khi xem "Shop của tôi",
+    // lấy sản phẩm từ ProductProvider rồi truyền sang ShopDetailScreen.
+    final productProvider = context.read<ProductProvider>();
+    final shopProducts = productProvider.products
+        .where((product) => product.shopId == myShop.id)
+        .toList();
+
     return InkWell(
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (_) => ShopDetailScreen(shop: myShop)),
+          MaterialPageRoute(
+            builder: (_) => ShopDetailScreen(
+              shop: myShop,
+              products: shopProducts,
+            ),
+          ),
         );
       },
       borderRadius: BorderRadius.circular(24),
@@ -478,13 +502,19 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
   void _showEditShopSheet(BuildContext context, ShopProvider provider) {
     final shop = provider.shop!;
     final nameCtrl = TextEditingController(text: shop.name);
-    final descCtrl = TextEditingController(text: shop.description);
-    final phoneCtrl = TextEditingController(text: shop.phone);
+    final emailCtrl = TextEditingController(text: shop.email ?? '');
+    final descCtrl = TextEditingController(text: shop.description ?? '');
+    final phoneCtrl = TextEditingController(text: shop.phone ?? '');
 
     // Biến cho phần địa chỉ
     final addressCtrl = TextEditingController(text: shop.shopAddress ?? '');
     double? currentLat = shop.shopLat;
     double? currentLng = shop.shopLng;
+
+    // Biến local cho ảnh để cập nhật ngay trong bottom sheet sau khi upload.
+    String? currentCoverUrl = shop.coverUrl;
+    String? currentLogoUrl = shop.logoUrl;
+    bool isUploadingImage = false;
 
     showModalBottomSheet(
       context: context,
@@ -550,7 +580,44 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Khu vực chọn ảnh bìa và logo
-                        _buildImageEditArea(context, shop.coverUrl, shop.logoUrl),
+                        _buildImageEditArea(
+                          context,
+                          currentCoverUrl,
+                          currentLogoUrl,
+                          isUploading: isUploadingImage,
+                          onCoverTap: () async {
+                            setStateSheet(() => isUploadingImage = true);
+                            final success = await _pickAndUploadShopImage(
+                              context,
+                              provider,
+                              isLogo: false,
+                            );
+                            if (!mounted) return;
+                            setStateSheet(() {
+                              isUploadingImage = false;
+                              if (success) {
+                                currentCoverUrl =
+                                    provider.shop?.coverUrl ?? currentCoverUrl;
+                              }
+                            });
+                          },
+                          onLogoTap: () async {
+                            setStateSheet(() => isUploadingImage = true);
+                            final success = await _pickAndUploadShopImage(
+                              context,
+                              provider,
+                              isLogo: true,
+                            );
+                            if (!mounted) return;
+                            setStateSheet(() {
+                              isUploadingImage = false;
+                              if (success) {
+                                currentLogoUrl =
+                                    provider.shop?.logoUrl ?? currentLogoUrl;
+                              }
+                            });
+                          },
+                        ),
                         const SizedBox(height: 54),
 
                         // Form thông tin cơ bản
@@ -560,6 +627,13 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                           controller: nameCtrl,
                           label: 'Tên cửa hàng',
                           icon: Icons.storefront_rounded,
+                        ),
+                        const SizedBox(height: 14),
+                        _buildTextField(
+                          controller: emailCtrl,
+                          label: 'Email liên hệ',
+                          icon: Icons.email_outlined,
+                          keyboardType: TextInputType.emailAddress,
                         ),
                         const SizedBox(height: 14),
                         _buildTextField(
@@ -648,8 +722,12 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                             onPressed: () async {
                               final Map<String, dynamic> updateData = {
                                 'name': nameCtrl.text.trim(),
+                                'email': emailCtrl.text.trim(),
                                 'description': descCtrl.text.trim(),
-                                'phone': phoneCtrl.text.trim(),
+
+                                // Đồng bộ BE: UpdateShopDto nhận shopPhone,
+                                // không nhận phone.
+                                'shopPhone': phoneCtrl.text.trim(),
                                 'shopAddress': addressCtrl.text.trim(),
                                 'shopLat': currentLat,
                                 'shopLng': currentLng,
@@ -657,24 +735,20 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
 
                               Navigator.pop(ctx);
 
-                              try {
-                                await provider.service.update(shop.id, updateData);
-                                await provider.loadMyShop();
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('Cập nhật thành công!')),
-                                  );
-                                }
-                              } catch (e) {
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Lỗi: $e'),
-                                      backgroundColor: _dangerRed,
-                                    ),
-                                  );
-                                }
-                              }
+                              final success = await provider.update(shop.id, updateData);
+
+                              if (!mounted) return;
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    success
+                                        ? 'Cập nhật thành công!'
+                                        : (provider.error ?? 'Cập nhật thất bại.'),
+                                  ),
+                                  backgroundColor: success ? Colors.green : _dangerRed,
+                                ),
+                              );
                             },
                             icon: const Icon(Icons.save_rounded),
                             label: const Text('Lưu thay đổi'),
@@ -701,27 +775,128 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
   }
 
   // =========================
+  // Chọn ảnh từ thư viện và upload lên BE
+  // BE: PATCH /shops/me/logo hoặc /shops/me/cover, multipart field: file
+  // =========================
+  Future<bool> _pickAndUploadShopImage(
+      BuildContext context,
+      ShopProvider provider, {
+        required bool isLogo,
+      }) async {
+    try {
+      final picker = ImagePicker();
+      final pickedFile = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+
+      if (pickedFile == null) {
+        return false;
+      }
+
+      final token = context.read<AuthProvider>().accessToken;
+      if (token == null || token.isEmpty) {
+        throw Exception('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
+      }
+
+      MultipartFile multipartFile;
+      if (kIsWeb) {
+        multipartFile = MultipartFile.fromBytes(
+          await pickedFile.readAsBytes(),
+          filename: pickedFile.name,
+        );
+      } else {
+        multipartFile = await MultipartFile.fromFile(
+          pickedFile.path,
+          filename: pickedFile.name,
+        );
+      }
+
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: AppConstants.baseUrl,
+          connectTimeout: const Duration(seconds: 15),
+          receiveTimeout: const Duration(seconds: 15),
+        ),
+      );
+
+      await dio.patch(
+        isLogo ? ShopsApi.uploadLogo : ShopsApi.uploadCover,
+        data: FormData.fromMap({'file': multipartFile}),
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+
+      // Load lại shop để cập nhật logoUrl/coverUrl mới từ BE vào provider.
+      await provider.loadMyShop();
+
+      if (!mounted) return true;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            isLogo ? 'Cập nhật logo thành công.' : 'Cập nhật ảnh bìa thành công.',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      return true;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String message = 'Upload ảnh thất bại.';
+
+      if (data is Map && data['message'] != null) {
+        message = data['message'] is List
+            ? (data['message'] as List).join('\n')
+            : data['message'].toString();
+      } else if (e.message != null && e.message!.isNotEmpty) {
+        message = e.message!;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message), backgroundColor: _dangerRed),
+        );
+      }
+      return false;
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: _dangerRed,
+          ),
+        );
+      }
+      return false;
+    }
+  }
+
+  // =========================
   // Khu vực ảnh bìa và logo trong sheet chỉnh sửa
   // =========================
-  Widget _buildImageEditArea(BuildContext context, String? coverUrl, String? logoUrl) {
+  Widget _buildImageEditArea(
+      BuildContext context,
+      String? coverUrl,
+      String? logoUrl, {
+        required bool isUploading,
+        required VoidCallback onCoverTap,
+        required VoidCallback onLogoTap,
+      }) {
     return Stack(
       alignment: Alignment.center,
       clipBehavior: Clip.none,
       children: [
         // Ảnh bìa
         GestureDetector(
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Chức năng chọn Ảnh Bìa (Cần tích hợp Upload API)')),
-            );
-          },
+          onTap: isUploading ? null : onCoverTap,
           child: ClipRRect(
             borderRadius: BorderRadius.circular(22),
             child: Container(
               height: 150,
               width: double.infinity,
               color: _softPink,
-              child: coverUrl != null
+              child: coverUrl != null && coverUrl.isNotEmpty
                   ? Image.network(
                 coverUrl,
                 fit: BoxFit.cover,
@@ -732,15 +907,28 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
           ),
         ),
 
+        // Lớp phủ loading khi đang upload logo hoặc ảnh bìa
+        if (isUploading)
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.58),
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  color: _primaryPink,
+                  strokeWidth: 2.5,
+                ),
+              ),
+            ),
+          ),
+
         // Logo shop đè lên ảnh bìa
         Positioned(
           bottom: -40,
           child: GestureDetector(
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Chức năng chọn Logo (Cần tích hợp Upload API)')),
-              );
-            },
+            onTap: isUploading ? null : onLogoTap,
             child: Container(
               width: 82,
               height: 82,
@@ -755,13 +943,13 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                     offset: const Offset(0, 6),
                   ),
                 ],
-                image: logoUrl != null
+                image: logoUrl != null && logoUrl.isNotEmpty
                     ? DecorationImage(image: NetworkImage(logoUrl), fit: BoxFit.cover)
                     : null,
               ),
               child: Stack(
                 children: [
-                  if (logoUrl == null)
+                  if (logoUrl == null || logoUrl.isEmpty)
                     const Center(
                       child: Icon(Icons.storefront_rounded, color: _primaryPink, size: 32),
                     ),
@@ -803,133 +991,132 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
   // =========================
   void _showSettingsOptions(BuildContext context, ShopProvider provider) {
     final shop = provider.shop!;
-    final bool isShopOpen = shop.status == 'ACTIVE';
 
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setStateSheet) {
-            return Container(
-              padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        return Container(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 48,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: _borderPink,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 18),
+              Row(
                 children: [
-                  Center(
-                    child: Container(
-                      width: 48,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: _borderPink,
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      _buildCircleIcon(Icons.settings_rounded, size: 46, iconSize: 23),
-                      const SizedBox(width: 12),
-                      const Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Thiết lập cửa hàng',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w900,
-                                color: _textDark,
-                              ),
-                            ),
-                            SizedBox(height: 3),
-                            Text(
-                              'Quản lý trạng thái hoạt động của shop.',
-                              style: TextStyle(color: _textGrey, fontSize: 12),
-                            ),
-                          ],
+                  _buildCircleIcon(Icons.settings_rounded, size: 46, iconSize: 23),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Thiết lập cửa hàng',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            color: _textDark,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 22),
-
-                  Container(
-                    decoration: BoxDecoration(
-                      color: _lighterPink,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: _borderPink),
-                    ),
-                    child: SwitchListTile(
-                      title: Text(
-                        isShopOpen ? 'Cửa hàng đang mở' : 'Cửa hàng đang đóng',
-                        style: const TextStyle(fontWeight: FontWeight.w800, color: _textDark),
-                      ),
-                      subtitle: Text(
-                        isShopOpen
-                            ? 'Khách hàng có thể tìm thấy và mua hàng.'
-                            : 'Cửa hàng sẽ bị ẩn khỏi danh sách tìm kiếm.',
-                        style: const TextStyle(color: _textGrey),
-                      ),
-                      secondary: Icon(
-                        isShopOpen ? Icons.storefront_rounded : Icons.store_mall_directory_outlined,
-                        color: isShopOpen ? Colors.green : _textGrey,
-                      ),
-                      activeColor: Colors.green,
-                      value: isShopOpen,
-                      onChanged: (bool value) async {
-                        Navigator.pop(ctx);
-                        final newStatus = value ? 'ACTIVE' : 'SUSPENDED';
-
-                        try {
-                          await provider.service.update(shop.id, {'status': newStatus});
-                          await provider.loadMyShop();
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(value ? 'Đã mở cửa hàng!' : 'Đã tạm đóng cửa hàng.')),
-                            );
-                          }
-                        } catch (e) {
-                          if (mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Lỗi: $e'), backgroundColor: _dangerRed),
-                            );
-                          }
-                        }
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  Container(
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFECEF),
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFFFCDD6)),
-                    ),
-                    child: ListTile(
-                      leading: const Icon(Icons.delete_forever_rounded, color: _dangerRed),
-                      title: const Text(
-                        'Xóa cửa hàng',
-                        style: TextStyle(color: _dangerRed, fontWeight: FontWeight.w900),
-                      ),
-                      subtitle: const Text('Hành động này không thể hoàn tác.'),
-                      onTap: () {
-                        Navigator.pop(ctx);
-                        _confirmDelete(context, provider);
-                      },
+                        SizedBox(height: 3),
+                        Text(
+                          'Đồng bộ theo quyền BE hiện tại.',
+                          style: TextStyle(color: _textGrey, fontSize: 12),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            );
-          },
+              const SizedBox(height: 22),
+
+              // BE hiện tại không cho owner tự đổi status.
+              // Controller sẽ chặn nếu USER/SELLER gửi field status.
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: _lighterPink,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: _borderPink),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      shop.status == 'ACTIVE'
+                          ? Icons.verified_rounded
+                          : Icons.info_outline_rounded,
+                      color: shop.status == 'ACTIVE' ? Colors.green : _primaryPink,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Trạng thái shop do ADMIN quản lý',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: _textDark,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Trạng thái hiện tại: ${_statusText(shop.status)}. '
+                                'Theo BE hiện tại, chủ shop chỉ được cập nhật hồ sơ/ảnh, '
+                                'không được tự chuyển ACTIVE/SUSPENDED.',
+                            style: const TextStyle(
+                              color: _textGrey,
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFECEF),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: const Color(0xFFFFCDD6)),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.delete_forever_rounded, color: _dangerRed),
+                  title: const Text(
+                    'Xóa cửa hàng',
+                    style: TextStyle(color: _dangerRed, fontWeight: FontWeight.w900),
+                  ),
+                  subtitle: const Text(
+                    'BE sẽ xóa shop và xóa cứng toàn bộ sản phẩm thuộc shop.',
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _confirmDelete(context, provider);
+                  },
+                ),
+              ),
+            ],
+          ),
         );
       },
     );
@@ -975,16 +1162,24 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
         false;
 
     if (confirm) {
-      await shopProvider.delete(shopProvider.shop!.id);
-      if (shopProvider.error != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(shopProvider.error!), backgroundColor: _dangerRed),
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Đã xóa cửa hàng thành công.')),
-        );
+      final success = await shopProvider.delete(shopProvider.shop!.id);
+
+      if (!mounted) return;
+
+      if (success) {
+        context.read<ProductProvider>().clearProductsCache(notify: false);
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success
+                ? 'Đã xóa cửa hàng thành công.'
+                : (shopProvider.error ?? 'Xóa cửa hàng thất bại.'),
+          ),
+          backgroundColor: success ? Colors.green : _dangerRed,
+        ),
+      );
     }
   }
 
@@ -1070,6 +1265,19 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
           ? const Icon(Icons.storefront_rounded, color: _primaryPink, size: 32)
           : null,
     );
+  }
+
+  String _statusText(String status) {
+    switch (status) {
+      case 'ACTIVE':
+        return 'Đang hoạt động';
+      case 'PENDING':
+        return 'Chờ duyệt';
+      case 'SUSPENDED':
+        return 'Đang tạm nghỉ';
+      default:
+        return status;
+    }
   }
 
   // =========================

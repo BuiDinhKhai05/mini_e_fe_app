@@ -30,7 +30,6 @@ class UsersApi {
   static String hardDelete(String id) => '/users/$id/hard';
 }
 
-// SHOP API
 class ShopsApi {
   // Public
   static const String shops = '/shops';
@@ -39,6 +38,10 @@ class ShopsApi {
   // Authenticated
   static const String register = '/shops/register';
   static const String myShop = '/shops/me';
+
+  // Upload logo / cover shop
+  static const String uploadLogo = '/shops/me/logo';
+  static const String uploadCover = '/shops/me/cover';
 
   // Seller / Shop orders
   static const String myShopOrders = '/shops/me/orders';

@@ -96,8 +96,12 @@ class ProductProvider with ChangeNotifier {
   }
 
   /// SELLER: BE hiện tại CHƯA có API lấy cả ACTIVE + DRAFT của shop.
-  /// FE sẽ ưu tiên lọc theo shopId nếu load được shop, nhưng kết quả vẫn chỉ
-  /// gồm ACTIVE do API public của BE đang giới hạn như vậy.
+  /// Vì vậy FE vẫn gọi public /products?shopId=..., nhưng sẽ giữ lại các sản
+  /// phẩm DRAFT đã có trong cache hiện tại để không bị "biến mất" ngay sau khi
+  /// seller vừa chuyển trạng thái ACTIVE -> DRAFT trong cùng phiên dùng app.
+  ///
+  /// Lưu ý: nếu đóng app/mở lại thì DRAFT vẫn cần BE bổ sung API seller riêng
+  /// để lấy đầy đủ dữ liệu.
   Future<void> fetchAllProductsForSeller({bool showLoading = true}) async {
     int? shopId;
     final context = AuthProvider.navigatorKey.currentContext;
@@ -117,16 +121,45 @@ class ProductProvider with ChangeNotifier {
     await _fetchProductsWithFilter(
       shopId: shopId,
       showLoading: showLoading,
+      mergeCachedDraftsForShopId: shopId,
     );
+  }
+
+  /// PUBLIC/SHOP DETAIL: lấy sản phẩm ACTIVE của một shop để hiển thị ở màn
+  /// chi tiết shop mà không ghi đè cache seller đang dùng ở dashboard.
+  Future<List<ProductModel>> fetchProductsByShopId(
+      int shopId, {
+        int page = 1,
+        int limit = 100,
+      }) async {
+    try {
+      final response = await _dio.get(
+        ProductApi.products,
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          'shopId': shopId,
+        },
+      );
+
+      return _parseProductsFromResponse(response.data);
+    } on DioException catch (e) {
+      throw Exception(_handleDioError(e, autoLogoutOn401: false));
+    } catch (e) {
+      throw Exception('Lỗi tải sản phẩm của shop: $e');
+    }
   }
 
   Future<void> _fetchProductsWithFilter({
     int? shopId,
     required bool showLoading,
+    int? mergeCachedDraftsForShopId,
   }) async {
+    // Lưu cache cũ trước khi gọi API để có thể giữ lại DRAFT trong phiên hiện tại.
+    final previousProducts = List<ProductModel>.from(_products);
+
     if (showLoading) {
       _isLoading = true;
-      _products = [];
       _error = null;
       notifyListeners();
     } else {
@@ -143,19 +176,21 @@ class ProductProvider with ChangeNotifier {
         },
       );
 
-      final dynamic data = response.data['data'];
-      List<dynamic> rawList = [];
+      final fetchedProducts = _parseProductsFromResponse(response.data);
 
-      if (data is Map) {
-        rawList = data['items'] ?? [];
-      } else if (data is List) {
-        rawList = data;
+      if (mergeCachedDraftsForShopId != null) {
+        final fetchedIds = fetchedProducts.map((p) => p.id).toSet();
+        final cachedDrafts = previousProducts.where((product) {
+          final isSameShop = product.shopId == mergeCachedDraftsForShopId;
+          final isDraftLike = product.status.toUpperCase() != 'ACTIVE';
+          final alreadyFetched = fetchedIds.contains(product.id);
+          return isSameShop && isDraftLike && !alreadyFetched;
+        }).toList();
+
+        _products = [...fetchedProducts, ...cachedDrafts];
+      } else {
+        _products = fetchedProducts;
       }
-
-      _products = rawList
-          .whereType<Map<String, dynamic>>()
-          .map((item) => ProductModel.fromJson(item))
-          .toList();
     } on DioException catch (e) {
       _error = _handleDioError(e, autoLogoutOn401: false);
     } catch (e) {
@@ -164,6 +199,22 @@ class ProductProvider with ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  List<ProductModel> _parseProductsFromResponse(dynamic responseData) {
+    final dynamic data = responseData is Map ? responseData['data'] : responseData;
+    List<dynamic> rawList = [];
+
+    if (data is Map) {
+      rawList = data['items'] ?? [];
+    } else if (data is List) {
+      rawList = data;
+    }
+
+    return rawList
+        .whereType<Map<String, dynamic>>()
+        .map((item) => ProductModel.fromJson(item))
+        .toList();
   }
 
   // ========================================================================

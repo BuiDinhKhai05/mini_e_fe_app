@@ -79,6 +79,8 @@ class _ShopListScreenState extends State<ShopListScreen> {
                   ? const Center(
                 child: CircularProgressIndicator(color: _primaryPink),
               )
+                  : provider.error != null
+                  ? _buildErrorState(provider.error!)
                   : provider.shops.isEmpty
                   ? _buildEmptyState()
                   : RefreshIndicator(
@@ -408,6 +410,63 @@ class _ShopListScreenState extends State<ShopListScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // =========================
+  // Error state khi BE trả lỗi. Lưu ý BE hiện tại chỉ cho ADMIN gọi GET /shops.
+  // =========================
+  Widget _buildErrorState(String error) {
+    final bool isPermissionError = error.contains('403') ||
+        error.toLowerCase().contains('forbidden') ||
+        error.contains('quyền');
+
+    return Center(
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: _cardDecoration(radius: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildCircleIcon(Icons.lock_outline_rounded, size: 76, iconSize: 38),
+            const SizedBox(height: 16),
+            Text(
+              isPermissionError
+                  ? 'Chỉ ADMIN được xem danh sách shop'
+                  : 'Không tải được danh sách shop',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w900,
+                color: _textDark,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              isPermissionError
+                  ? 'Backend hiện tại đặt GET /shops cho ADMIN. User thường chỉ có thể xem shop qua /shops/:id nếu shop ACTIVE.'
+                  : error,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _textGrey, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _search,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Tải lại'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _primaryPink,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
