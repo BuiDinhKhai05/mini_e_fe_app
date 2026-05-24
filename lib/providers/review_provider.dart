@@ -106,8 +106,16 @@ class ReviewProvider extends ChangeNotifier {
 
       _summary = response.summary;
       _page = response.page;
-      _total = response.total;
-      _reviews.addAll(response.items);
+      _total = response.total > 0 ? response.total : response.summary.count;
+
+      // Tránh bị trùng review nếu user bấm tải lại nhanh
+      // hoặc BE trả lại item đã có ở trang trước.
+      final existingIds = _reviews.map((item) => item.id).toSet();
+      final newItems = response.items
+          .where((item) => item.id.isNotEmpty && !existingIds.contains(item.id))
+          .toList();
+
+      _reviews.addAll(newItems);
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
     } finally {

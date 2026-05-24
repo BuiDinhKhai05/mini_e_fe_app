@@ -1,10 +1,15 @@
 // lib/models/review_model.dart
 
+import 'dart:convert';
+
 // =======================================================
-// MODEL RESPONSE DANH SÁCH REVIEW THEO SẢN PHẨM
-// Dùng cho API:
-// GET /products/:productId/reviews?page=1&limit=20
+// REVIEW MODEL
+// Chỉ xử lý parse dữ liệu FE theo format BE hiện tại:
+// - BE bọc response bằng { success: true, data: ... }
+// - GET /products/:productId/reviews trả data.summary + data.items
+// - GET /orders/:id/review có thể trả data = null/object/list
 // =======================================================
+
 class ProductReviewResponse {
   final ProductReviewSummary summary;
   final List<ProductReviewItem> items;
@@ -20,180 +25,296 @@ class ProductReviewResponse {
     required this.total,
   });
 
+  factory ProductReviewResponse.empty() {
+    return ProductReviewResponse(
+      summary: ProductReviewSummary.empty(),
+      items: const [],
+      page: 1,
+      limit: 20,
+      total: 0,
+    );
+  }
+
   factory ProductReviewResponse.fromJson(Map<String, dynamic> json) {
-    final rawSummary = json['summary'];
-    final rawItems = json['items'];
+    // BE hiện tại trả:
+    // {
+    //   success: true,
+    //   data: {
+    //     summary: { count, avg },
+    //     items: [...],
+    //     page, limit, total
+    //   }
+    // }
+    final rawData = json['data'];
+    final Map<String, dynamic> data = rawData is Map
+        ? Map<String, dynamic>.from(rawData)
+        : Map<String, dynamic>.from(json);
+
+    final rawItems = data['items'];
+    final items = rawItems is List
+        ? rawItems
+        .whereType<Map>()
+        .map((item) => ProductReviewItem.fromJson(
+      Map<String, dynamic>.from(item),
+    ))
+        .where((item) => item.id.isNotEmpty)
+        .toList()
+        : <ProductReviewItem>[];
+
+    final summary = ProductReviewSummary.fromJson(
+      data['summary'] is Map
+          ? Map<String, dynamic>.from(data['summary'])
+          : const <String, dynamic>{},
+    );
 
     return ProductReviewResponse(
-      summary: rawSummary is Map
-          ? ProductReviewSummary.fromJson(
-        Map<String, dynamic>.from(rawSummary),
-      )
-          : ProductReviewSummary.empty(),
-      items: rawItems is List
-          ? rawItems
-          .whereType<Map>()
-          .map(
-            (item) => ProductReviewItem.fromJson(
-          Map<String, dynamic>.from(item),
-        ),
-      )
-          .toList()
-          : [],
-      page: _toInt(json['page'], defaultValue: 1),
-      limit: _toInt(json['limit'], defaultValue: 20),
-      total: _toInt(json['total']),
+      summary: summary,
+      items: items,
+      page: _toInt(data['page']) ?? 1,
+      limit: _toInt(data['limit']) ?? 20,
+      // BE trả total riêng, còn summary.count là tổng review thực tế.
+      total: _toInt(data['total']) ?? summary.count,
     );
   }
 }
 
-// =======================================================
-// MODEL TỔNG QUAN ĐÁNH GIÁ
-// BE trả về:
-// summary: {
-//   count,
-//   avg
-// }
-// =======================================================
 class ProductReviewSummary {
   final int count;
   final double avg;
 
-  ProductReviewSummary({
+  const ProductReviewSummary({
     required this.count,
     required this.avg,
   });
 
   factory ProductReviewSummary.empty() {
-    return ProductReviewSummary(
-      count: 0,
-      avg: 0,
-    );
+    return const ProductReviewSummary(count: 0, avg: 0);
   }
 
   factory ProductReviewSummary.fromJson(Map<String, dynamic> json) {
     return ProductReviewSummary(
-      count: _toInt(json['count']),
-      avg: _toDouble(json['avg']),
+      count: _toInt(json['count'] ?? json['total'] ?? json['totalReviews']) ?? 0,
+      avg: _toDouble(json['avg'] ?? json['average'] ?? json['averageRating']) ?? 0,
     );
   }
 }
 
-// =======================================================
-// MODEL USER TRONG REVIEW
-// BE trả về:
-// user: {
-//   id,
-//   name,
-//   avatarUrl
-// }
-// =======================================================
-class ProductReviewUser {
-  final int id;
-  final String name;
-  final String? avatarUrl;
-
-  ProductReviewUser({
-    required this.id,
-    required this.name,
-    this.avatarUrl,
-  });
-
-  factory ProductReviewUser.fromJson(Map<String, dynamic> json) {
-    return ProductReviewUser(
-      id: _toInt(json['id']),
-      name: (json['name'] ?? 'Người dùng').toString(),
-      avatarUrl: json['avatarUrl']?.toString(),
-    );
-  }
-}
-
-// =======================================================
-// MODEL MỘT ĐÁNH GIÁ SẢN PHẨM
-// BE trả về:
-// id, orderId, userId, productId, rating, comment,
-// images, createdAt, updatedAt, user
-// =======================================================
 class ProductReviewItem {
   final String id;
-  final String orderId;
-  final int userId;
+  final String? orderId;
+  final int? userId;
   final int productId;
   final int rating;
   final String? comment;
   final List<String> images;
   final DateTime createdAt;
   final DateTime updatedAt;
-  final ProductReviewUser? user;
 
-  ProductReviewItem({
+  // FE hiển thị từ user object hoặc snapshot BE lưu lại.
+  final String userName;
+  final String? userAvatarUrl;
+  final bool isDeletedUser;
+
+  const ProductReviewItem({
     required this.id,
     required this.orderId,
     required this.userId,
     required this.productId,
     required this.rating,
-    this.comment,
+    required this.comment,
     required this.images,
     required this.createdAt,
     required this.updatedAt,
-    this.user,
+    required this.userName,
+    required this.userAvatarUrl,
+    required this.isDeletedUser,
   });
 
-  // Dùng để kiểm tra review có bình luận hay không.
   bool get hasComment => comment != null && comment!.trim().isNotEmpty;
-
-  // Dùng để kiểm tra review có hình ảnh hay không.
   bool get hasImages => images.isNotEmpty;
 
-  // Tên user hiển thị trên giao diện.
-  String get userName => user?.name ?? 'Người dùng';
-
-  // Avatar user hiển thị trên giao diện.
-  String? get userAvatarUrl => user?.avatarUrl;
-
   factory ProductReviewItem.fromJson(Map<String, dynamic> json) {
-    final rawImages = json['images'];
     final rawUser = json['user'];
+    final Map<String, dynamic> user = rawUser is Map
+        ? Map<String, dynamic>.from(rawUser)
+        : const <String, dynamic>{};
+
+    final rawProduct = json['product'];
+    final Map<String, dynamic> product = rawProduct is Map
+        ? Map<String, dynamic>.from(rawProduct)
+        : const <String, dynamic>{};
+
+    final name = user['name'] ??
+        json['userNameSnapshot'] ??
+        json['user_name_snapshot'] ??
+        json['userName'] ??
+        json['user_name'] ??
+        'Người dùng đã xóa';
+
+    final avatar = user['avatarUrl'] ??
+        user['avatar_url'] ??
+        json['userAvatarSnapshot'] ??
+        json['user_avatar_snapshot'] ??
+        json['userAvatarUrl'] ??
+        json['user_avatar_url'];
+
+    final parsedUserId = _toInt(json['userId'] ?? json['user_id'] ?? user['id']);
 
     return ProductReviewItem(
-      id: (json['id'] ?? '').toString(),
-      orderId: (json['orderId'] ?? json['order_id'] ?? '').toString(),
-      userId: _toInt(json['userId'] ?? json['user_id']),
-      productId: _toInt(json['productId'] ?? json['product_id']),
-      rating: _toInt(json['rating']),
-      comment: json['comment']?.toString(),
-      images: rawImages is List
-          ? rawImages.map((item) => item.toString()).toList()
-          : [],
-      createdAt: _parseDate(json['createdAt'] ?? json['created_at']),
-      updatedAt: _parseDate(json['updatedAt'] ?? json['updated_at']),
-      user: rawUser is Map
-          ? ProductReviewUser.fromJson(
-        Map<String, dynamic>.from(rawUser),
-      )
-          : null,
+      id: json['id']?.toString() ?? '',
+      orderId: json['orderId']?.toString() ?? json['order_id']?.toString(),
+      userId: parsedUserId,
+      productId: _toInt(json['productId'] ?? json['product_id'] ?? product['id']) ?? 0,
+      rating: (_toInt(json['rating']) ?? 0).clamp(0, 5).toInt(),
+      comment: _emptyToNull(json['comment'] ?? json['content']),
+      images: _toStringList(json['images']),
+      createdAt: _toDateTime(json['createdAt'] ?? json['created_at']),
+      updatedAt: _toDateTime(
+        json['updatedAt'] ??
+            json['updated_at'] ??
+            json['createdAt'] ??
+            json['created_at'],
+      ),
+      userName: name.toString(),
+      userAvatarUrl: _emptyToNull(avatar),
+      isDeletedUser: user['isDeleted'] == true ||
+          user['is_deleted'] == true ||
+          parsedUserId == null,
     );
   }
 }
 
-// =======================================================
-// HELPER PARSE DATA
-// Giúp tránh lỗi khi BE trả number dạng string hoặc null.
-// =======================================================
-int _toInt(dynamic value, {int defaultValue = 0}) {
-  if (value == null) return defaultValue;
+class CreateReviewRequest {
+  final String orderId;
+  final int productId;
+  final int rating;
+  final String? comment;
+  final List<String> images;
+
+  CreateReviewRequest({
+    required this.orderId,
+    required this.productId,
+    required this.rating,
+    this.comment,
+    this.images = const [],
+  });
+
+  // Dùng cho POST /product-reviews
+  Map<String, dynamic> toProductReviewsJson() {
+    return {
+      'orderId': orderId,
+      'productId': productId,
+      'rating': rating.clamp(1, 5).toInt(),
+      if (comment != null && comment!.trim().isNotEmpty) 'comment': comment!.trim(),
+      if (images.isNotEmpty)
+        'images': images.where((url) => url.trim().isNotEmpty).take(6).toList(),
+    };
+  }
+
+  // Dùng cho POST /orders/:id/review
+  Map<String, dynamic> toOrderReviewJson() {
+    return {
+      'productId': productId,
+      'rating': rating.clamp(1, 5).toInt(),
+      if (comment != null && comment!.trim().isNotEmpty) 'comment': comment!.trim(),
+      if (images.isNotEmpty)
+        'images': images.where((url) => url.trim().isNotEmpty).take(6).toList(),
+    };
+  }
+}
+
+class OrderReviewResult {
+  final List<ProductReviewItem> items;
+
+  const OrderReviewResult({required this.items});
+
+  factory OrderReviewResult.fromJson(Map<String, dynamic> json) {
+    // BE hiện tại:
+    // { success: true, data: null }
+    // { success: true, data: {...} }
+    // { success: true, data: [...] }
+    final rawData = json.containsKey('data') ? json['data'] : json;
+
+    if (rawData == null) {
+      return const OrderReviewResult(items: []);
+    }
+
+    if (rawData is List) {
+      return OrderReviewResult(
+        items: rawData
+            .whereType<Map>()
+            .map((item) => ProductReviewItem.fromJson(Map<String, dynamic>.from(item)))
+            .where((item) => item.id.isNotEmpty)
+            .toList(),
+      );
+    }
+
+    if (rawData is Map) {
+      final item = ProductReviewItem.fromJson(Map<String, dynamic>.from(rawData));
+      return OrderReviewResult(items: item.id.isNotEmpty ? [item] : []);
+    }
+
+    return const OrderReviewResult(items: []);
+  }
+}
+
+int? _toInt(dynamic value) {
+  if (value == null) return null;
   if (value is int) return value;
-  return int.tryParse(value.toString()) ?? defaultValue;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString());
 }
 
-double _toDouble(dynamic value, {double defaultValue = 0}) {
-  if (value == null) return defaultValue;
+double? _toDouble(dynamic value) {
+  if (value == null) return null;
   if (value is double) return value;
-  if (value is int) return value.toDouble();
-  return double.tryParse(value.toString()) ?? defaultValue;
+  if (value is num) return value.toDouble();
+  return double.tryParse(value.toString());
 }
 
-DateTime _parseDate(dynamic value) {
+String? _emptyToNull(dynamic value) {
+  if (value == null) return null;
+  final text = value.toString().trim();
+  return text.isEmpty ? null : text;
+}
+
+List<String> _toStringList(dynamic value) {
+  if (value == null) return [];
+
+  if (value is List) {
+    return value
+        .where((item) => item != null)
+        .map((item) => item.toString().trim())
+        .where((text) => text.isNotEmpty)
+        .toList();
+  }
+
+  // Phòng trường hợp DB/BE cũ trả images là chuỗi JSON: '["url1", "url2"]'.
+  if (value is String) {
+    final text = value.trim();
+    if (text.isEmpty) return [];
+
+    try {
+      final decoded = jsonDecode(text);
+      if (decoded is List) {
+        return decoded
+            .where((item) => item != null)
+            .map((item) => item.toString().trim())
+            .where((item) => item.isNotEmpty)
+            .toList();
+      }
+    } catch (_) {
+      return [text];
+    }
+
+    return [text];
+  }
+
+  return [];
+}
+
+DateTime _toDateTime(dynamic value) {
   if (value == null) return DateTime.now();
+  if (value is DateTime) return value;
   return DateTime.tryParse(value.toString()) ?? DateTime.now();
 }
