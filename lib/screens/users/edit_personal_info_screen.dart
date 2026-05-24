@@ -1,12 +1,13 @@
-// lib/screens/edit_personal_info_screen.dart
+// lib/screens/users/edit_personal_info_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/user_provider.dart';
+import '../../theme/app_theme.dart';
 
 class EditPersonalInfoScreen extends StatefulWidget {
-  const EditPersonalInfoScreen({Key? key}) : super(key: key);
+  const EditPersonalInfoScreen({super.key});
 
   @override
   State<EditPersonalInfoScreen> createState() => _EditPersonalInfoScreenState();
@@ -14,17 +15,7 @@ class EditPersonalInfoScreen extends StatefulWidget {
 
 class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
   // =========================
-  // 1. MÀU CHỦ ĐẠO CỦA GIAO DIỆN
-  // =========================
-  static const Color _primaryPink = Color(0xFFE84D7A);
-  static const Color _softPink = Color(0xFFFFF4F7);
-  static const Color _lightPink = Color(0xFFFCE3EC);
-  static const Color _unselectedPink = Color(0xFFC8A6B0);
-  static const Color _textDark = Color(0xFF333333);
-  static const Color _textMuted = Color(0xFF8A7A80);
-
-  // =========================
-  // 2. BIẾN QUẢN LÝ FORM
+  // 1. BIẾN QUẢN LÝ FORM
   // =========================
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
@@ -121,9 +112,9 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
       builder: (context, child) => Theme(
         data: Theme.of(context).copyWith(
           colorScheme: const ColorScheme.light(
-            primary: _primaryPink,
+            primary: AppColors.primaryPink,
             onPrimary: Colors.white,
-            onSurface: _textDark,
+            onSurface: AppColors.textDark,
           ),
         ),
         child: child!,
@@ -187,7 +178,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Cập nhật thành công!'),
-            backgroundColor: _primaryPink,
+            backgroundColor: AppColors.primaryPink,
           ),
         );
         Navigator.pop(context, true);
@@ -197,7 +188,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -218,14 +209,14 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: const BoxDecoration(
-              color: _lightPink,
+              color: AppColors.lightPink,
               shape: BoxShape.circle,
             ),
             child: CircleAvatar(
               radius: 52,
-              backgroundColor: _primaryPink,
+              backgroundColor: AppColors.primaryPink,
               backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
               onBackgroundImageError: avatarUrl != null ? (_, __) {} : null,
               child: avatarUrl == null
@@ -247,7 +238,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
             'Ảnh đại diện',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: _textDark,
+              color: AppColors.textDark,
               fontSize: 13,
               fontWeight: FontWeight.w900,
             ),
@@ -259,7 +250,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
             'BE hiện nhận avatarUrl, không nhận File ảnh trực tiếp.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: _textMuted,
+              color: AppColors.textGrey,
               fontSize: 11,
               fontWeight: FontWeight.w500,
               height: 1.35,
@@ -288,37 +279,37 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
         keyboardType: keyboardType,
         validator: validator,
         style: const TextStyle(
-          color: _textDark,
+          color: AppColors.textDark,
           fontSize: 14,
           fontWeight: FontWeight.w700,
         ),
         decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: _textMuted, size: 20),
+          prefixIcon: Icon(icon, color: AppColors.textGrey, size: 20),
           labelText: label,
           hintText: hint,
           labelStyle: const TextStyle(
-            color: _textMuted,
+            color: AppColors.textGrey,
             fontWeight: FontWeight.w700,
           ),
-          hintStyle: const TextStyle(color: _unselectedPink),
+          hintStyle: const TextStyle(color: AppColors.textLight),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: AppColors.cardBackground,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: _primaryPink.withOpacity(0.16)),
+            borderRadius: BorderRadius.circular(AppRadius.large),
+            borderSide: BorderSide(color: AppColors.primaryPink.withOpacity(0.16)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(color: _primaryPink.withOpacity(0.16)),
+            borderRadius: BorderRadius.circular(AppRadius.large),
+            borderSide: BorderSide(color: AppColors.primaryPink.withOpacity(0.16)),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: _primaryPink, width: 1.4),
+            borderRadius: BorderRadius.circular(AppRadius.large),
+            borderSide: const BorderSide(color: AppColors.primaryPink, width: 1.4),
           ),
           errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Colors.red),
+            borderRadius: BorderRadius.circular(AppRadius.large),
+            borderSide: const BorderSide(color: AppColors.error),
           ),
         ),
       ),
@@ -333,29 +324,29 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
       padding: const EdgeInsets.only(bottom: 14),
       child: InkWell(
         onTap: _pickDate,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppRadius.large),
         child: InputDecorator(
           decoration: InputDecoration(
             prefixIcon: const Icon(
               Icons.calendar_month_outlined,
-              color: _textMuted,
+              color: AppColors.textGrey,
               size: 20,
             ),
             labelText: 'Ngày sinh',
             labelStyle: const TextStyle(
-              color: _textMuted,
+              color: AppColors.textGrey,
               fontWeight: FontWeight.w700,
             ),
             filled: true,
-            fillColor: Colors.white,
+            fillColor: AppColors.cardBackground,
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: _primaryPink.withOpacity(0.16)),
+              borderRadius: BorderRadius.circular(AppRadius.large),
+              borderSide: BorderSide(color: AppColors.primaryPink.withOpacity(0.16)),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: _primaryPink.withOpacity(0.16)),
+              borderRadius: BorderRadius.circular(AppRadius.large),
+              borderSide: BorderSide(color: AppColors.primaryPink.withOpacity(0.16)),
             ),
           ),
           child: Row(
@@ -367,13 +358,13 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
                     : DateFormat('dd/MM/yyyy').format(_selectedBirthDate!),
                 style: TextStyle(
                   fontSize: 14,
-                  color: _selectedBirthDate == null ? _unselectedPink : _textDark,
+                  color: _selectedBirthDate == null ? AppColors.textLight : AppColors.textDark,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               const Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: _unselectedPink,
+                color: AppColors.textLight,
               ),
             ],
           ),
@@ -395,15 +386,15 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(vertical: 13),
           decoration: BoxDecoration(
-            color: isSelected ? _primaryPink : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: isSelected ? AppColors.primaryPink : Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.large),
             border: Border.all(
-              color: isSelected ? _primaryPink : _primaryPink.withOpacity(0.18),
+              color: isSelected ? AppColors.primaryPink : AppColors.primaryPink.withOpacity(0.18),
             ),
             boxShadow: isSelected
                 ? [
               BoxShadow(
-                color: _primaryPink.withOpacity(0.18),
+                color: AppColors.primaryPink.withOpacity(0.18),
                 blurRadius: 14,
                 offset: const Offset(0, 6),
               ),
@@ -414,7 +405,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
           child: Text(
             label,
             style: TextStyle(
-              color: isSelected ? Colors.white : _textDark,
+              color: isSelected ? Colors.white : AppColors.textDark,
               fontWeight: FontWeight.w800,
               fontSize: 13,
             ),
@@ -434,7 +425,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
         const Text(
           'Thông tin cá nhân',
           style: TextStyle(
-            color: _textDark,
+            color: AppColors.textDark,
             fontSize: 17,
             fontWeight: FontWeight.w900,
           ),
@@ -484,7 +475,7 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
           child: Text(
             'Giới tính',
             style: TextStyle(
-              color: _textMuted,
+              color: AppColors.textGrey,
               fontSize: 13,
               fontWeight: FontWeight.w800,
             ),
@@ -511,14 +502,14 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
   Widget _buildEditCard(dynamic currentUser) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: _primaryPink.withOpacity(0.08)),
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
+        border: Border.all(color: AppColors.primaryPink.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: _primaryPink.withOpacity(0.06),
+            color: AppColors.primaryPink.withOpacity(0.06),
             blurRadius: 28,
             offset: const Offset(0, 10),
           ),
@@ -564,13 +555,13 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
       child: ElevatedButton(
         onPressed: _isLoading ? null : _saveChanges,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryPink,
-          disabledBackgroundColor: _unselectedPink.withOpacity(0.35),
+          backgroundColor: AppColors.primaryPink,
+          disabledBackgroundColor: AppColors.textLight.withOpacity(0.35),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(999),
+            borderRadius: BorderRadius.circular(AppRadius.circle),
           ),
           elevation: 0,
-          shadowColor: _primaryPink.withOpacity(0.25),
+          shadowColor: AppColors.primaryPink.withOpacity(0.25),
         ),
         child: _isLoading
             ? const SizedBox(
@@ -601,24 +592,24 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
     final currentUser = Provider.of<UserProvider>(context, listen: false).me;
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text(
           'Chỉnh sửa thông tin',
           style: TextStyle(
-            color: _textDark,
+            color: AppColors.textDark,
             fontWeight: FontWeight.w900,
             fontSize: 18,
           ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        surfaceTintColor: Colors.white,
+        backgroundColor: AppColors.background,
+        surfaceTintColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(
             Icons.arrow_back_ios_new,
-            color: _textDark,
+            color: AppColors.textDark,
             size: 20,
           ),
           onPressed: () => Navigator.pop(context),

@@ -3,10 +3,11 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../providers/user_provider.dart';
+import '../theme/app_theme.dart';
 import './address/address_list_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
-  const ProfileScreen({Key? key}) : super(key: key);
+  const ProfileScreen({super.key});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
@@ -14,12 +15,8 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   // =========================
-  // 1. MÀU CHỦ ĐẠO CỦA GIAO DIỆN
+  // 1. STATE CỦA MÀN HÌNH
   // =========================
-  static const Color _primaryPink = Color(0xFFE84D7A);
-  static const Color _unselectedPink = Color(0xFFC8A6B0);
-  static const Color _textDark = Color(0xFF333333);
-  static const Color _softPink = Color(0xFFFFF4F7);
 
   // Tránh gọi API fetchMe nhiều lần.
   bool _hasFetched = false;
@@ -39,7 +36,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : _primaryPink,
+        backgroundColor: isError ? AppColors.error : AppColors.primaryPink,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -93,13 +90,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final String email = currentUser.email ?? 'email@example.com';
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(18, 18, 18, 18),
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: _softPink,
-        borderRadius: BorderRadius.circular(20),
+        color: AppColors.softPink,
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
         border: Border.all(
-          color: _primaryPink.withOpacity(0.18),
+          color: AppColors.primaryPink.withOpacity(0.18),
         ),
       ),
       child: Row(
@@ -107,7 +104,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Avatar chữ cái đầu của tên user.
           CircleAvatar(
             radius: 28,
-            backgroundColor: _primaryPink,
+            backgroundColor: AppColors.primaryPink,
             child: Text(
               name.isNotEmpty ? name[0].toUpperCase() : 'U',
               style: const TextStyle(
@@ -118,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
 
-          const SizedBox(width: 16),
+          const SizedBox(width: AppSpacing.lg),
 
           // Tên và email của user.
           Expanded(
@@ -129,20 +126,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   name,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _textDark,
-                    fontSize: 16,
+                  style: AppTextStyles.titleSmall.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   email,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: _unselectedPink,
-                    fontSize: 14,
+                  style: AppTextStyles.bodyGrey.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -168,21 +161,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final bool active = !isLogout && _pressedMenu == menuKey;
 
     final Color iconColor = isLogout
-        ? Colors.red
+        ? AppColors.error
         : active
-        ? _primaryPink
-        : _unselectedPink;
+        ? AppColors.primaryPink
+        : AppColors.textLight;
 
     final Color textColor = isLogout
-        ? Colors.red
+        ? AppColors.error
         : active
-        ? _primaryPink
-        : _textDark;
+        ? AppColors.primaryPink
+        : AppColors.textDark;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xs,
+      ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(AppRadius.large),
 
         // Khi bắt đầu nhấn thì hiện nền hồng.
         onTapDown: (_) {
@@ -228,9 +224,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Bình thường là trắng.
             // Chỉ trong lúc đang nhấn mới có nền hồng nhạt.
             color: active
-                ? const Color(0xFFE84D7A).withOpacity(0.18)
+                ? AppColors.primaryPink.withOpacity(0.18)
                 : Colors.white,
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.large),
           ),
           child: Row(
             children: [
@@ -239,12 +235,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 width: 4,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: active ? const Color(0xFFE84D7A) : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  color: active ? AppColors.primaryPink : Colors.white,
+                  borderRadius: BorderRadius.circular(AppRadius.extraLarge),
                 ),
               ),
 
-              const SizedBox(width: 14),
+              const SizedBox(width: AppSpacing.md),
 
               // Icon menu.
               Icon(
@@ -253,7 +249,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 color: iconColor,
               ),
 
-              const SizedBox(width: 16),
+              const SizedBox(width: AppSpacing.lg),
 
               // Tên menu.
               Expanded(
@@ -273,7 +269,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-
   // =========================
   // 7. KHUNG MENU CHÍNH
   // =========================
@@ -282,18 +277,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
       AuthProvider auth,
       dynamic currentUser,
       ) {
+    final String role = (currentUser.role ?? '').toString().toUpperCase();
+    final bool isAdmin = role == 'ADMIN';
+
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
         border: Border.all(
-          color: _primaryPink.withOpacity(0.08),
+          color: AppColors.primaryPink.withOpacity(0.08),
         ),
         boxShadow: [
           BoxShadow(
-            color: _primaryPink.withOpacity(0.06),
+            color: AppColors.primaryPink.withOpacity(0.06),
             blurRadius: 24,
             offset: const Offset(0, 10),
           ),
@@ -305,7 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           // Phần tiêu đề "Tài khoản của tôi" đã được xóa theo yêu cầu.
           _userInfoCard(currentUser),
 
-          // trang chủ - giữ chức năng cũ là về Home.
+          // Trang chủ - giữ chức năng cũ là về Home.
           _menuTile(
             menuKey: 'overview',
             icon: Icons.grid_view_rounded,
@@ -351,6 +349,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             title: 'Quản lý shop',
             onTap: () => Navigator.pushNamed(context, '/shop-management'),
           ),
+
+          // Trang quản trị chỉ hiện với tài khoản ADMIN.
+          if (isAdmin)
+            _menuTile(
+              menuKey: 'admin-home',
+              icon: Icons.admin_panel_settings_outlined,
+              title: 'Trang quản trị',
+              onTap: () => Navigator.pushNamed(context, '/admin-home'),
+            ),
 
           // Ngân hàng.
           _menuTile(
@@ -400,7 +407,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               }
             },
           ),
-
         ],
       ),
     );
@@ -412,8 +418,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Màu nền chính vẫn là trắng.
-      backgroundColor: Colors.white,
+      // Màu nền dùng theo theme chung của app.
+      backgroundColor: AppColors.background,
 
       body: SafeArea(
         child: Consumer2<AuthProvider, UserProvider>(
@@ -430,7 +436,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
               return const Center(
                 child: CircularProgressIndicator(
-                  color: _primaryPink,
+                  color: AppColors.primaryPink,
                 ),
               );
             }
@@ -439,18 +445,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
             if (userProvider.isLoading && currentUser == null) {
               return const Center(
                 child: CircularProgressIndicator(
-                  color: _primaryPink,
+                  color: AppColors.primaryPink,
                 ),
               );
             }
 
             // Trường hợp không có dữ liệu user.
             if (currentUser == null) {
-              return const Center(
+              return Center(
                 child: Text(
                   'Không tải được thông tin người dùng',
-                  style: TextStyle(
-                    color: _textDark,
+                  style: AppTextStyles.body.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),

@@ -1,9 +1,10 @@
-// lib/screens/personal_info_screen.dart
+// lib/screens/users/personal_info_screen.dart
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/user_provider.dart';
+import '../../theme/app_theme.dart';
 import 'edit_personal_info_screen.dart';
 
 // Import màn hình Shop - giữ nguyên chức năng cũ.
@@ -11,7 +12,7 @@ import '../shops/shop_register_screen.dart';
 import '../shops/shop_management_screen.dart';
 
 class PersonalInfoScreen extends StatefulWidget {
-  const PersonalInfoScreen({Key? key}) : super(key: key);
+  const PersonalInfoScreen({super.key});
 
   @override
   State<PersonalInfoScreen> createState() => _PersonalInfoScreenState();
@@ -19,15 +20,8 @@ class PersonalInfoScreen extends StatefulWidget {
 
 class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   // =========================
-  // 1. MÀU CHỦ ĐẠO CỦA GIAO DIỆN
+  // 1. STATE
   // =========================
-  static const Color _primaryPink = Color(0xFFE84D7A);
-  static const Color _softPink = Color(0xFFFFF4F7);
-  static const Color _lightPink = Color(0xFFFCE3EC);
-  static const Color _unselectedPink = Color(0xFFC8A6B0);
-  static const Color _textDark = Color(0xFF333333);
-  static const Color _textMuted = Color(0xFF8A7A80);
-
   // Biến này giúp tránh gọi API fetchMe liên tục khi màn hình build lại.
   bool _hasFetched = false;
 
@@ -42,7 +36,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : _primaryPink,
+        backgroundColor: isError ? AppColors.error : AppColors.primaryPink,
         duration: const Duration(seconds: 2),
       ),
     );
@@ -177,14 +171,14 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
           // BE hiện tại trả avatarUrl, nên FE hiển thị ảnh bằng NetworkImage.
           // Nếu avatarUrl rỗng hoặc không hợp lệ thì fallback về chữ cái đầu tên.
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.all(AppSpacing.sm),
             decoration: const BoxDecoration(
-              color: _lightPink,
+              color: AppColors.lightPink,
               shape: BoxShape.circle,
             ),
             child: CircleAvatar(
               radius: 48,
-              backgroundColor: _primaryPink,
+              backgroundColor: AppColors.primaryPink,
               backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
               onBackgroundImageError: avatarUrl != null ? (_, __) {} : null,
               child: avatarUrl == null
@@ -218,7 +212,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         children: [
           Icon(
             icon,
-            color: _textMuted,
+            color: AppColors.textGrey,
             size: 20,
           ),
           const SizedBox(width: 12),
@@ -229,7 +223,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             child: Text(
               label,
               style: const TextStyle(
-                color: _textMuted,
+                color: AppColors.textGrey,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -243,7 +237,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: value.isEmpty ? _unselectedPink : _textDark,
+                color: value.isEmpty ? AppColors.textLight : AppColors.textDark,
                 fontSize: 13,
                 fontWeight: FontWeight.w700,
               ),
@@ -271,7 +265,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               child: Text(
                 'Thông tin cá nhân',
                 style: TextStyle(
-                  color: _textDark,
+                  color: AppColors.textDark,
                   fontSize: 17,
                   fontWeight: FontWeight.w900,
                 ),
@@ -342,11 +336,11 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             ),
 
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFE84D7A),
+              backgroundColor: AppColors.primaryPink,
               foregroundColor: Colors.white,
               elevation: 0,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(AppRadius.large),
               ),
             ),
           ),
@@ -373,8 +367,8 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
               width: 160,
               height: 140,
               decoration: BoxDecoration(
-                color: _softPink,
-                borderRadius: BorderRadius.circular(32),
+                color: AppColors.softPink,
+                borderRadius: BorderRadius.circular(AppRadius.extraLarge),
               ),
               child: const Center(
                 child: Text(
@@ -398,14 +392,14 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(22),
+      padding: const EdgeInsets.all(AppSpacing.xxl),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: _primaryPink.withOpacity(0.08)),
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
+        border: Border.all(color: AppColors.primaryPink.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: _primaryPink.withOpacity(0.06),
+            color: AppColors.primaryPink.withOpacity(0.06),
             blurRadius: 28,
             offset: const Offset(0, 10),
           ),
@@ -461,12 +455,12 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _primaryPink.withOpacity(0.08)),
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
+        border: Border.all(color: AppColors.primaryPink.withOpacity(0.08)),
         boxShadow: [
           BoxShadow(
-            color: _primaryPink.withOpacity(0.05),
+            color: AppColors.primaryPink.withOpacity(0.05),
             blurRadius: 22,
             offset: const Offset(0, 8),
           ),
@@ -475,7 +469,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(AppRadius.extraLarge),
           onTap: () {
             if (hasShop) {
               // Nếu user đã là seller/admin thì đi đến màn quản lý shop.
@@ -499,18 +493,18 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
             }
           },
           child: Padding(
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(AppSpacing.md),
                   decoration: BoxDecoration(
-                    color: _primaryPink.withOpacity(0.12),
+                    color: AppColors.primaryPink.withOpacity(0.12),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     hasShop ? Icons.store_mall_directory : Icons.add_business,
-                    color: _primaryPink,
+                    color: AppColors.primaryPink,
                     size: 24,
                   ),
                 ),
@@ -524,7 +518,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w900,
-                          color: _textDark,
+                          color: AppColors.textDark,
                         ),
                       ),
                       const SizedBox(height: 4),
@@ -534,7 +528,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                             : 'Bắt đầu kinh doanh ngay hôm nay',
                         style: const TextStyle(
                           fontSize: 13,
-                          color: _textMuted,
+                          color: AppColors.textGrey,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -544,7 +538,7 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
                 const Icon(
                   Icons.arrow_forward_ios,
                   size: 16,
-                  color: _unselectedPink,
+                  color: AppColors.textLight,
                 ),
               ],
             ),
@@ -581,24 +575,24 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
         }
 
         return Scaffold(
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.background,
           appBar: AppBar(
             title: const Text(
               'Thông tin cá nhân',
               style: TextStyle(
-                color: _textDark,
+                color: AppColors.textDark,
                 fontWeight: FontWeight.w900,
                 fontSize: 18,
               ),
             ),
             centerTitle: true,
-            backgroundColor: Colors.white,
-            surfaceTintColor: Colors.white,
+            backgroundColor: AppColors.background,
+            surfaceTintColor: AppColors.background,
             elevation: 0,
             leading: IconButton(
               icon: const Icon(
                 Icons.arrow_back_ios_new,
-                color: _textDark,
+                color: AppColors.textDark,
                 size: 20,
               ),
               onPressed: () {
@@ -612,10 +606,10 @@ class _PersonalInfoScreenState extends State<PersonalInfoScreen> {
           ),
           body: currentUser == null
               ? const Center(
-            child: CircularProgressIndicator(color: _primaryPink),
+            child: CircularProgressIndicator(color: AppColors.primaryPink),
           )
               : RefreshIndicator(
-            color: _primaryPink,
+            color: AppColors.primaryPink,
             onRefresh: () async {
               await _loadProfile(auth, userProvider, forceRefresh: true);
             },

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 
 const Color _kMochiPink = Color(0xFFE94D86);
-const Color _kMochiPinkLight = Color(0xFFFFEEF5);
-const Color _kMochiPinkSoft = Color(0xFFFFF7FA);
-const Color _kMochiBorder = Color(0xFFF7DCE7);
-const Color _kMochiText = Color(0xFF3F2D33);
-const Color _kMochiMuted = Color(0xFF9C7A86);
+const Color _kMochiPinkLight = AppColors.lightPink;
+const Color _kMochiPinkSoft = AppColors.background;
+const Color _kMochiBorder = AppColors.borderPink;
+const Color _kMochiText = AppColors.textDark;
+const Color _kMochiMuted = AppColors.textGrey;
 const String _kMochiLogoAsset = 'assets/images/mochi/bunny_bear_original.png';
 const String _kScreenIllustrationAsset = 'assets/images/mochi/forgot_password_search.png';
 
