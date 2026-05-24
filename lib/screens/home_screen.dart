@@ -56,8 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
   // ID danh mục đang lọc sản phẩm.
   // Có thể là danh mục cha hoặc danh mục con.
   int? _selectedCategoryId;
-  // Từ khóa tìm kiếm sản phẩm.
-  String _keyword = '';
+
 
   // ================================================================
   // KHỞI TẠO DỮ LIỆU KHI VÀO TRANG
@@ -184,13 +183,6 @@ class _HomeScreenState extends State<HomeScreen> {
         if (catId == null) return false;
         if (!allowedCategoryIds.contains(catId)) return false;
       }
-
-      // filter keyword
-      if (_keyword.trim().isNotEmpty) {
-        final kw = _keyword.trim().toLowerCase();
-        if (!p.title.toLowerCase().contains(kw)) return false;
-      }
-
       return true;
     }).toList();
   }
@@ -247,13 +239,16 @@ class _HomeScreenState extends State<HomeScreen> {
   // ================================================================
   void _openCategoryProducts({CategoryModel? category, String? keyword}) {
     final cleanKeyword = keyword?.trim();
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => CategoryScreen(
           initialCategoryId: category?.id,
           initialCategoryName: category?.name,
-          initialKeyword: cleanKeyword == null || cleanKeyword.isEmpty ? null : cleanKeyword,
+          initialKeyword: cleanKeyword == null || cleanKeyword.isEmpty
+              ? null
+              : cleanKeyword,
         ),
       ),
     );
@@ -1069,18 +1064,17 @@ class _HomeScreenState extends State<HomeScreen> {
                   ],
                 ),
                 child: TextField(
-                  controller: _searchCtrl,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (v) => setState(() => _keyword = v.trim()),
-                  onSubmitted: (v) {
-                    final keyword = v.trim();
-                    setState(() => _keyword = keyword);
-                    if (keyword.isNotEmpty) {
+                    controller: _searchCtrl,
+                    textInputAction: TextInputAction.search,
+                    onChanged: (_) => setState(() {}),
+                    // Khi người dùng bấm Enter/Search thì chuyển sang CategoryScreen.
+                    onSubmitted: (v) {
+                      final keyword = v.trim();
+                      if (keyword.isEmpty) return;
                       _openCategoryProducts(keyword: keyword);
-                    }
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Bạn tìm gì hôm nay?',
+                    },
+                    decoration: InputDecoration(
+                        hintText: 'Bạn tìm gì hôm nay?',
                     hintStyle: const TextStyle(color: Color(0xFFC5A6B0), fontWeight: FontWeight.w600),
                     prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFE84D7A)),
                     border: InputBorder.none,
@@ -1093,13 +1087,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           icon: const Icon(Icons.tune_rounded, color: Color(0xFFE84D7A)),
                           onPressed: () => _openCategoryPicker(cp),
                         ),
-                        if (_searchCtrl.text.isNotEmpty || _keyword.isNotEmpty)
+                        if (_searchCtrl.text.isNotEmpty)
                           IconButton(
                             tooltip: 'Xoá tìm kiếm',
                             icon: const Icon(Icons.clear_rounded, color: Color(0xFF9B7380)),
                             onPressed: () {
                               _searchCtrl.clear();
-                              setState(() => _keyword = '');
+                              setState(() {});
                             },
                           ),
                       ],
