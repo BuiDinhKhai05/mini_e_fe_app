@@ -366,15 +366,20 @@ class AuthProvider with ChangeNotifier {
 
     final role = _user!.role?.toUpperCase() ?? '';
 
+    // ADMIN vẫn được dùng app như USER bình thường:
+    // - đăng nhập xong vào AdminHome trước
+    // - khi bấm icon Home ở AdminHome thì vẫn có dữ liệu app/public products/cart
+    // Nếu backend chưa cho ADMIN dùng cart, không chặn admin vào trang quản trị.
     if (role == 'ADMIN') {
-      productProvider.clearProductsCache(notify: false);
-      shopProvider.clearShopData(notify: false);
-      cartProvider.clearCartLocal(notify: false);
-      notifyListeners();
-      return;
+      try {
+        await cartProvider.fetchCart(notifyOnStart: false);
+      } catch (e) {
+        debugPrint('DEBUG: ADMIN fetchCart skipped → $e');
+        cartProvider.clearCartLocal(notify: false);
+      }
+    } else {
+      await cartProvider.fetchCart(notifyOnStart: false);
     }
-
-    await cartProvider.fetchCart(notifyOnStart: false);
 
     if (role == 'SELLER') {
       await shopProvider.loadMyShop();
@@ -420,9 +425,14 @@ class AuthProvider with ChangeNotifier {
     );
   }
 
+  String _homeRouteForCurrentRole() {
+    final role = _user?.role?.toUpperCase() ?? '';
+    return role == 'ADMIN' ? '/admin-home' : '/home';
+  }
+
   void _navigateToHomeAndWelcome({int delay = 0}) {
     Future.delayed(Duration(milliseconds: delay), () {
-      _navigateTo('/home');
+      _navigateTo(_homeRouteForCurrentRole());
       _showSnackBar(
         'Xin chào ${_user?.name ?? 'Người dùng'}!',
         Colors.green,

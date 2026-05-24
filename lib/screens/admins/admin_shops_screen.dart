@@ -1,11 +1,15 @@
 // lib/screens/admin/admin_shops_screen.dart
 import 'package:flutter/material.dart';
+import 'package:mini_e_fe_app/theme/app_theme.dart';
+
 import '../../models/shop_model.dart';
 import '../../service/shop_service.dart';
 
 class AdminShopsScreen extends StatefulWidget {
+  const AdminShopsScreen({super.key});
+
   @override
-  _AdminShopsScreenState createState() => _AdminShopsScreenState();
+  State<AdminShopsScreen> createState() => _AdminShopsScreenState();
 }
 
 class _AdminShopsScreenState extends State<AdminShopsScreen> {
@@ -30,12 +34,18 @@ class _AdminShopsScreenState extends State<AdminShopsScreen> {
     try {
       await ShopService().update(shopId, {'status': newStatus});
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Đã cập nhật trạng thái shop!')),
+        const SnackBar(
+          content: Text('Đã cập nhật trạng thái shop!'),
+          backgroundColor: AppColors.success,
+        ),
       );
       setState(() => _loadShops());
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e')),
+        SnackBar(
+          content: Text('Lỗi: $e'),
+          backgroundColor: AppColors.error,
+        ),
       );
     }
   }
@@ -43,20 +53,24 @@ class _AdminShopsScreenState extends State<AdminShopsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: const Text('Quản lý Shop'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: AppColors.primaryPink,
         foregroundColor: Colors.white,
       ),
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(AppSpacing.md),
             child: DropdownButtonFormField<String>(
               value: _filterStatus,
               decoration: InputDecoration(
                 labelText: 'Lọc theo trạng thái',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                prefixIcon: const Icon(Icons.filter_alt_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.medium),
+                ),
               ),
               items: [
                 'ALL',
@@ -65,10 +79,12 @@ class _AdminShopsScreenState extends State<AdminShopsScreen> {
                 'REJECTED',
                 'BANNED',
               ]
-                  .map((s) => DropdownMenuItem(
-                value: s,
-                child: Text(s == 'ALL' ? 'Tất cả' : s),
-              ))
+                  .map(
+                    (s) => DropdownMenuItem(
+                  value: s,
+                  child: Text(s == 'ALL' ? 'Tất cả' : s),
+                ),
+              )
                   .toList(),
               onChanged: (val) {
                 setState(() {
@@ -78,75 +94,151 @@ class _AdminShopsScreenState extends State<AdminShopsScreen> {
               },
             ),
           ),
-
           Expanded(
             child: FutureBuilder<List<ShopModel>>(
               future: _shopsFuture,
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryPink,
+                    ),
+                  );
                 }
+
                 if (snapshot.hasError) {
-                  return Center(child: Text('Lỗi: ${snapshot.error}'));
+                  return Center(
+                    child: Text(
+                      'Lỗi: ${snapshot.error}',
+                      style: AppTextStyles.bodyGrey,
+                      textAlign: TextAlign.center,
+                    ),
+                  );
                 }
 
                 final shops = snapshot.data ?? [];
+
                 if (shops.isEmpty) {
                   return Center(
                     child: Text(
                       _filterStatus == 'ALL'
                           ? 'Chưa có shop nào'
                           : 'Không có shop nào ở trạng thái này',
+                      style: AppTextStyles.bodyGrey,
+                      textAlign: TextAlign.center,
                     ),
                   );
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.md,
+                    0,
+                    AppSpacing.md,
+                    AppSpacing.md,
+                  ),
                   itemCount: shops.length,
                   itemBuilder: (_, i) {
                     final shop = shops[i];
                     final isPending = shop.status == 'PENDING';
 
-                    return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 6),
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                      decoration: AppDecorations.card,
                       child: ListTile(
+                        contentPadding: const EdgeInsets.all(AppSpacing.md),
                         leading: CircleAvatar(
-                          backgroundColor: Colors.deepPurple,
-                          child: Text(shop.name.isNotEmpty ? shop.name[0] : '?'),
+                          backgroundColor: AppColors.lightPink,
+                          child: Text(
+                            shop.name.isNotEmpty
+                                ? shop.name[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                              color: AppColors.primaryPink,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
-                        title: Text(shop.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('Email: ${shop.email ?? 'Chưa có'}'),
-                            Text('Trạng thái: ${shop.status}',
-                                style: TextStyle(color: _statusColor(shop.status))),
-                          ],
+                        title: Text(shop.name, style: AppTextStyles.titleSmall),
+                        subtitle: Padding(
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Email: ${shop.email ?? 'Chưa có'}',
+                                style: AppTextStyles.bodyGrey,
+                              ),
+                              const SizedBox(height: AppSpacing.xs),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.sm,
+                                  vertical: AppSpacing.xs,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: _statusColor(shop.status).withOpacity(0.12),
+                                  borderRadius: BorderRadius.circular(
+                                    AppRadius.circle,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Trạng thái: ${shop.status}',
+                                  style: TextStyle(
+                                    color: _statusColor(shop.status),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         trailing: isPending
-                            ? Row(
-                          mainAxisSize: MainAxisSize.min,
+                            ? Wrap(
+                          spacing: AppSpacing.sm,
                           children: [
                             ElevatedButton(
-                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
-                              onPressed: () => _updateStatus(shop.id, 'ACTIVE'),
-                              child: const Text('Duyệt', style: TextStyle(color: Colors.white)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.success,
+                                foregroundColor: Colors.white,
+                              ),
+                              onPressed: () =>
+                                  _updateStatus(shop.id, 'ACTIVE'),
+                              child: const Text('Duyệt'),
                             ),
-                            const SizedBox(width: 8),
                             OutlinedButton(
-                              onPressed: () => _updateStatus(shop.id, 'REJECTED'),
-                              child: const Text('Từ chối', style: TextStyle(color: Colors.red)),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.error,
+                                side: const BorderSide(
+                                  color: AppColors.error,
+                                ),
+                              ),
+                              onPressed: () =>
+                                  _updateStatus(shop.id, 'REJECTED'),
+                              child: const Text('Từ chối'),
                             ),
                           ],
                         )
                             : PopupMenuButton<String>(
-                          icon: const Icon(Icons.more_vert),
-                          onSelected: (val) => _updateStatus(shop.id, val),
-                          itemBuilder: (_) => [
-                            const PopupMenuItem(value: 'ACTIVE', child: Text('Mở hoạt động')),
-                            const PopupMenuItem(value: 'BANNED', child: Text('Khóa shop')),
-                            const PopupMenuItem(value: 'PENDING', child: Text('Đưa về chờ duyệt')),
+                          icon: const Icon(
+                            Icons.more_vert,
+                            color: AppColors.textGrey,
+                          ),
+                          onSelected: (val) =>
+                              _updateStatus(shop.id, val),
+                          itemBuilder: (_) => const [
+                            PopupMenuItem(
+                              value: 'ACTIVE',
+                              child: Text('Mở hoạt động'),
+                            ),
+                            PopupMenuItem(
+                              value: 'BANNED',
+                              child: Text('Khóa shop'),
+                            ),
+                            PopupMenuItem(
+                              value: 'PENDING',
+                              child: Text('Đưa về chờ duyệt'),
+                            ),
                           ],
                         ),
                       ),
@@ -164,15 +256,15 @@ class _AdminShopsScreenState extends State<AdminShopsScreen> {
   Color _statusColor(String status) {
     switch (status) {
       case 'ACTIVE':
-        return Colors.green;
+        return AppColors.success;
       case 'PENDING':
-        return Colors.orange;
+        return AppColors.warning;
       case 'REJECTED':
-        return Colors.red;
+        return AppColors.error;
       case 'BANNED':
-        return Colors.black54;
+        return AppColors.textGrey;
       default:
-        return Colors.grey;
+        return AppColors.textLight;
     }
   }
 }
