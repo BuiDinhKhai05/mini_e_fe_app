@@ -1,8 +1,11 @@
 // lib/screens/shops/shop_list_screen.dart
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/shop_provider.dart';
+
 import '../../models/shop_model.dart';
+import '../../providers/shop_provider.dart';
 import 'shop_detail_screen.dart';
 
 class ShopListScreen extends StatefulWidget {
@@ -14,6 +17,8 @@ class ShopListScreen extends StatefulWidget {
 
 class _ShopListScreenState extends State<ShopListScreen> {
   final _searchController = TextEditingController();
+  Timer? _searchDebounce;
+
   String? _selectedStatus;
 
   // =========================
@@ -29,21 +34,56 @@ class _ShopListScreenState extends State<ShopListScreen> {
   @override
   void initState() {
     super.initState();
+
+    // Load danh sách shop lần đầu khi mở màn hình.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ShopProvider>().fetchShops();
+      context.read<ShopProvider>().fetchShops(limit: 20);
     });
   }
 
   // =========================
-  // LOGIC CŨ: tìm kiếm shop theo keyword và trạng thái
+  // TÌM KIẾM SHOP
   // =========================
-  void _search() {
-    context.read<ShopProvider>().fetchShops(
-      q: _searchController.text.trim().isEmpty
-          ? null
-          : _searchController.text.trim(),
+  String get _keyword => _searchController.text.trim();
+
+  void _search({bool hideKeyboard = false}) {
+    if (hideKeyboard) {
+      FocusScope.of(context).unfocus();
+    }
+
+    context.read<ShopProvider>().searchShops(
+      keyword: _keyword,
       status: _selectedStatus,
+      limit: 20,
     );
+  }
+
+  // Debounce giúp không gọi API liên tục theo từng ký tự.
+  // Sau khi người dùng ngừng gõ 450ms thì mới gọi API tìm kiếm.
+  void _onKeywordChanged(String value) {
+    setState(() {});
+
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 450), () {
+      if (!mounted) return;
+      _search();
+    });
+  }
+
+  void _clearKeyword() {
+    if (_keyword.isEmpty) return;
+
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    setState(() {});
+    _search();
+  }
+
+  void _clearAllFilters() {
+    _searchDebounce?.cancel();
+    _searchController.clear();
+    setState(() => _selectedStatus = null);
+    context.read<ShopProvider>().clearShopSearch();
   }
 
   @override
@@ -65,15 +105,15 @@ class _ShopListScreenState extends State<ShopListScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Header theo format hình mẫu
+            // Header theo format hình mẫu.
             _buildHeaderCard(),
             const SizedBox(height: 14),
 
-            // Thanh tìm kiếm + bộ lọc trạng thái
-            _buildSearchAndFilter(),
+            // Thanh tìm kiếm + bộ lọc trạng thái.
+            _buildSearchAndFilter(provider),
             const SizedBox(height: 16),
 
-            // Nội dung danh sách shop
+            // Nội dung danh sách shop.
             Expanded(
               child: provider.isLoading
                   ? const Center(
@@ -85,12 +125,13 @@ class _ShopListScreenState extends State<ShopListScreen> {
                   ? _buildEmptyState()
                   : RefreshIndicator(
                 color: _primaryPink,
-                onRefresh: () async => _search(),
+                onRefresh: provider.refreshShops,
                 child: ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.only(bottom: 20),
                   itemCount: provider.shops.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 14),
+                  separatorBuilder: (_, __) =>
+                  const SizedBox(height: 14),
                   itemBuilder: (ctx, index) => _buildShopCard(
                     context,
                     provider.shops[index],
@@ -113,7 +154,11 @@ class _ShopListScreenState extends State<ShopListScreen> {
       decoration: _cardDecoration(radius: 24),
       child: Row(
         children: [
-          _buildCircleIcon(Icons.store_mall_directory_rounded, size: 54, iconSize: 28),
+          _buildCircleIcon(
+            Icons.store_mall_directory_rounded,
+            size: 54,
+            iconSize: 28,
+          ),
           const SizedBox(width: 14),
           const Expanded(
             child: Column(
@@ -147,50 +192,124 @@ class _ShopListScreenState extends State<ShopListScreen> {
   // =========================
   // Ô tìm kiếm + dropdown filter
   // =========================
-  Widget _buildSearchAndFilter() {
+  Widget _buildSearchAndFilter(ShopProvider provider) {
+    final hasKeyword = _keyword.isNotEmpty;
+    final hasFilter = hasKeyword || _selectedStatus != null;
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: _cardDecoration(radius: 20),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: TextField(
-              controller: _searchController,
-              textInputAction: TextInputAction.search,
-              onSubmitted: (_) => _search(),
-              decoration: _inputDecoration(
-                hintText: 'Tìm kiếm shop...',
-                icon: Icons.search_rounded,
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  textInputAction: TextInputAction.search,
+                  onChanged: _onKeywordChanged,
+                  onSubmitted: (_) => _search(hideKeyboard: true),
+                  decoration: _inputDecoration(
+                    hintText: 'Tìm cửa hàng theo tên...',
+                    icon: Icons.search_rounded,
+                    suffixIcon: hasKeyword
+                        ? IconButton(
+                      onPressed: _clearKeyword,
+                      icon: const Icon(
+                        Icons.close_rounded,
+                        color: _textGrey,
+                      ),
+                    )
+                        : null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                height: 48,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: _softPink,
+                  border: Border.all(color: _borderPink),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String?>(
+                    value: _selectedStatus,
+                    hint: const Icon(
+                      Icons.tune_rounded,
+                      color: _primaryPink,
+                    ),
+                    icon: const Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: _primaryPink,
+                    ),
+                    items: const [
+                      DropdownMenuItem<String?>(value: null, child: Text('Tất cả')),
+                      DropdownMenuItem<String?>(value: 'ACTIVE', child: Text('Hoạt động')),
+                      DropdownMenuItem<String?>(value: 'PENDING', child: Text('Chờ duyệt')),
+                      DropdownMenuItem<String?>(value: 'SUSPENDED', child: Text('Bị khóa')),
+                    ],
+                    onChanged: (val) {
+                      setState(() => _selectedStatus = val);
+                      _search();
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          // Hiển thị trạng thái tìm kiếm hiện tại để người dùng biết đang lọc theo gì.
+          if (hasFilter) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                if (hasKeyword)
+                  _buildFilterChip(
+                    icon: Icons.search_rounded,
+                    label: 'Từ khóa: $_keyword',
+                    onDeleted: _clearKeyword,
+                  ),
+                if (_selectedStatus != null)
+                  _buildFilterChip(
+                    icon: Icons.tune_rounded,
+                    label: 'Trạng thái: ${_statusLabel(_selectedStatus!)}',
+                    onDeleted: () {
+                      setState(() => _selectedStatus = null);
+                      _search();
+                    },
+                  ),
+                TextButton.icon(
+                  onPressed: _clearAllFilters,
+                  icon: const Icon(Icons.refresh_rounded, size: 16),
+                  label: const Text('Xóa lọc'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: _primaryPink,
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                ),
+              ],
+            ),
+          ],
+
+          if (!provider.isLoading && provider.error == null) ...[
+            const SizedBox(height: 8),
+            Text(
+              hasFilter
+                  ? 'Tìm thấy ${provider.shops.length} cửa hàng phù hợp'
+                  : 'Đang hiển thị ${provider.shops.length} cửa hàng',
+              style: const TextStyle(
+                color: _textGrey,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            height: 48,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: _softPink,
-              border: Border.all(color: _borderPink),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedStatus,
-                hint: const Icon(Icons.tune_rounded, color: _primaryPink),
-                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _primaryPink),
-                items: const [
-                  DropdownMenuItem(value: null, child: Text('Tất cả')),
-                  DropdownMenuItem(value: 'ACTIVE', child: Text('Hoạt động')),
-                  DropdownMenuItem(value: 'PENDING', child: Text('Chờ duyệt')),
-                  DropdownMenuItem(value: 'SUSPENDED', child: Text('Bị khóa')),
-                ],
-                onChanged: (val) {
-                  setState(() => _selectedStatus = val);
-                  _search();
-                },
-              ),
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -213,11 +332,12 @@ class _ShopListScreenState extends State<ShopListScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Ảnh bìa shop
+            // Ảnh bìa shop.
             Stack(
               children: [
                 ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                  borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(22)),
                   child: SizedBox(
                     height: 122,
                     width: double.infinity,
@@ -225,7 +345,8 @@ class _ShopListScreenState extends State<ShopListScreen> {
                         ? Image.network(
                       shop.coverUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildCoverPlaceholder(),
+                      errorBuilder: (_, __, ___) =>
+                          _buildCoverPlaceholder(),
                     )
                         : _buildCoverPlaceholder(),
                   ),
@@ -238,7 +359,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
               ],
             ),
 
-            // Thông tin shop
+            // Thông tin shop.
             Padding(
               padding: const EdgeInsets.all(14),
               child: Row(
@@ -267,7 +388,8 @@ class _ShopListScreenState extends State<ShopListScreen> {
                           children: [
                             _buildInfoChip(
                               icon: Icons.star_rounded,
-                              label: '${shop.stats.ratingAvg.toStringAsFixed(1)} | ${shop.stats.reviewCount} đánh giá',
+                              label:
+                              '${shop.stats.ratingAvg.toStringAsFixed(1)} | ${shop.stats.reviewCount} đánh giá',
                               iconColor: Colors.orange,
                             ),
                             if (shop.phone != null)
@@ -414,8 +536,51 @@ class _ShopListScreenState extends State<ShopListScreen> {
     );
   }
 
+  Widget _buildFilterChip({
+    required IconData icon,
+    required String label,
+    required VoidCallback onDeleted,
+  }) {
+    return Container(
+      padding: const EdgeInsets.only(left: 10, right: 4, top: 5, bottom: 5),
+      decoration: BoxDecoration(
+        color: _lighterPink,
+        borderRadius: BorderRadius.circular(99),
+        border: Border.all(color: _borderPink),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: _primaryPink),
+          const SizedBox(width: 5),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 210),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: _textGrey,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 2),
+          InkWell(
+            onTap: onDeleted,
+            borderRadius: BorderRadius.circular(99),
+            child: const Padding(
+              padding: EdgeInsets.all(4),
+              child: Icon(Icons.close_rounded, size: 14, color: _textGrey),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // =========================
-  // Error state khi BE trả lỗi. Lưu ý BE hiện tại chỉ cho ADMIN gọi GET /shops.
+  // Error state khi BE trả lỗi.
   // =========================
   Widget _buildErrorState(String error) {
     final bool isPermissionError = error.contains('403') ||
@@ -434,7 +599,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
             const SizedBox(height: 16),
             Text(
               isPermissionError
-                  ? 'Chỉ ADMIN được xem danh sách shop'
+                  ? 'Chưa có quyền xem danh sách shop'
                   : 'Không tải được danh sách shop',
               textAlign: TextAlign.center,
               style: const TextStyle(
@@ -446,7 +611,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
             const SizedBox(height: 6),
             Text(
               isPermissionError
-                  ? 'Backend hiện tại đặt GET /shops cho ADMIN. User thường chỉ có thể xem shop qua /shops/:id nếu shop ACTIVE.'
+                  ? 'Nếu đây là màn cho user xem cửa hàng, backend cần mở API public cho GET /shops hoặc tạo API public search shop.'
                   : error,
               textAlign: TextAlign.center,
               style: const TextStyle(color: _textGrey, height: 1.4),
@@ -475,6 +640,8 @@ class _ShopListScreenState extends State<ShopListScreen> {
   // Empty state khi không tìm thấy shop
   // =========================
   Widget _buildEmptyState() {
+    final hasKeyword = _keyword.isNotEmpty;
+
     return Center(
       child: Container(
         width: double.infinity,
@@ -483,22 +650,46 @@ class _ShopListScreenState extends State<ShopListScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            _buildCircleIcon(Icons.store_mall_directory_outlined, size: 76, iconSize: 38),
+            _buildCircleIcon(
+              Icons.store_mall_directory_outlined,
+              size: 76,
+              iconSize: 38,
+            ),
             const SizedBox(height: 16),
-            const Text(
-              'Chưa tìm thấy shop nào',
-              style: TextStyle(
+            Text(
+              hasKeyword
+                  ? 'Không tìm thấy shop phù hợp'
+                  : 'Chưa tìm thấy shop nào',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
                 color: _textDark,
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
-              'Thử đổi từ khóa tìm kiếm hoặc bộ lọc nhé.',
+            Text(
+              hasKeyword
+                  ? 'Không có cửa hàng nào khớp với từ khóa "$_keyword".'
+                  : 'Thử đổi từ khóa tìm kiếm hoặc bộ lọc nhé.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: _textGrey, height: 1.4),
+              style: const TextStyle(color: _textGrey, height: 1.4),
             ),
+            if (hasKeyword || _selectedStatus != null) ...[
+              const SizedBox(height: 16),
+              OutlinedButton.icon(
+                onPressed: _clearAllFilters,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Xóa tìm kiếm'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _primaryPink,
+                  side: const BorderSide(color: _borderPink),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -508,10 +699,15 @@ class _ShopListScreenState extends State<ShopListScreen> {
   // =========================
   // Input decoration dùng cho ô tìm kiếm
   // =========================
-  InputDecoration _inputDecoration({required String hintText, required IconData icon}) {
+  InputDecoration _inputDecoration({
+    required String hintText,
+    required IconData icon,
+    Widget? suffixIcon,
+  }) {
     return InputDecoration(
       hintText: hintText,
       prefixIcon: Icon(icon, color: _primaryPink),
+      suffixIcon: suffixIcon,
       filled: true,
       fillColor: _lighterPink,
       contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
@@ -530,10 +726,27 @@ class _ShopListScreenState extends State<ShopListScreen> {
     );
   }
 
+  String _statusLabel(String status) {
+    switch (status) {
+      case 'ACTIVE':
+        return 'Hoạt động';
+      case 'PENDING':
+        return 'Chờ duyệt';
+      case 'SUSPENDED':
+        return 'Bị khóa';
+      default:
+        return status;
+    }
+  }
+
   // =========================
   // Icon tròn dùng chung theo format mẫu
   // =========================
-  Widget _buildCircleIcon(IconData icon, {double size = 54, double iconSize = 26}) {
+  Widget _buildCircleIcon(
+      IconData icon, {
+        double size = 54,
+        double iconSize = 26,
+      }) {
     return Container(
       width: size,
       height: size,
@@ -565,6 +778,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _searchController.dispose();
     super.dispose();
   }

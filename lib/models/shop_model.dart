@@ -53,23 +53,20 @@ class ShopModel {
   factory ShopModel.fromJson(Map<String, dynamic> json) {
     return ShopModel(
       id: _toInt(json['id']),
-      userId: json['userId'] == null ? null : _toInt(json['userId']),
-      name: (json['name'] ?? '').toString(),
+      userId: _extractUserId(json),
+      name: (json['name'] ?? json['shopName'] ?? json['storeName'] ?? '').toString(),
       slug: (json['slug'] ?? '').toString(),
       description: _toNullableString(json['description']),
-      logoUrl: _toNullableString(json['logoUrl']),
-      coverUrl: _toNullableString(json['coverUrl']),
-
-      // Đồng bộ BE: entity/DTO dùng shopPhone.
-      // Giữ fallback phone để tương thích dữ liệu migration cũ.
+      logoUrl: _toNullableString(json['logoUrl'] ?? json['logo'] ?? json['avatarUrl']),
+      coverUrl: _toNullableString(json['coverUrl'] ?? json['coverImageUrl']),
       phone: _toNullableString(json['shopPhone'] ?? json['phone']),
       email: _toNullableString(json['email']),
-      shopAddress: _toNullableString(json['shopAddress']),
+      shopAddress: _toNullableString(json['shopAddress'] ?? json['address']),
       status: (json['status'] ?? 'PENDING').toString(),
       verifiedAt: _toDateTime(json['verifiedAt']),
       createdAt: _toDateTime(json['createdAt']) ?? DateTime.now(),
       updatedAt: _toDateTime(json['updatedAt']) ?? DateTime.now(),
-      stats: ShopStatsModel.fromJson(json['stats'] ?? json),
+      stats: ShopStatsModel.fromJson(json['stats'] is Map<String, dynamic> ? json['stats'] : json),
       products: json['products'] is List ? List<dynamic>.from(json['products']) : null,
       shopLat: _toDouble(json['shopLat']),
       shopLng: _toDouble(json['shopLng']),
@@ -88,6 +85,25 @@ class ShopModel {
       'shopPlaceId': shopPlaceId,
       'shopPhone': phone,
     };
+  }
+
+  static int? _extractUserId(Map<String, dynamic> json) {
+    final direct = json['userId'] ?? json['user_id'] ?? json['ownerId'] ?? json['owner_id'];
+    final directId = _toNullableInt(direct);
+    if (directId != null) return directId;
+
+    final user = json['user'] ?? json['owner'] ?? json['seller'];
+    if (user is Map) {
+      return _toNullableInt(user['id']);
+    }
+
+    return null;
+  }
+
+  static int? _toNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
   }
 
   static int _toInt(dynamic value) {

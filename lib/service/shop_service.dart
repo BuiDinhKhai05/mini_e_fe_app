@@ -1,6 +1,7 @@
 // lib/service/shop_service.dart
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/shop_model.dart';
 import '../utils/app_constants.dart';
@@ -134,14 +135,16 @@ class ShopService {
     return resp.data['data']['exists'] as bool;
   }
 
-  // ==================== LIST SHOPS ====================
-  // BE hiện tại: GET /shops chỉ cho ADMIN.
-  // User thường có thể gặp 403 nếu dùng màn danh sách shop.
+  // ==================== LIST / SEARCH SHOPS ====================
+  // BE: GET /shops?page=1&limit=20&q=...&status=...
+  //
+  // q dùng để tìm shop theo từ khóa. BE nên search theo name/description/address.
+  // Lưu ý: nếu BE vẫn đang chặn GET /shops cho ADMIN, user thường sẽ bị 403.
   Future<List<ShopModel>> getShops({
     String? q,
     String? status,
     int page = 1,
-    int limit = 10,
+    int limit = 20,
   }) async {
     final Map<String, dynamic> qp = {
       'page': page,
@@ -151,10 +154,34 @@ class ShopService {
     };
 
     final resp = await _api.get(ShopsApi.shops, queryParameters: qp);
+
+    // Debug tạm thời để kiểm tra BE thật sự trả về format nào.
+    // Sau khi ổn có thể xóa 3 dòng debugPrint này.
+    debugPrint('[SHOP_RESPONSE_STATUS] ${resp.statusCode}');
+    debugPrint('[SHOP_RESPONSE_DATA] ${resp.data}');
+
     _throwIfError(resp);
 
-    final List items = resp.data['data']['items'] ?? [];
+    final items = _extractShopItems(resp.data);
+    debugPrint('[SHOP_ITEMS_COUNT] ${items.length}');
+
     return items.map((e) => ShopModel.fromJson(e)).toList();
+  }
+
+  // Hàm tên rõ nghĩa cho chức năng tìm cửa hàng.
+  // Bên trong vẫn dùng API GET /shops với query q.
+  Future<List<ShopModel>> searchShops({
+    required String keyword,
+    String? status,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    return getShops(
+      q: keyword,
+      status: status,
+      page: page,
+      limit: limit,
+    );
   }
 
   // ==================== HELPER ====================
@@ -175,6 +202,72 @@ class ShopService {
 
     normalized.removeWhere((key, value) => value == null);
     return normalized;
+  }
+
+
+  // Hỗ trợ nhiều dạng response để FE không bị rỗng list nếu BE trả format khác:
+  // 1. [ ... ]
+  // 2. { data: [ ... ] }
+  // 3. { data: { items: [ ... ] } }
+  // 4. { data: { rows/results/records/shops: [ ... ] } }
+  // 5. { result: { items: [ ... ] } }
+  List<Map<String, dynamic>> _extractShopItems(dynamic body) {
+    dynamic current = body;
+
+    if (current is List) {
+      return current
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
+    if (current is! Map) {
+      return [];
+    }
+
+    final root = Map<String, dynamic>.from(current);
+    current = root['data'] ?? root['result'] ?? root['payload'] ?? root;
+
+    if (current is List) {
+      return current
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    }
+
+    if (current is! Map) {
+      return [];
+    }
+
+    final map = Map<String, dynamic>.from(current);
+
+    dynamic items = map['items'] ??
+        map['shops'] ??
+        map['rows'] ??
+        map['results'] ??
+        map['records'] ??
+        map['list'] ??
+        map['data'];
+
+    if (items is Map) {
+      final nested = Map<String, dynamic>.from(items);
+      items = nested['items'] ??
+          nested['shops'] ??
+          nested['rows'] ??
+          nested['results'] ??
+          nested['records'] ??
+          nested['list'] ??
+          nested['data'];
+    }
+
+    if (items is! List) {
+      return [];
+    }
+
+    return items
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   void _throwIfError(Response resp) {

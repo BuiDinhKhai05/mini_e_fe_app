@@ -21,6 +21,7 @@ import '../providers/cart_provider.dart';
 import '../providers/category_provider.dart';
 import '../models/product_model.dart';
 import '../models/category_model.dart';
+import 'categories/category_screen.dart';
 
 const String _kMochiLogoAsset = 'assets/images/mochi/bunny_bear_original.png';
 const String _kHomeHeroAsset = 'assets/images/mochi/basket_chick.png';
@@ -239,6 +240,26 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ================================================================
+  // MỞ MÀN HÌNH CATEGORY PRODUCTS
+  // Home chỉ điều hướng sang màn lọc riêng, không nhồi thêm logic lọc sâu ở đây.
+  // Nếu truyền category thì màn mới sẽ tự lọc theo category đó.
+  // Nếu truyền keyword thì màn mới sẽ tự tìm kiếm theo keyword đó.
+  // ================================================================
+  void _openCategoryProducts({CategoryModel? category, String? keyword}) {
+    final cleanKeyword = keyword?.trim();
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CategoryScreen(
+          initialCategoryId: category?.id,
+          initialCategoryName: category?.name,
+          initialKeyword: cleanKeyword == null || cleanKeyword.isEmpty ? null : cleanKeyword,
+        ),
+      ),
+    );
+  }
+
+  // ================================================================
   // CHỌN TẤT CẢ SẢN PHẨM
   // Reset bộ lọc danh mục về null.
   // ================================================================
@@ -333,7 +354,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       selected: _selectedCategoryId == null,
                       onTap: () {
                         Navigator.pop(context);
-                        _selectAll();
+                        _openCategoryProducts();
                       },
                     ),
                     ...options.map((c) {
@@ -344,7 +365,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         selected: selected,
                         onTap: () {
                           Navigator.pop(context);
-                          setState(() => _selectedCategoryId = c.id);
+                          final original = _findNodeById(cp.tree, c.id) ?? c;
+                          _openCategoryProducts(category: original);
                         },
                       );
                     }).toList(),
@@ -1049,7 +1071,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: TextField(
                   controller: _searchCtrl,
                   textInputAction: TextInputAction.search,
-                  onSubmitted: (v) => setState(() => _keyword = v.trim()),
+                  onChanged: (v) => setState(() => _keyword = v.trim()),
+                  onSubmitted: (v) {
+                    final keyword = v.trim();
+                    setState(() => _keyword = keyword);
+                    if (keyword.isNotEmpty) {
+                      _openCategoryProducts(keyword: keyword);
+                    }
+                  },
                   decoration: InputDecoration(
                     hintText: 'Bạn tìm gì hôm nay?',
                     hintStyle: const TextStyle(color: Color(0xFFC5A6B0), fontWeight: FontWeight.w600),
@@ -1337,7 +1366,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionHeader('Danh mục nổi bật 💗', onViewAll: () => _openCategoryPicker(cp)),
+        _sectionHeader('Danh mục nổi bật 💗', onViewAll: () => _openCategoryProducts()),
         SizedBox(
           height: 104,
           child: ListView.separated(
@@ -1352,7 +1381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.home_rounded,
                   selected: _selectedCategoryId == null,
                   color: const Color(0xFFFFE8EF),
-                  onTap: _selectAll,
+                  onTap: () => _openCategoryProducts(),
                 );
               }
               final c = roots[index - 1];
@@ -1361,7 +1390,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 icon: _categoryIconData(c.name),
                 selected: _selectedRootId == c.id,
                 color: _categoryColor(index),
-                onTap: () => _selectRoot(c),
+                onTap: () => _openCategoryProducts(category: c),
               );
             },
           ),
@@ -1376,7 +1405,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ...children.map((c) => _CategoryChip(
                   label: c.name,
                   selected: _selectedCategoryId == c.id,
-                  onTap: () => _selectChild(c),
+                  onTap: () => _openCategoryProducts(category: c),
                 )),
               ],
             ),
@@ -1743,7 +1772,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           )
                         else ...[
                             SliverToBoxAdapter(
-                              child: _sectionHeader('Sản phẩm bán chạy 🧸', onViewAll: () {}),
+                              child: _sectionHeader('Sản phẩm bán chạy 🧸', onViewAll: () => _openCategoryProducts()),
                             ),
                             // Grid sản phẩm 2 cột phù hợp với màn hình mobile.
                             SliverPadding(
@@ -1800,8 +1829,7 @@ class _HomeScreenState extends State<HomeScreen> {
               if (index == 3) Navigator.pushNamed(context, '/personal-info');
               if (index == 2) Navigator.pushNamed(context, '/cart');
               if (index == 1) {
-                final cp = Provider.of<CategoryProvider>(context, listen: false);
-                _openCategoryPicker(cp);
+                _openCategoryProducts();
               }
             },
             items: const [

@@ -1,5 +1,4 @@
 // lib/providers/shop_provider.dart
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 
 import '../models/shop_model.dart';
@@ -13,12 +12,25 @@ class ShopProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
+  // Lưu lại bộ lọc hiện tại của màn danh sách shop.
+  // Việc lưu state này giúp pull-to-refresh hoặc tải lại vẫn giữ đúng từ khóa đang tìm.
+  String _shopSearchKeyword = '';
+  String? _shopStatusFilter;
+  int _shopPage = 1;
+  int _shopLimit = 20;
+
   ShopProvider({required this.service});
 
   ShopModel? get shop => _shop;
   List<ShopModel> get shops => _shops;
   bool get isLoading => _isLoading;
   String? get error => _error;
+
+  String get shopSearchKeyword => _shopSearchKeyword;
+  String? get shopStatusFilter => _shopStatusFilter;
+
+  bool get isSearchingShop =>
+      _shopSearchKeyword.trim().isNotEmpty || _shopStatusFilter != null;
 
   // ==================== MY SHOP ====================
   Future<void> loadMyShop() async {
@@ -143,17 +155,28 @@ class ShopProvider with ChangeNotifier {
     }
   }
 
-  // ==================== ADMIN LIST SHOPS ====================
+  // ==================== LIST / SEARCH SHOPS ====================
+  // Dùng chung cho:
+  // - tải danh sách shop ban đầu
+  // - tìm shop theo tên/từ khóa
+  // - lọc shop theo trạng thái
   Future<void> fetchShops({
     String? q,
     String? status,
     int page = 1,
-    int limit = 10,
+    int limit = 20,
   }) async {
+    final keyword = q?.trim() ?? '';
+
+    _shopSearchKeyword = keyword;
+    _shopStatusFilter = status;
+    _shopPage = page;
+    _shopLimit = limit;
+
     _setLoading(true);
     try {
       _shops = await service.getShops(
-        q: q,
+        q: keyword.isEmpty ? null : keyword,
         status: status,
         page: page,
         limit: limit,
@@ -164,6 +187,51 @@ class ShopProvider with ChangeNotifier {
     } finally {
       _setLoading(false);
     }
+  }
+
+  // Hàm riêng cho màn tìm kiếm shop để code UI dễ đọc hơn.
+  Future<void> searchShops({
+    required String keyword,
+    String? status,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    await fetchShops(
+      q: keyword,
+      status: status,
+      page: page,
+      limit: limit,
+    );
+  }
+
+  // Tải lại danh sách với đúng keyword/status hiện tại.
+  Future<void> refreshShops() async {
+    await fetchShops(
+      q: _shopSearchKeyword,
+      status: _shopStatusFilter,
+      page: _shopPage,
+      limit: _shopLimit,
+    );
+  }
+
+  // Xóa từ khóa tìm kiếm nhưng vẫn giữ bộ lọc trạng thái nếu đang chọn.
+  Future<void> clearShopKeyword() async {
+    await fetchShops(
+      q: null,
+      status: _shopStatusFilter,
+      page: 1,
+      limit: _shopLimit,
+    );
+  }
+
+  // Xóa toàn bộ bộ lọc tìm kiếm shop.
+  Future<void> clearShopSearch() async {
+    await fetchShops(
+      q: null,
+      status: null,
+      page: 1,
+      limit: _shopLimit,
+    );
   }
 
   // ==================== PUBLIC DETAIL ====================
@@ -178,6 +246,8 @@ class ShopProvider with ChangeNotifier {
   void clearShops({bool notify = true}) {
     _shops = [];
     _error = null;
+    _shopSearchKeyword = '';
+    _shopStatusFilter = null;
     if (notify) notifyListeners();
   }
 
@@ -186,6 +256,10 @@ class ShopProvider with ChangeNotifier {
     _shops = [];
     _error = null;
     _isLoading = false;
+    _shopSearchKeyword = '';
+    _shopStatusFilter = null;
+    _shopPage = 1;
+    _shopLimit = 20;
 
     if (notify) notifyListeners();
   }
