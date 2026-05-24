@@ -6,6 +6,8 @@ import 'package:provider/provider.dart';
 
 import '../../models/order_model.dart';
 import '../../providers/order_provider.dart';
+import '../../theme/app_theme.dart';
+import '../../providers/review_provider.dart';
 import '../../service/review_service.dart';
 
 class MyOrdersScreen extends StatefulWidget {
@@ -17,11 +19,11 @@ class MyOrdersScreen extends StatefulWidget {
 }
 
 class _MyOrdersScreenState extends State<MyOrdersScreen> {
-  static const Color _primaryPink = Color(0xFFFF4F8B);
-  static const Color _softPink = Color(0xFFFFEEF5);
-  static const Color _pageBg = Color(0xFFFFF7FA);
-  static const Color _textDark = Color(0xFF4A2F38);
-  static const Color _textMuted = Color(0xFF9A7B86);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _pageBg = AppColors.background;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textMuted = AppColors.textGrey;
 
   final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'VND');
 
@@ -196,7 +198,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
         border: Border.all(color: _primaryPink.withOpacity(0.10)),
         boxShadow: [
           BoxShadow(
@@ -245,7 +247,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(99),
+                  borderRadius: BorderRadius.circular(AppRadius.circle),
                 ),
                 child: Text(
                   statusLabel,
@@ -351,14 +353,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
     required VoidCallback? onPressed,
     bool isDanger = false,
   }) {
-    final color = isDanger ? const Color(0xFFFF5B5B) : _primaryPink;
+    final color = isDanger ? AppColors.error : _primaryPink;
 
     return OutlinedButton(
       onPressed: onPressed,
       style: OutlinedButton.styleFrom(
         foregroundColor: color,
         side: BorderSide(color: color.withOpacity(0.35)),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.medium)),
         visualDensity: VisualDensity.compact,
       ),
       child: Text(label, style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -376,7 +378,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         backgroundColor: _primaryPink,
         foregroundColor: Colors.white,
         elevation: 0,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.medium)),
         visualDensity: VisualDensity.compact,
       ),
       child: isLoading
@@ -507,7 +509,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.extraLarge)),
               ),
               child: ListView(
                 controller: scrollController,
@@ -518,7 +520,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       height: 4,
                       decoration: BoxDecoration(
                         color: Colors.black12,
-                        borderRadius: BorderRadius.circular(99),
+                        borderRadius: BorderRadius.circular(AppRadius.circle),
                       ),
                     ),
                   ),
@@ -557,14 +559,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFFAFAFA),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.large),
         border: Border.all(color: _primaryPink.withOpacity(0.10)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.medium),
             child: Container(
               width: 58,
               height: 58,
@@ -636,6 +638,28 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       return;
     }
 
+    final productId = item.productId!;
+
+    // Đồng bộ với BE: product_reviews có unique(order_id, product_id),
+    // nên một sản phẩm trong một đơn chỉ được đánh giá một lần.
+    // Kiểm tra trước để tránh user nhập xong mới bị BE báo lỗi duplicate.
+    try {
+      final existed = await _reviewService.hasReviewForOrderProduct(
+        orderId: order.id,
+        productId: productId,
+      );
+
+      if (!mounted) return;
+
+      if (existed) {
+        _showSnack('Sản phẩm này đã được đánh giá trong đơn hàng này');
+        return;
+      }
+    } catch (_) {
+      // Nếu API kiểm tra lỗi tạm thời, vẫn cho user mở form.
+      // BE vẫn sẽ chặn duplicate ở bước gửi review.
+    }
+
     int rating = 5;
     bool isSubmitting = false;
     final commentController = TextEditingController();
@@ -648,7 +672,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           builder: (context, setDialogState) {
             return AlertDialog(
               backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.extraLarge)),
               title: const Text(
                 'Đánh giá sản phẩm',
                 style: TextStyle(color: _textDark, fontWeight: FontWeight.w900),
@@ -662,7 +686,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
                           child: Container(
                             width: 52,
                             height: 52,
@@ -738,7 +762,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                             starValue <= rating
                                 ? Icons.star_rounded
                                 : Icons.star_border_rounded,
-                            color: const Color(0xFFFFB800),
+                            color: AppColors.warning,
                             size: 34,
                           ),
                         );
@@ -754,18 +778,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                         hintText: 'Chia sẻ cảm nhận của bạn về sản phẩm...',
                         hintStyle: const TextStyle(color: _textMuted),
                         filled: true,
-                        fillColor: const Color(0xFFFFF7FA),
+                        fillColor: AppColors.background,
                         contentPadding: const EdgeInsets.all(14),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadius.large),
                           borderSide: BorderSide(color: _primaryPink.withOpacity(0.15)),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadius.large),
                           borderSide: BorderSide(color: _primaryPink.withOpacity(0.15)),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadius.large),
                           borderSide: const BorderSide(color: _primaryPink),
                         ),
                       ),
@@ -791,7 +815,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
                     final success = await _submitReview(
                       orderId: order.id,
-                      productId: item.productId!,
+                      productId: productId,
                       rating: rating,
                       comment: commentController.text.trim(),
                     );
@@ -810,7 +834,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     backgroundColor: _primaryPink,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.medium)),
                   ),
                   child: isSubmitting
                       ? const SizedBox(
@@ -852,6 +876,18 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       );
 
       if (!mounted) return true;
+
+      // Sau khi tạo review thành công, refresh lại review của product hiện tại
+      // nếu ReviewProvider đang tồn tại trong cây widget.
+      try {
+        final reviewProvider = context.read<ReviewProvider>();
+        if (reviewProvider.currentProductId == productId) {
+          reviewProvider.refreshProductReviews(productId);
+        }
+      } catch (_) {
+        // MyOrdersScreen vẫn hoạt động nếu màn hình này không được bọc ReviewProvider.
+      }
+
       _showSnack('Đã gửi đánh giá sản phẩm');
       return true;
     } catch (e) {
@@ -872,7 +908,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.extraLarge)),
           title: Text(title, style: const TextStyle(color: _textDark, fontWeight: FontWeight.w900)),
           content: Text(message, style: const TextStyle(color: _textMuted, height: 1.4)),
           actions: [
@@ -883,10 +919,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: isDanger ? const Color(0xFFFF5B5B) : _primaryPink,
+                backgroundColor: isDanger ? AppColors.error : _primaryPink,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.medium)),
               ),
               child: Text(confirmText, style: const TextStyle(fontWeight: FontWeight.w900)),
             ),
@@ -931,7 +967,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.extraLarge)),
               ),
               child: ListView(
                 controller: scrollController,
@@ -942,7 +978,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                       height: 4,
                       decoration: BoxDecoration(
                         color: Colors.black12,
-                        borderRadius: BorderRadius.circular(99),
+                        borderRadius: BorderRadius.circular(AppRadius.circle),
                       ),
                     ),
                   ),
@@ -974,7 +1010,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: _softPink,
-                      borderRadius: BorderRadius.circular(18),
+                      borderRadius: BorderRadius.circular(AppRadius.large),
                     ),
                     child: Row(
                       children: [
@@ -1006,14 +1042,14 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: const Color(0xFFFAFAFA),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(AppRadius.large),
         border: Border.all(color: _primaryPink.withOpacity(0.08)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(AppRadius.medium),
             child: Container(
               width: 58,
               height: 58,
@@ -1077,22 +1113,22 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
         content: Text(message),
         behavior: SnackBarBehavior.floating,
         backgroundColor: _textDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.medium)),
       ),
     );
   }
 
   Color _getStatusColor(String status, String shippingStatus) {
     if (status == 'CANCELLED' || shippingStatus == 'CANCELED' || shippingStatus == 'RETURNED') {
-      return const Color(0xFFFF5B5B);
+      return AppColors.error;
     }
     if (status == 'COMPLETED' || shippingStatus == 'DELIVERED') {
-      return const Color(0xFF22B573);
+      return AppColors.success;
     }
     if (status == 'PAID' || status == 'PROCESSING' || status == 'SHIPPED') {
       return _primaryPink;
     }
-    return const Color(0xFFFF8A00);
+    return AppColors.warning;
   }
 
   String _getStatusLabel(String status, String shippingStatus) {

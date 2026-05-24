@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
+
 class PaymentResultScreen extends StatelessWidget {
   static const routeName = '/payment-result';
 
@@ -16,11 +18,11 @@ class PaymentResultScreen extends StatelessWidget {
     required this.orderId,
   }) : super(key: key);
 
-  static const Color _primaryPink = Color(0xFFFF4F8B);
-  static const Color _pageBg = Color(0xFFFFF7FA);
-  static const Color _softPink = Color(0xFFFFEEF5);
-  static const Color _textDark = Color(0xFF4A2F38);
-  static const Color _textMuted = Color(0xFF9A7B86);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _pageBg = AppColors.background;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textMuted = AppColors.textGrey;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +41,7 @@ class PaymentResultScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(20, 28, 20, 26),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(28),
+                  borderRadius: BorderRadius.circular(AppRadius.extraLarge),
                   border: Border.all(color: _primaryPink.withOpacity(0.12)),
                   boxShadow: [
                     BoxShadow(
@@ -55,13 +57,13 @@ class PaymentResultScreen extends StatelessWidget {
                       width: 106,
                       height: 106,
                       decoration: BoxDecoration(
-                        color: success ? _softPink : const Color(0xFFFFF1F1),
+                        color: success ? _softPink : AppColors.error.withOpacity(0.08),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         success ? Icons.check_circle_rounded : Icons.error_rounded,
                         size: 76,
-                        color: success ? _primaryPink : const Color(0xFFFF5B5B),
+                        color: success ? _primaryPink : AppColors.error,
                       ),
                     ),
                     const SizedBox(height: 22),
@@ -86,7 +88,7 @@ class PaymentResultScreen extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         decoration: BoxDecoration(
                           color: _softPink,
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadius.large),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -132,7 +134,7 @@ class PaymentResultScreen extends StatelessWidget {
                     backgroundColor: _primaryPink,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.large)),
                   ),
                   child: const Text(
                     'Xem đơn hàng của tôi',
@@ -151,7 +153,7 @@ class PaymentResultScreen extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: _primaryPink,
                     side: BorderSide(color: _primaryPink.withOpacity(0.35)),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.large)),
                   ),
                   child: const Text(
                     'Tiếp tục mua sắm',

@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../providers/order_provider.dart';
+import '../../theme/app_theme.dart';
 
 class PaymentQrScreen extends StatefulWidget {
   static const routeName = '/payment-gateway';
@@ -31,11 +32,11 @@ class PaymentQrScreen extends StatefulWidget {
 }
 
 class _PaymentQrScreenState extends State<PaymentQrScreen> {
-  static const Color _primaryPink = Color(0xFFFF4F8B);
-  static const Color _softPink = Color(0xFFFFEEF5);
-  static const Color _pageBg = Color(0xFFFFF7FA);
-  static const Color _textDark = Color(0xFF4A2F38);
-  static const Color _textMuted = Color(0xFF9A7B86);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _pageBg = AppColors.background;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textMuted = AppColors.textGrey;
 
   late Timer _timer;
   late Timer _pollingTimer;
@@ -168,7 +169,7 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
       padding: const EdgeInsets.fromLTRB(18, 22, 18, 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
         border: Border.all(color: _primaryPink.withOpacity(0.12)),
         boxShadow: [
           BoxShadow(
@@ -184,7 +185,7 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: _softPink,
-              borderRadius: BorderRadius.circular(99),
+              borderRadius: BorderRadius.circular(AppRadius.circle),
             ),
             child: const Row(
               mainAxisSize: MainAxisSize.min,
@@ -213,7 +214,7 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(AppRadius.extraLarge),
               border: Border.all(color: _primaryPink.withOpacity(0.18)),
             ),
             child: QrImageView(
@@ -267,7 +268,7 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: _softPink,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.medium),
                   ),
                   child: SelectableText(
                     paymentUrl,
@@ -286,20 +287,20 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 11),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF5E8),
-        borderRadius: BorderRadius.circular(99),
-        border: Border.all(color: const Color(0xFFFFB866).withOpacity(0.45)),
+        color: AppColors.warning.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(AppRadius.circle),
+        border: Border.all(color: AppColors.warning.withOpacity(0.45)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.timer_outlined, color: Color(0xFFFF8A00), size: 20),
+          const Icon(Icons.timer_outlined, color: AppColors.warning, size: 20),
           const SizedBox(width: 8),
           Text(
             'Hết hạn sau: $_timerString',
             style: const TextStyle(
               fontWeight: FontWeight.w900,
-              color: Color(0xFFFF8A00),
+              color: AppColors.warning,
               fontSize: 15,
             ),
           ),
@@ -314,7 +315,7 @@ class _PaymentQrScreenState extends State<PaymentQrScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
         border: Border.all(color: _primaryPink.withOpacity(0.10)),
       ),
       child: const Row(

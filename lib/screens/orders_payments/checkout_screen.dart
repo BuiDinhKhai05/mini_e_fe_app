@@ -11,6 +11,7 @@ import '../../providers/address_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/order_provider.dart';
+import '../../theme/app_theme.dart';
 
 class CheckoutScreen extends StatefulWidget {
   static const routeName = '/checkout';
@@ -21,11 +22,11 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  static const Color _primaryPink = Color(0xFFFF4F8B);
-  static const Color _softPink = Color(0xFFFFEEF5);
-  static const Color _pageBg = Color(0xFFFFF7FA);
-  static const Color _textDark = Color(0xFF4A2F38);
-  static const Color _textMuted = Color(0xFF9A7B86);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _pageBg = AppColors.background;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textMuted = AppColors.textGrey;
 
   final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'VND');
 
@@ -96,7 +97,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               padding: const EdgeInsets.fromLTRB(18, 12, 18, 18),
               decoration: const BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.extraLarge)),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -108,7 +109,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       height: 4,
                       decoration: BoxDecoration(
                         color: Colors.black12,
-                        borderRadius: BorderRadius.circular(99),
+                        borderRadius: BorderRadius.circular(AppRadius.circle),
                       ),
                     ),
                   ),
@@ -133,7 +134,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         final isSelected = address.id == _selectedAddressId;
 
                         return InkWell(
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(AppRadius.large),
                           onTap: () {
                             setState(() => _selectedAddressId = address.id);
                             Navigator.pop(context);
@@ -143,7 +144,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
                               color: isSelected ? _softPink : const Color(0xFFFAFAFA),
-                              borderRadius: BorderRadius.circular(18),
+                              borderRadius: BorderRadius.circular(AppRadius.large),
                               border: Border.all(
                                 color: isSelected
                                     ? _primaryPink.withOpacity(0.45)
@@ -204,7 +205,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       style: OutlinedButton.styleFrom(
                         foregroundColor: _primaryPink,
                         side: BorderSide(color: _primaryPink.withOpacity(0.35)),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.large)),
                       ),
                     ),
                   ),
@@ -287,7 +288,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         content: Text(message),
         behavior: SnackBarBehavior.floating,
         backgroundColor: _textDark,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.medium)),
       ),
     );
   }
@@ -401,7 +402,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
         border: Border.all(color: _primaryPink.withOpacity(0.12)),
         boxShadow: [
           BoxShadow(
@@ -418,7 +419,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _buildChooseAddressCard(bool hasNoAddress) {
     return InkWell(
       onTap: _showAddressPicker,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(AppRadius.extraLarge),
       child: _buildCard(
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -441,7 +442,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   Widget _buildAddressCard(AddressModel address) {
     return InkWell(
       onTap: _showAddressPicker,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(AppRadius.extraLarge),
       child: _buildCard(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -522,7 +523,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppRadius.large),
             child: Container(
               width: 68,
               height: 68,
@@ -558,7 +559,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
                       color: _softPink,
-                      borderRadius: BorderRadius.circular(99),
+                      borderRadius: BorderRadius.circular(AppRadius.circle),
                     ),
                     child: Text(
                       item.variantName!,
@@ -651,14 +652,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     final isSelected = _paymentMethod == value;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(18),
+      borderRadius: BorderRadius.circular(AppRadius.large),
       onTap: () => setState(() => _paymentMethod = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: isSelected ? _softPink : const Color(0xFFFAFAFA),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(AppRadius.large),
           border: Border.all(
             color: isSelected ? _primaryPink.withOpacity(0.55) : Colors.black.withOpacity(0.04),
           ),
@@ -670,7 +671,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               height: 42,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(AppRadius.medium),
               ),
               child: Icon(icon, color: isSelected ? _primaryPink : _textMuted),
             ),
@@ -756,7 +757,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   foregroundColor: Colors.white,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 26),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.large)),
                 ),
                 child: isLoading
                     ? const SizedBox(
