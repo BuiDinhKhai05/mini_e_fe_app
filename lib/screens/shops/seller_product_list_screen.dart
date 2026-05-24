@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
 // Providers & Models
@@ -20,15 +22,15 @@ class SellerProductListScreen extends StatefulWidget {
 
 class _SellerProductListScreenState extends State<SellerProductListScreen> {
   // =========================
-  // Màu dùng chung theo format Soft Pink Card UI
+  // Màu dùng chung lấy từ lib/theme/app_theme.dart
   // =========================
-  static const Color _primaryPink = Color(0xFFFF5C8A);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _lighterPink = Color(0xFFFFF7FA);
-  static const Color _borderPink = Color(0xFFFFD8E4);
-  static const Color _textDark = Color(0xFF222222);
-  static const Color _textGrey = Color(0xFF707070);
-  static const Color _dangerRed = Color(0xFFFF4D5E);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _lighterPink = AppColors.background;
+  static const Color _borderPink = AppColors.borderPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textGrey = AppColors.textGrey;
+  static const Color _dangerRed = AppColors.error;
 
   // =========================
   // Tải sản phẩm của seller hiện tại
@@ -115,7 +117,7 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Đã chuyển trạng thái sản phẩm thành $newStatus'),
-          backgroundColor: newStatus == 'ACTIVE' ? Colors.green : Colors.orange,
+          backgroundColor: newStatus == 'ACTIVE' ? AppColors.success : AppColors.warning,
         ),
       );
 
@@ -466,8 +468,8 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                       ),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: product.status == 'ACTIVE'
-                            ? Colors.orange
-                            : Colors.green,
+                            ? AppColors.warning
+                            : AppColors.success,
                         side: const BorderSide(color: _borderPink),
                         visualDensity: VisualDensity.compact,
                         shape: RoundedRectangleBorder(
@@ -620,13 +622,13 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
 
     switch (status) {
       case 'ACTIVE':
-        bg = const Color(0xFFEAF8EF);
-        text = Colors.green;
+        bg = AppColors.success.withOpacity(0.10);
+        text = AppColors.success;
         label = 'Đang bán';
         break;
       case 'DRAFT':
-        bg = const Color(0xFFFFF4E5);
-        text = Colors.orange;
+        bg = AppColors.warning.withOpacity(0.12);
+        text = AppColors.warning;
         label = 'Đang ẩn';
         break;
       default:

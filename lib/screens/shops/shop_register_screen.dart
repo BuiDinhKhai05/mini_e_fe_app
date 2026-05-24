@@ -1,5 +1,7 @@
 // lib/screens/shops/shop_register_screen.dart
 import 'package:flutter/material.dart';
+
+import '../../theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
 // Providers
@@ -37,15 +39,15 @@ class _ShopRegisterScreenState extends State<ShopRegisterScreen> {
   bool _isLoading = false;
 
   // =========================
-  // Màu dùng chung theo format Soft Pink Card UI
+  // Màu dùng chung lấy từ lib/theme/app_theme.dart
   // =========================
-  static const Color _primaryPink = Color(0xFFFF5C8A);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _lighterPink = Color(0xFFFFF7FA);
-  static const Color _borderPink = Color(0xFFFFD8E4);
-  static const Color _textDark = Color(0xFF222222);
-  static const Color _textGrey = Color(0xFF707070);
-  static const Color _dangerRed = Color(0xFFFF4D5E);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _lighterPink = AppColors.background;
+  static const Color _borderPink = AppColors.borderPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textGrey = AppColors.textGrey;
+  static const Color _dangerRed = AppColors.error;
 
   @override
   void dispose() {

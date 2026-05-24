@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../../theme/app_theme.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
@@ -26,15 +28,15 @@ class ShopManagementScreen extends StatefulWidget {
 
 class _ShopManagementScreenState extends State<ShopManagementScreen> {
   // =========================
-  // Màu dùng chung theo format Soft Pink Card UI
+  // Màu dùng chung lấy từ lib/theme/app_theme.dart
   // =========================
-  static const Color _primaryPink = Color(0xFFFF5C8A);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _lighterPink = Color(0xFFFFF7FA);
-  static const Color _borderPink = Color(0xFFFFD8E4);
-  static const Color _textDark = Color(0xFF222222);
-  static const Color _textGrey = Color(0xFF707070);
-  static const Color _dangerRed = Color(0xFFFF4D5E);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _lighterPink = AppColors.background;
+  static const Color _borderPink = AppColors.borderPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textGrey = AppColors.textGrey;
+  static const Color _dangerRed = AppColors.error;
 
   @override
   void initState() {
@@ -746,7 +748,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                                         ? 'Cập nhật thành công!'
                                         : (provider.error ?? 'Cập nhật thất bại.'),
                                   ),
-                                  backgroundColor: success ? Colors.green : _dangerRed,
+                                  backgroundColor: success ? AppColors.success : _dangerRed,
                                 ),
                               );
                             },
@@ -836,7 +838,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
           content: Text(
             isLogo ? 'Cập nhật logo thành công.' : 'Cập nhật ảnh bìa thành công.',
           ),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
         ),
       );
 
@@ -1061,7 +1063,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                       shop.status == 'ACTIVE'
                           ? Icons.verified_rounded
                           : Icons.info_outline_rounded,
-                      color: shop.status == 'ACTIVE' ? Colors.green : _primaryPink,
+                      color: shop.status == 'ACTIVE' ? AppColors.success : _primaryPink,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1096,9 +1098,9 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
 
               Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFECEF),
+                  color: AppColors.error.withOpacity(0.10),
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFFFCDD6)),
+                  border: Border.all(color: AppColors.error.withOpacity(0.22)),
                 ),
                 child: ListTile(
                   leading: const Icon(Icons.delete_forever_rounded, color: _dangerRed),
@@ -1177,7 +1179,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                 ? 'Đã xóa cửa hàng thành công.'
                 : (shopProvider.error ?? 'Xóa cửa hàng thất bại.'),
           ),
-          backgroundColor: success ? Colors.green : _dangerRed,
+          backgroundColor: success ? AppColors.success : _dangerRed,
         ),
       );
     }
@@ -1290,18 +1292,18 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
 
     switch (status) {
       case 'ACTIVE':
-        bg = const Color(0xFFEAF8EF);
-        text = Colors.green;
+        bg = AppColors.success.withOpacity(0.10);
+        text = AppColors.success;
         label = 'Đang hoạt động';
         break;
       case 'SUSPENDED':
-        bg = const Color(0xFFFFECEF);
-        text = Colors.redAccent;
+        bg = AppColors.error.withOpacity(0.10);
+        text = AppColors.error;
         label = 'Đang tạm nghỉ';
         break;
       case 'PENDING':
-        bg = const Color(0xFFFFF4E5);
-        text = Colors.orange;
+        bg = AppColors.warning.withOpacity(0.12);
+        text = AppColors.warning;
         label = 'Chờ duyệt';
         break;
       default:

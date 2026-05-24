@@ -2,6 +2,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+
+import '../../theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/shop_model.dart';
@@ -22,14 +24,14 @@ class _ShopListScreenState extends State<ShopListScreen> {
   String? _selectedStatus;
 
   // =========================
-  // Màu dùng chung theo format Soft Pink Card UI
+  // Màu dùng chung lấy từ lib/theme/app_theme.dart
   // =========================
-  static const Color _primaryPink = Color(0xFFFF5C8A);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _lighterPink = Color(0xFFFFF7FA);
-  static const Color _borderPink = Color(0xFFFFD8E4);
-  static const Color _textDark = Color(0xFF222222);
-  static const Color _textGrey = Color(0xFF707070);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _lighterPink = AppColors.background;
+  static const Color _borderPink = AppColors.borderPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textGrey = AppColors.textGrey;
 
   @override
   void initState() {
@@ -390,7 +392,7 @@ class _ShopListScreenState extends State<ShopListScreen> {
                               icon: Icons.star_rounded,
                               label:
                               '${shop.stats.ratingAvg.toStringAsFixed(1)} | ${shop.stats.reviewCount} đánh giá',
-                              iconColor: Colors.orange,
+                              iconColor: AppColors.warning,
                             ),
                             if (shop.phone != null)
                               _buildInfoChip(
@@ -466,18 +468,18 @@ class _ShopListScreenState extends State<ShopListScreen> {
 
     switch (status) {
       case 'ACTIVE':
-        bg = const Color(0xFFEAF8EF);
-        text = Colors.green;
+        bg = AppColors.success.withOpacity(0.10);
+        text = AppColors.success;
         label = 'Hoạt động';
         break;
       case 'PENDING':
-        bg = const Color(0xFFFFF4E5);
-        text = Colors.orange;
+        bg = AppColors.warning.withOpacity(0.12);
+        text = AppColors.warning;
         label = 'Chờ duyệt';
         break;
       case 'SUSPENDED':
-        bg = const Color(0xFFFFECEF);
-        text = Colors.redAccent;
+        bg = AppColors.error.withOpacity(0.10);
+        text = AppColors.error;
         label = 'Bị khóa';
         break;
       default:

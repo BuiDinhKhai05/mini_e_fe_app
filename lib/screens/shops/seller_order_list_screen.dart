@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
+
 import '../../models/order_model.dart';
 import '../../service/order_service.dart';
 import 'seller_order_detail_screen.dart';
@@ -14,13 +16,13 @@ class SellerOrderListScreen extends StatefulWidget {
 class _SellerOrderListScreenState extends State<SellerOrderListScreen> {
   final OrderService _orderService = OrderService();
 
-  static const Color _primaryPink = Color(0xFFFF5C8A);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _lighterPink = Color(0xFFFFF7FA);
-  static const Color _borderPink = Color(0xFFFFD8E4);
-  static const Color _textDark = Color(0xFF222222);
-  static const Color _textGrey = Color(0xFF707070);
-  static const Color _dangerRed = Color(0xFFFF4D5E);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _lighterPink = AppColors.background;
+  static const Color _borderPink = AppColors.borderPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textGrey = AppColors.textGrey;
+  static const Color _dangerRed = AppColors.error;
 
   bool _isLoading = true;
   String? _errorMessage;

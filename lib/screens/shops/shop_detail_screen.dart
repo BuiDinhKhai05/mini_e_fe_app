@@ -1,6 +1,8 @@
 // lib/screens/shops/shop_detail_screen.dart
 
 import 'package:flutter/material.dart';
+
+import '../../theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
@@ -106,14 +108,14 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
   }
 
   // =========================
-  // Màu dùng chung theo format Soft Pink Card UI
+  // Màu dùng chung lấy từ lib/theme/app_theme.dart
   // =========================
-  static const Color _primaryPink = Color(0xFFFF5C8A);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _lighterPink = Color(0xFFFFF7FA);
-  static const Color _borderPink = Color(0xFFFFD8E4);
-  static const Color _textDark = Color(0xFF222222);
-  static const Color _textGrey = Color(0xFF707070);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _lighterPink = AppColors.background;
+  static const Color _borderPink = AppColors.borderPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textGrey = AppColors.textGrey;
 
   // =========================
   // LOGIC CŨ: mở bản đồ xem vị trí shop
@@ -365,8 +367,8 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
                           icon: Icons.star_rounded,
                           label:
                           '${shop.stats.ratingAvg.toStringAsFixed(1)} (${shop.stats.reviewCount} đánh giá)',
-                          bg: const Color(0xFFFFF7E6),
-                          color: Colors.orange,
+                          bg: AppColors.warning.withOpacity(0.12),
+                          color: AppColors.warning,
                         ),
                         _buildStatusBadge(shop.status),
                       ],
@@ -559,16 +561,16 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFECEF),
+        color: AppColors.error.withOpacity(0.10),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFFCDD6)),
+        border: Border.all(color: AppColors.error.withOpacity(0.22)),
       ),
       child: Column(
         children: [
           const Icon(
             Icons.error_outline_rounded,
             size: 38,
-            color: Colors.redAccent,
+            color: AppColors.error,
           ),
           const SizedBox(height: 10),
           const Text(
@@ -1153,18 +1155,18 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
 
     switch (status) {
       case 'ACTIVE':
-        bg = const Color(0xFFEAF8EF);
-        text = Colors.green;
+        bg = AppColors.success.withOpacity(0.10);
+        text = AppColors.success;
         label = 'Đang hoạt động';
         break;
       case 'PENDING':
-        bg = const Color(0xFFFFF4E5);
-        text = Colors.orange;
+        bg = AppColors.warning.withOpacity(0.12);
+        text = AppColors.warning;
         label = 'Chờ duyệt';
         break;
       case 'SUSPENDED':
-        bg = const Color(0xFFFFECEF);
-        text = Colors.redAccent;
+        bg = AppColors.error.withOpacity(0.10);
+        text = AppColors.error;
         label = 'Đang tạm nghỉ';
         break;
       default:
