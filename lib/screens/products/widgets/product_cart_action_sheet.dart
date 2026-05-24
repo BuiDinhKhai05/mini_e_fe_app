@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:mini_e_fe_app/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mini_e_fe_app/models/product_model.dart';
@@ -7,9 +8,9 @@ import 'package:mini_e_fe_app/providers/cart_provider.dart';
 import 'package:mini_e_fe_app/providers/product_provider.dart';
 
 class ProductCartActionSheet {
-  static const Color _primaryColor = Color(0xFFE84D7A);
-  static const Color _titleColor = Color(0xFF2D2327);
-  static const Color _bodyColor = Color(0xFF9B8B93);
+  static const Color _primaryColor = AppColors.darkPink;
+  static const Color _titleColor = AppColors.textDark;
+  static const Color _bodyColor = AppColors.textGrey;
 
   static Future<void> show({
     required BuildContext context,
@@ -216,7 +217,7 @@ class ProductCartActionSheet {
                 : selectedVariant?.name ?? '';
 
             return Dialog(
-              backgroundColor: const Color(0xFFFFF7FA),
+              backgroundColor: AppColors.background,
               insetPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               shape: RoundedRectangleBorder(
@@ -226,8 +227,8 @@ class ProductCartActionSheet {
                 constraints: BoxConstraints(
                   minHeight: MediaQuery.of(dialogContext).size.height * 0.78,
                   maxHeight: MediaQuery.of(dialogContext).size.height * 0.78,
-              ),
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                ),
+                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -271,7 +272,7 @@ class ProductCartActionSheet {
                                 color: Colors.white,
                                 child: const Icon(
                                   Icons.image_not_supported,
-                                  color: Color(0xFFC8A6B0),
+                                  color: AppColors.textLight,
                                   size: 40,
                                 ),
                               ),
@@ -302,7 +303,7 @@ class ProductCartActionSheet {
                                   style: const TextStyle(
                                     fontSize: 20,
                                     fontWeight: FontWeight.w900,
-                                    color: Color(0xFFFF3D3D),
+                                    color: AppColors.error,
                                   ),
                                 ),
 
@@ -334,7 +335,7 @@ class ProductCartActionSheet {
                                     child: Text(
                                       'Đang chọn: $selectedText',
                                       style: const TextStyle(
-                                        color: Color(0xFF7A5A65),
+                                        color: AppColors.textGrey,
                                         fontWeight: FontWeight.w700,
                                         fontSize: 12,
                                       ),
@@ -372,7 +373,7 @@ class ProductCartActionSheet {
                                 Text(
                                   optionName,
                                   style: const TextStyle(
-                                    color: Color(0xFF8B6672),
+                                    color: AppColors.textGrey,
                                     fontSize: 15,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -417,14 +418,14 @@ class ProductCartActionSheet {
                                         ),
                                         decoration: BoxDecoration(
                                           color: isSelected
-                                              ? const Color(0xFFFFF0F5)
+                                              ? AppColors.lightPink
                                               : Colors.white,
                                           borderRadius:
                                           BorderRadius.circular(999),
                                           border: Border.all(
                                             color: isSelected
                                                 ? _primaryColor
-                                                : const Color(0xFFFFC9D8),
+                                                : AppColors.borderPink,
                                             width: 1.4,
                                           ),
                                           boxShadow: isSelected
@@ -442,10 +443,10 @@ class ProductCartActionSheet {
                                           optionValue,
                                           style: TextStyle(
                                             color: !isAvailable
-                                                ? const Color(0xFFC9BBC1)
+                                                ? AppColors.textLight
                                                 : isSelected
                                                 ? _primaryColor
-                                                : const Color(0xFF4B343D),
+                                                : AppColors.textDark,
                                             fontWeight: FontWeight.w800,
                                             fontSize: 14,
                                           ),
@@ -495,11 +496,11 @@ class ProductCartActionSheet {
                                 fontWeight: FontWeight.w800,
                               ),
                               backgroundColor: Colors.white,
-                              disabledColor: const Color(0xFFF4EEF1),
+                              disabledColor: AppColors.borderGrey,
                               side: BorderSide(
                                 color: isSelected
                                     ? _primaryColor
-                                    : const Color(0xFFFFC9D8),
+                                    : AppColors.borderPink,
                               ),
                             );
                           }).toList(),
@@ -510,10 +511,10 @@ class ProductCartActionSheet {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.08),
+                            color: AppColors.warning.withOpacity(0.08),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                              color: Colors.orange.withOpacity(0.25),
+                              color: AppColors.warning.withOpacity(0.25),
                             ),
                           ),
                           child: const Text(
@@ -641,7 +642,7 @@ class ProductCartActionSheet {
                                 ScaffoldMessenger.of(rootContext).showSnackBar(
                                   const SnackBar(
                                     content: Text('Đã thêm vào giỏ hàng'),
-                                    backgroundColor: Colors.green,
+                                    backgroundColor: AppColors.success,
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
@@ -657,7 +658,7 @@ class ProductCartActionSheet {
                               ScaffoldMessenger.of(rootContext).showSnackBar(
                                 SnackBar(
                                   content: Text(msg),
-                                  backgroundColor: Colors.red,
+                                  backgroundColor: AppColors.error,
                                 ),
                               );
                             }

@@ -1,6 +1,7 @@
 // lib/screens/products/product_reviews_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:mini_e_fe_app/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/review_model.dart';
@@ -27,13 +28,13 @@ class ProductReviewsScreen extends StatefulWidget {
 }
 
 class _ProductReviewsScreenState extends State<ProductReviewsScreen> {
-  static const Color _primaryPink = Color(0xFFE84B82);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _bgColor = Color(0xFFFFF5F8);
-  static const Color _borderPink = Color(0xFFFFD6E4);
-  static const Color _textDark = Color(0xFF4A2C36);
-  static const Color _textGrey = Color(0xFF8A6F78);
-  static const Color _starColor = Color(0xFFFFB800);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _bgColor = AppColors.background;
+  static const Color _borderPink = AppColors.borderPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textGrey = AppColors.textGrey;
+  static const Color _starColor = AppColors.warning;
 
   String _selectedFilter = 'ALL';
 

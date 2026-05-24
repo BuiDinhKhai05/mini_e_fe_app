@@ -1,6 +1,7 @@
 // lib/screens/products/product_detail_screen.dart
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:mini_e_fe_app/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mini_e_fe_app/models/product_model.dart';
@@ -52,11 +53,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _isDescriptionExpanded = false;
   bool _isUpdatingStatus = false;
 
-  final Color _primaryColor = const Color(0xFFE84B82);
-  final Color _accentColor = const Color(0xFFFF6FA5);
-  final Color _bgColor = const Color(0xFFFFF5F8);
-  final Color _textTitleColor = const Color(0xFF4A2C36);
-  final Color _textBodyColor = const Color(0xFF8A6F78);
+  final Color _primaryColor = AppColors.primaryPink;
+  final Color _accentColor = AppColors.primaryPink;
+  final Color _bgColor = AppColors.background;
+  final Color _textTitleColor = AppColors.textDark;
+  final Color _textBodyColor = AppColors.textGrey;
 
   @override
   void initState() {
@@ -316,7 +317,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(newStatus == 'ACTIVE' ? 'Đã bật bán' : 'Đã ẩn sản phẩm'),
-          backgroundColor: Colors.green,
+          backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -324,7 +325,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(provider.error ?? 'Cập nhật trạng thái thất bại'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -343,7 +344,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: const Text('Hủy')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
+            child: const Text('Xóa', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -357,28 +358,28 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
               content: Text('Đã xóa sản phẩm khỏi danh sách quản lý'),
-              backgroundColor: Colors.green),
+              backgroundColor: AppColors.success),
         );
       }
     }
   }
 
   // ======== CART ACTION ========
-    Future<void> _showProductCartDialog({required bool isBuyNow}) {
-      return ProductCartActionSheet.show(
-        context: context,
-        product: _currentProduct,
-        isBuyNow: isBuyNow,
-        initialVariants: _variants,
-        onVariantsLoaded: (loadedVariants) {
-          if (!mounted) return;
+  Future<void> _showProductCartDialog({required bool isBuyNow}) {
+    return ProductCartActionSheet.show(
+      context: context,
+      product: _currentProduct,
+      isBuyNow: isBuyNow,
+      initialVariants: _variants,
+      onVariantsLoaded: (loadedVariants) {
+        if (!mounted) return;
 
-          setState(() {
-            _variants = loadedVariants;
-          });
-        },
-      );
-    }
+        setState(() {
+          _variants = loadedVariants;
+        });
+      },
+    );
+  }
 
   // ======== SHOP INFO ========
   Future<void> _fetchProductShop({bool force = false}) async {
@@ -479,7 +480,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFFFD6E4)),
+          border: Border.all(color: AppColors.borderPink),
           boxShadow: [
             BoxShadow(
               color: _primaryColor.withOpacity(0.08),
@@ -518,7 +519,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFFFD6E4)),
+          border: Border.all(color: AppColors.borderPink),
           boxShadow: [
             BoxShadow(
               color: _primaryColor.withOpacity(0.08),
@@ -566,7 +567,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0xFFFFD6E4)),
+          border: Border.all(color: AppColors.borderPink),
           boxShadow: [
             BoxShadow(
               color: _primaryColor.withOpacity(0.08),
@@ -582,7 +583,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
               child: Container(
                 width: 62,
                 height: 62,
-                color: const Color(0xFFFFF7FA),
+                color: AppColors.background,
                 child: shop.logoUrl != null && shop.logoUrl!.isNotEmpty
                     ? CachedNetworkImage(
                   imageUrl: shop.logoUrl!,
@@ -693,7 +694,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFFFD6E4)),
+        border: Border.all(color: AppColors.borderPink),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -721,7 +722,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFFFD6E4)),
+        border: Border.all(color: AppColors.borderPink),
         boxShadow: [
           BoxShadow(
             color: _primaryColor.withOpacity(0.08),
@@ -739,7 +740,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFEEF4),
+                  color: AppColors.lightPink,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(Icons.tune_rounded, color: _primaryColor, size: 19),
@@ -781,8 +782,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         ),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: const Color(0xFFFFD6E4)),
-                          color: const Color(0xFFFFF7FA),
+                          border: Border.all(color: AppColors.borderPink),
+                          color: AppColors.background,
                         ),
                         child: Text(
                           value.toString(),
@@ -932,8 +933,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          Color(0xFFFFEAF1),
-                          Color(0xFFFFF5F8),
+                          AppColors.lightPink,
+                          AppColors.background,
                         ],
                       ),
                     ),
@@ -949,7 +950,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(30),
-                              border: Border.all(color: const Color(0xFFFFD6E4)),
+                              border: Border.all(color: AppColors.borderPink),
                               boxShadow: [
                                 BoxShadow(
                                   color: _primaryColor.withOpacity(0.12),
@@ -971,7 +972,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     fit: BoxFit.cover,
                                     width: double.infinity,
                                     placeholder: (_, __) => Container(
-                                      color: const Color(0xFFFFF5F8),
+                                      color: AppColors.background,
                                       child: Center(
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
@@ -980,7 +981,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       ),
                                     ),
                                     errorWidget: (_, __, ___) => Container(
-                                      color: const Color(0xFFFFF5F8),
+                                      color: AppColors.background,
                                       child: Center(
                                         child: Icon(
                                           Icons.image_not_supported_outlined,
@@ -1017,7 +1018,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     border: Border.all(
                                       color: isActive
                                           ? _primaryColor
-                                          : const Color(0xFFFFD6E4),
+                                          : AppColors.borderPink,
                                     ),
                                   ),
                                 );
@@ -1050,7 +1051,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         border: Border.all(
                                           color: isSelected
                                               ? _primaryColor
-                                              : const Color(0xFFFFD6E4),
+                                              : AppColors.borderPink,
                                           width: isSelected ? 2 : 1,
                                         ),
                                       ),
@@ -1060,10 +1061,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                           imageUrl: images[index].url,
                                           fit: BoxFit.cover,
                                           placeholder: (_, __) => Container(
-                                            color: const Color(0xFFFFF5F8),
+                                            color: AppColors.background,
                                           ),
                                           errorWidget: (_, __, ___) => Container(
-                                            color: const Color(0xFFFFF5F8),
+                                            color: AppColors.background,
                                           ),
                                         ),
                                       ),
@@ -1096,7 +1097,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: const Color(0xFFFFD6E4)),
+                              border: Border.all(color: AppColors.borderPink),
                               boxShadow: [
                                 BoxShadow(
                                   color: _primaryColor.withOpacity(0.08),
@@ -1116,7 +1117,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFEEF4),
+                                        color: AppColors.lightPink,
                                         borderRadius: BorderRadius.circular(999),
                                       ),
                                       child: Row(
@@ -1143,19 +1144,19 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         vertical: 6,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFF8E7),
+                                        color: AppColors.lightPink,
                                         borderRadius: BorderRadius.circular(999),
                                       ),
                                       child: const Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
                                           Icon(Icons.star_rounded,
-                                              size: 15, color: Color(0xFFFFB84D)),
+                                              size: 15, color: AppColors.warning),
                                           SizedBox(width: 4),
                                           Text(
                                             'New',
                                             style: TextStyle(
-                                              color: Color(0xFF9A6A1B),
+                                              color: AppColors.warning,
                                               fontSize: 12,
                                               fontWeight: FontWeight.w900,
                                             ),
@@ -1193,10 +1194,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                         vertical: 7,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFF5F8),
+                                        color: AppColors.background,
                                         borderRadius: BorderRadius.circular(999),
                                         border: Border.all(
-                                          color: const Color(0xFFFFD6E4),
+                                          color: AppColors.borderPink,
                                         ),
                                       ),
                                       child: Row(
@@ -1226,7 +1227,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               decoration: BoxDecoration(
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: const Color(0xFFFFD6E4)),
+                                border: Border.all(color: AppColors.borderPink),
                               ),
                               child: Row(
                                 children: [
@@ -1261,7 +1262,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: const Color(0xFFFFD6E4)),
+                              border: Border.all(color: AppColors.borderPink),
                               boxShadow: [
                                 BoxShadow(
                                   color: _primaryColor.withOpacity(0.08),
@@ -1279,7 +1280,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       width: 34,
                                       height: 34,
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFFFFEEF4),
+                                        color: AppColors.lightPink,
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Icon(Icons.notes_rounded,
@@ -1382,7 +1383,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                           : 'Hiện sản phẩm'),
                                     ),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFFFB84D),
+                                      backgroundColor: AppColors.warning,
                                       foregroundColor: Colors.white,
                                       elevation: 0,
                                       padding: const EdgeInsets.symmetric(
@@ -1401,7 +1402,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     icon: const Icon(Icons.delete_rounded, size: 16),
                                     label: const Text('Xóa'),
                                     style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFFF5A79),
+                                      backgroundColor: AppColors.error,
                                       foregroundColor: Colors.white,
                                       elevation: 0,
                                       padding: const EdgeInsets.symmetric(
@@ -1433,7 +1434,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(26),
                 ),
-                border: Border.all(color: const Color(0xFFFFD6E4)),
+                border: Border.all(color: AppColors.borderPink),
                 boxShadow: [
                   BoxShadow(
                     color: _primaryColor.withOpacity(0.12),
@@ -1464,7 +1465,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(18),
                           ),
-                          backgroundColor: const Color(0xFFFFF5F8),
+                          backgroundColor: AppColors.background,
                         ),
                       ),
                     ),

@@ -1,5 +1,6 @@
 // lib/screens/products/add_variant_screen.dart
 import 'package:flutter/material.dart';
+import 'package:mini_e_fe_app/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
 import 'package:mini_e_fe_app/models/product_model.dart';
@@ -24,13 +25,13 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
   // =========================
   // Màu dùng chung theo format Soft Pink Card UI
   // =========================
-  static const Color _primaryPink = Color(0xFFFF5C8A);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _lighterPink = Color(0xFFFFF7FA);
-  static const Color _borderPink = Color(0xFFFFD8E4);
-  static const Color _textDark = Color(0xFF222222);
-  static const Color _textGrey = Color(0xFF707070);
-  static const Color _dangerRed = Color(0xFFFF4D5E);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _lighterPink = AppColors.background;
+  static const Color _borderPink = AppColors.borderPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textGrey = AppColors.textGrey;
+  static const Color _dangerRed = AppColors.error;
 
   final List<_OptionDraft> _options = [];
   String _mode = 'replace';
@@ -123,7 +124,7 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? _dangerRed : Colors.green,
+        backgroundColor: isError ? _dangerRed : AppColors.success,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -268,7 +269,7 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFFFEEF4), Color(0xFFFFFFFF)],
+          colors: [AppColors.lightPink, Colors.white],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

@@ -1,6 +1,7 @@
 // lib/screens/products/widgets/product_review_section.dart
 
 import 'package:flutter/material.dart';
+import 'package:mini_e_fe_app/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../../models/review_model.dart';
@@ -29,12 +30,12 @@ class ProductReviewSection extends StatefulWidget {
 }
 
 class _ProductReviewSectionState extends State<ProductReviewSection> {
-  static const Color _primaryPink = Color(0xFFE84B82);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _borderPink = Color(0xFFFFD6E4);
-  static const Color _textDark = Color(0xFF4A2C36);
-  static const Color _textGrey = Color(0xFF8A6F78);
-  static const Color _starColor = Color(0xFFFFB800);
+  static const Color _primaryPink = AppColors.primaryPink;
+  static const Color _softPink = AppColors.lightPink;
+  static const Color _borderPink = AppColors.borderPink;
+  static const Color _textDark = AppColors.textDark;
+  static const Color _textGrey = AppColors.textGrey;
+  static const Color _starColor = AppColors.warning;
 
   @override
   void initState() {
@@ -89,7 +90,8 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
   }
 
   // =======================================================
-  // Header: tiêu đề "Đánh giá sản phẩm" + điểm sao trung bình.
+  // Header: tiêu đề "Đánh giá sản phẩm" + nút "Tất cả".
+  // Nút "Tất cả" mở sang ProductReviewsScreen để xem toàn bộ review.
   // =======================================================
   Widget _buildHeader(ProductReviewSummary summary) {
     return Row(
@@ -111,6 +113,8 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
         const Expanded(
           child: Text(
             'Đánh giá sản phẩm',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w900,
@@ -119,16 +123,47 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
           ),
         ),
 
-        // Nếu sản phẩm có đánh giá thì hiện điểm trung bình.
-        if (summary.count > 0)
-          Text(
-            '${summary.avg.toStringAsFixed(1)}/5',
-            style: const TextStyle(
-              color: _primaryPink,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
+        // Nút nhỏ ở góc trên của card để mở màn hình xem tất cả đánh giá.
+        _buildHeaderViewAllButton(),
       ],
+    );
+  }
+
+  // =======================================================
+  // Nút "Tất cả" trên header card đánh giá.
+  // Để tránh làm vỡ layout trên màn hình nhỏ, nút được bo tròn và dùng padding ngắn.
+  // =======================================================
+  Widget _buildHeaderViewAllButton() {
+    return InkWell(
+      onTap: _openProductReviewsScreen,
+      borderRadius: BorderRadius.circular(999),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: _borderPink),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Tất cả',
+              style: TextStyle(
+                color: _primaryPink,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: _primaryPink,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -285,6 +320,22 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
   }
 
   // =======================================================
+  // Điều hướng sang màn hình xem tất cả đánh giá của sản phẩm.
+  // Dùng chung cho nút "Tất cả" ở header và nút lớn phía dưới danh sách review.
+  // =======================================================
+  void _openProductReviewsScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ProductReviewsScreen(
+          productId: widget.productId,
+          productTitle: widget.productTitle,
+        ),
+      ),
+    );
+  }
+
+  // =======================================================
   // Nút mở màn hình riêng xem tất cả đánh giá.
   // =======================================================
   Widget _buildViewAllButton(int count) {
@@ -292,17 +343,7 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
       width: double.infinity,
       height: 44,
       child: OutlinedButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ProductReviewsScreen(
-                productId: widget.productId,
-                productTitle: widget.productTitle,
-              ),
-            ),
-          );
-        },
+        onPressed: _openProductReviewsScreen,
         style: OutlinedButton.styleFrom(
           foregroundColor: _primaryPink,
           side: const BorderSide(color: _primaryPink),
