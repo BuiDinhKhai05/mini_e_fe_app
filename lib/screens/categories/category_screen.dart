@@ -14,6 +14,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/category_model.dart';
@@ -519,7 +520,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               : _formatPrice(product.price);
 
           return Dialog(
-            backgroundColor: const Color(0xFFFFF7FA),
+            backgroundColor: AppColors.background,
             insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(26)),
             child: Padding(
@@ -535,14 +536,14 @@ class _CategoryScreenState extends State<CategoryScreen> {
                           child: Text(
                             'Chọn phân loại',
                             style: TextStyle(
-                              color: Color(0xFF49313A),
+                              color: AppColors.textDark,
                               fontSize: 18,
                               fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close_rounded, color: Color(0xFF9B7380)),
+                          icon: const Icon(Icons.close_rounded, color: AppColors.textGrey),
                           onPressed: () => Navigator.pop(dialogContext),
                         ),
                       ],
@@ -570,7 +571,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                               color: Colors.white,
                               child: const Icon(
                                 Icons.image_not_supported_outlined,
-                                color: Color(0xFFC8A6B0),
+                                color: AppColors.textLight,
                               ),
                             ),
                           ),
@@ -585,7 +586,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(
-                                  color: Color(0xFF2D2327),
+                                  color: AppColors.textDark,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -594,7 +595,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                               Text(
                                 '$displayPrice VNĐ',
                                 style: const TextStyle(
-                                  color: Color(0xFFE84D7A),
+                                  color: AppColors.darkPink,
                                   fontSize: 20,
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -603,7 +604,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                               Text(
                                 selectedVariant == null ? 'Kho: ...' : 'Kho: ${selectedVariant.stock}',
                                 style: const TextStyle(
-                                  color: Color(0xFF9B7380),
+                                  color: AppColors.textGrey,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -616,7 +617,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     const Text(
                       'Phân loại',
                       style: TextStyle(
-                        color: Color(0xFF49313A),
+                        color: AppColors.textDark,
                         fontWeight: FontWeight.w900,
                         fontSize: 15,
                       ),
@@ -629,12 +630,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: const Color(0xFFFFDCE7)),
+                          border: Border.all(color: AppColors.borderPink),
                         ),
                         child: const Text(
                           'Sản phẩm chưa có biến thể để mua.',
                           style: TextStyle(
-                            color: Color(0xFF9B7380),
+                            color: AppColors.textGrey,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -658,21 +659,21 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                 quantity = 1;
                               });
                             },
-                            selectedColor: const Color(0xFFE84D7A),
+                            selectedColor: AppColors.darkPink,
                             backgroundColor: Colors.white,
-                            disabledColor: const Color(0xFFF3EEF1),
+                            disabledColor: AppColors.borderGrey,
                             labelStyle: TextStyle(
                               color: disabled
-                                  ? const Color(0xFFC8A6B0)
+                                  ? AppColors.textLight
                                   : selected
                                   ? Colors.white
-                                  : const Color(0xFF49313A),
+                                  : AppColors.textDark,
                               fontWeight: FontWeight.w800,
                             ),
                             side: BorderSide(
                               color: selected
-                                  ? const Color(0xFFE84D7A)
-                                  : const Color(0xFFFFD5E1),
+                                  ? AppColors.darkPink
+                                  : AppColors.borderPink,
                             ),
                           );
                         }).toList(),
@@ -684,7 +685,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         const Text(
                           'Số lượng',
                           style: TextStyle(
-                            color: Color(0xFF49313A),
+                            color: AppColors.textDark,
                             fontWeight: FontWeight.w900,
                             fontSize: 16,
                           ),
@@ -696,12 +697,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   ? null
                                   : () => setStateDialog(() => quantity--),
                               icon: const Icon(Icons.remove_circle_outline),
-                              color: const Color(0xFF9B7380),
+                              color: AppColors.textGrey,
                             ),
                             Text(
                               '$quantity',
                               style: const TextStyle(
-                                color: Color(0xFF49313A),
+                                color: AppColors.textDark,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 18,
                               ),
@@ -711,7 +712,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   ? null
                                   : () => setStateDialog(() => quantity++),
                               icon: const Icon(Icons.add_circle_outline),
-                              color: const Color(0xFFE84D7A),
+                              color: AppColors.darkPink,
                             ),
                           ],
                         ),
@@ -755,7 +756,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Đã thêm vào giỏ hàng'),
-                                backgroundColor: Colors.green,
+                                backgroundColor: AppColors.success,
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
@@ -763,12 +764,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             if (!mounted) return;
                             final msg = e.toString().replaceAll('Exception: ', '');
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text(msg), backgroundColor: Colors.red),
+                              SnackBar(content: Text(msg), backgroundColor: AppColors.error),
                             );
                           }
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFFE84D7A),
+                          backgroundColor: AppColors.darkPink,
                           foregroundColor: Colors.white,
                           elevation: 0,
                           padding: const EdgeInsets.symmetric(vertical: 15),
@@ -800,8 +801,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFFFFF7FA),
-        border: Border(bottom: BorderSide(color: Color(0xFFFFE0E9))),
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: AppColors.lightPink)),
       ),
       child: SafeArea(
         bottom: false,
@@ -821,11 +822,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       decoration: BoxDecoration(
                         color: Colors.white,
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFFFFD5E1)),
+                        border: Border.all(color: AppColors.borderPink),
                       ),
                       child: const Icon(
                         Icons.arrow_back_rounded,
-                        color: Color(0xFF49313A),
+                        color: AppColors.textDark,
                       ),
                     ),
                   ),
@@ -839,7 +840,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Color(0xFF49313A),
+                            color: AppColors.textDark,
                             fontSize: 20,
                             fontWeight: FontWeight.w900,
                           ),
@@ -848,7 +849,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                         Text(
                           'Tìm thấy $productCount sản phẩm • $shopCount cửa hàng',
                           style: const TextStyle(
-                            color: Color(0xFF9B7380),
+                            color: AppColors.textGrey,
                             fontWeight: FontWeight.w700,
                             fontSize: 12,
                           ),
@@ -860,13 +861,13 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     width: 42,
                     height: 42,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFFEAF1),
+                      color: AppColors.lightPink,
                       shape: BoxShape.circle,
-                      border: Border.all(color: const Color(0xFFFFD5E1)),
+                      border: Border.all(color: AppColors.borderPink),
                     ),
                     child: const Icon(
                       Icons.grid_view_rounded,
-                      color: Color(0xFFE84D7A),
+                      color: AppColors.darkPink,
                     ),
                   ),
                 ],
@@ -876,10 +877,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFFFDCE7)),
+                  border: Border.all(color: AppColors.borderPink),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFE84D7A).withOpacity(0.08),
+                      color: AppColors.darkPink.withOpacity(0.08),
                       blurRadius: 18,
                       offset: const Offset(0, 8),
                     ),
@@ -892,17 +893,17 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   decoration: InputDecoration(
                     hintText: 'Tìm sản phẩm hoặc cửa hàng...',
                     hintStyle: const TextStyle(
-                      color: Color(0xFFC5A6B0),
+                      color: AppColors.textLight,
                       fontWeight: FontWeight.w600,
                     ),
-                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFE84D7A)),
+                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.darkPink),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
                     suffixIcon: _keyword.isEmpty
                         ? null
                         : IconButton(
                       tooltip: 'Xóa tìm kiếm',
-                      icon: const Icon(Icons.clear_rounded, color: Color(0xFF9B7380)),
+                      icon: const Icon(Icons.clear_rounded, color: AppColors.textGrey),
                       onPressed: _clearSearchKeyword,
                     ),
                   ),
@@ -931,7 +932,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 18),
         child: Center(
-          child: CircularProgressIndicator(color: Color(0xFFE84D7A)),
+          child: CircularProgressIndicator(color: AppColors.darkPink),
         ),
       );
     }
@@ -944,7 +945,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
           child: Text(
             'Lọc theo danh mục',
             style: TextStyle(
-              color: Color(0xFF49313A),
+              color: AppColors.textDark,
               fontSize: 16,
               fontWeight: FontWeight.w900,
             ),
@@ -963,7 +964,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   label: 'Tất cả',
                   icon: Icons.home_rounded,
                   selected: _selectedCategoryId == null,
-                  color: const Color(0xFFFFE8EF),
+                  color: AppColors.lightPink,
                   onTap: _selectAllCategories,
                 );
               }
@@ -1025,7 +1026,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       ? 'Tất cả sản phẩm'
                       : 'Kết quả lọc',
                   style: const TextStyle(
-                    color: Color(0xFF49313A),
+                    color: AppColors.textDark,
                     fontSize: 17,
                     fontWeight: FontWeight.w900,
                   ),
@@ -1040,7 +1041,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     child: Text(
                       'Xóa lọc',
                       style: TextStyle(
-                        color: Color(0xFFE84D7A),
+                        color: AppColors.darkPink,
                         fontWeight: FontWeight.w900,
                         fontSize: 12,
                       ),
@@ -1085,7 +1086,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 '$resultCount sản phẩm',
               ].join(' • '),
               style: const TextStyle(
-                color: Color(0xFF9B7380),
+                color: AppColors.textGrey,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
@@ -1107,10 +1108,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFFFEDF3)),
+          border: Border.all(color: AppColors.softPink),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE84D7A).withOpacity(0.07),
+              color: AppColors.darkPink.withOpacity(0.07),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -1133,21 +1134,21 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       width: double.infinity,
                       height: double.infinity,
                       placeholder: (_, __) => Container(
-                        color: const Color(0xFFFFF3F7),
+                        color: AppColors.softPink,
                         child: const Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Color(0xFFE84D7A),
+                            color: AppColors.darkPink,
                           ),
                         ),
                       ),
                       errorWidget: (_, __, ___) => Container(
-                        color: const Color(0xFFFFF3F7),
+                        color: AppColors.softPink,
                         child: const Center(
                           child: Icon(
                             Icons.image_not_supported_outlined,
                             size: 38,
-                            color: Color(0xFFC8A6B0),
+                            color: AppColors.textLight,
                           ),
                         ),
                       ),
@@ -1159,7 +1160,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE84D7A),
+                        color: AppColors.darkPink,
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: const Text(
@@ -1189,7 +1190,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       style: const TextStyle(
                         fontSize: 13.5,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFF49313A),
+                        color: AppColors.textDark,
                         height: 1.15,
                       ),
                     ),
@@ -1205,7 +1206,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                               const Icon(
                                 Icons.storefront_rounded,
                                 size: 13,
-                                color: Color(0xFF9B7380),
+                                color: AppColors.textGrey,
                               ),
                               const SizedBox(width: 4),
                               Expanded(
@@ -1215,7 +1216,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
                                     fontSize: 11.5,
-                                    color: Color(0xFF9B7380),
+                                    color: AppColors.textGrey,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
@@ -1231,7 +1232,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       style: const TextStyle(
                         fontSize: 14.5,
                         fontWeight: FontWeight.w900,
-                        color: Color(0xFFE84D7A),
+                        color: AppColors.darkPink,
                       ),
                     ),
                     const SizedBox(height: 4),
@@ -1245,7 +1246,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11.5,
-                            color: stock > 0 ? const Color(0xFF9B7380) : Colors.red,
+                            color: stock > 0 ? AppColors.textGrey : AppColors.error,
                             fontWeight: FontWeight.w700,
                           ),
                         );
@@ -1259,13 +1260,13 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             height: 34,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFF3F7),
+                              color: AppColors.softPink,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(
                               'Chi tiết',
                               style: TextStyle(
-                                color: Color(0xFF9B7380),
+                                color: AppColors.textGrey,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 12,
                               ),
@@ -1280,7 +1281,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             width: 38,
                             height: 34,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE84D7A),
+                              color: AppColors.darkPink,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
@@ -1304,7 +1305,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   Color _categoryColor(int index) {
     const colors = [
-      Color(0xFFFFE8EF),
+      AppColors.lightPink,
       Color(0xFFFFF3CC),
       Color(0xFFE9F8EF),
       Color(0xFFEAF5FF),
@@ -1333,7 +1334,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   // ================================================================
   Widget _resultTabBar(int productCount, int shopCount) {
     return Container(
-      color: const Color(0xFFFFF7FA),
+      color: AppColors.background,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Row(
         children: [
@@ -1369,7 +1370,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }) {
     if (productProvider.isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFE84D7A)),
+        child: CircularProgressIndicator(color: AppColors.darkPink),
       );
     }
 
@@ -1381,7 +1382,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
             'Không tải được sản phẩm.\nVui lòng kiểm tra kết nối mạng.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Color(0xFF9B7380),
+              color: AppColors.textGrey,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1390,7 +1391,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
     }
 
     return RefreshIndicator(
-      color: const Color(0xFFE84D7A),
+      color: AppColors.darkPink,
       onRefresh: () async {
         _stockCache.clear();
         await Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
@@ -1438,7 +1439,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   Widget _buildShopResults(ShopProvider shopProvider) {
     if (shopProvider.isLoading) {
       return const Center(
-        child: CircularProgressIndicator(color: Color(0xFFE84D7A)),
+        child: CircularProgressIndicator(color: AppColors.darkPink),
       );
     }
 
@@ -1466,7 +1467,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
     }
 
     return RefreshIndicator(
-      color: const Color(0xFFE84D7A),
+      color: AppColors.darkPink,
       onRefresh: _runShopSearch,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -1491,10 +1492,10 @@ class _CategoryScreenState extends State<CategoryScreen> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFFFEDF3)),
+          border: Border.all(color: AppColors.softPink),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE84D7A).withOpacity(0.07),
+              color: AppColors.darkPink.withOpacity(0.07),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -1542,7 +1543,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Color(0xFF49313A),
+                            color: AppColors.textDark,
                             fontSize: 16,
                             fontWeight: FontWeight.w900,
                           ),
@@ -1555,7 +1556,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             _InfoChip(
                               icon: Icons.star_rounded,
                               label: '${shop.stats.ratingAvg.toStringAsFixed(1)} | ${shop.stats.reviewCount} đánh giá',
-                              iconColor: Colors.orange,
+                              iconColor: AppColors.warning,
                             ),
                             if (shop.phone != null && shop.phone!.trim().isNotEmpty)
                               _InfoChip(
@@ -1567,7 +1568,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       ],
                     ),
                   ),
-                  const Icon(Icons.chevron_right_rounded, color: Color(0xFFE84D7A)),
+                  const Icon(Icons.chevron_right_rounded, color: AppColors.darkPink),
                 ],
               ),
             ),
@@ -1579,9 +1580,9 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   Widget _shopCoverPlaceholder() {
     return Container(
-      color: const Color(0xFFFFEAF1),
+      color: AppColors.lightPink,
       child: const Center(
-        child: Icon(Icons.storefront_rounded, color: Color(0xFFE84D7A), size: 42),
+        child: Icon(Icons.storefront_rounded, color: AppColors.darkPink, size: 42),
       ),
     );
   }
@@ -1591,12 +1592,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
       width: 54,
       height: 54,
       decoration: BoxDecoration(
-        color: const Color(0xFFFFEAF1),
+        color: AppColors.lightPink,
         shape: BoxShape.circle,
         border: Border.all(color: Colors.white, width: 3),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE84D7A).withOpacity(0.12),
+            color: AppColors.darkPink.withOpacity(0.12),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -1606,7 +1607,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
             : null,
       ),
       child: shop.logoUrl == null
-          ? const Icon(Icons.storefront_rounded, color: Color(0xFFE84D7A), size: 28)
+          ? const Icon(Icons.storefront_rounded, color: AppColors.darkPink, size: 28)
           : null,
     );
   }
@@ -1625,12 +1626,12 @@ class _CategoryScreenState extends State<CategoryScreen> {
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.92),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFFFD5E1)),
+        border: Border.all(color: AppColors.borderPink),
       ),
       child: Text(
         label,
         style: const TextStyle(
-          color: Color(0xFFE84D7A),
+          color: AppColors.darkPink,
           fontSize: 11,
           fontWeight: FontWeight.w900,
         ),
@@ -1655,17 +1656,17 @@ class _CategoryScreenState extends State<CategoryScreen> {
               width: 74,
               height: 74,
               decoration: const BoxDecoration(
-                color: Color(0xFFFFEAF1),
+                color: AppColors.lightPink,
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: const Color(0xFFE84D7A), size: 34),
+              child: Icon(icon, color: AppColors.darkPink, size: 34),
             ),
             const SizedBox(height: 14),
             Text(
               title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Color(0xFF49313A),
+                color: AppColors.textDark,
                 fontWeight: FontWeight.w900,
                 fontSize: 16,
               ),
@@ -1675,7 +1676,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               message,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Color(0xFF9B7380),
+                color: AppColors.textGrey,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -1684,8 +1685,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
               OutlinedButton(
                 onPressed: onAction,
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFFE84D7A),
-                  side: const BorderSide(color: Color(0xFFE84D7A)),
+                  foregroundColor: AppColors.darkPink,
+                  side: const BorderSide(color: AppColors.darkPink),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 child: Text(actionText, style: const TextStyle(fontWeight: FontWeight.w900)),
@@ -1700,7 +1701,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFAFC),
+      backgroundColor: AppColors.background,
       body: Consumer3<ProductProvider, CategoryProvider, ShopProvider>(
         builder: (context, productProvider, categoryProvider, shopProvider, child) {
           final filteredProducts = _getFilteredProducts(
@@ -1760,16 +1761,16 @@ class _ResultTabButton extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE84D7A) : Colors.white,
+          color: selected ? AppColors.darkPink : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: selected ? const Color(0xFFE84D7A) : const Color(0xFFFFD5E1),
+            color: selected ? AppColors.darkPink : AppColors.borderPink,
           ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 18, color: selected ? Colors.white : const Color(0xFFE84D7A)),
+            Icon(icon, size: 18, color: selected ? Colors.white : AppColors.darkPink),
             const SizedBox(width: 7),
             Flexible(
               child: Text(
@@ -1777,7 +1778,7 @@ class _ResultTabButton extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: selected ? Colors.white : const Color(0xFF49313A),
+                  color: selected ? Colors.white : AppColors.textDark,
                   fontWeight: FontWeight.w900,
                   fontSize: 12.5,
                 ),
@@ -1801,7 +1802,7 @@ class _InfoChip extends StatelessWidget {
   const _InfoChip({
     required this.icon,
     required this.label,
-    this.iconColor = const Color(0xFFE84D7A),
+    this.iconColor = AppColors.darkPink,
   });
 
   @override
@@ -1809,9 +1810,9 @@ class _InfoChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3F7),
+        color: AppColors.softPink,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: const Color(0xFFFFDCE7)),
+        border: Border.all(color: AppColors.borderPink),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1821,7 +1822,7 @@ class _InfoChip extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              color: Color(0xFF6F3C4B),
+              color: AppColors.textDark,
               fontSize: 11.5,
               fontWeight: FontWeight.w800,
             ),
@@ -1863,13 +1864,13 @@ class _CategoryFilterCard extends StatelessWidget {
           color: color,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: selected ? const Color(0xFFE84D7A) : Colors.white,
+            color: selected ? AppColors.darkPink : Colors.white,
             width: selected ? 1.6 : 1,
           ),
           boxShadow: selected
               ? [
             BoxShadow(
-              color: const Color(0xFFE84D7A).withOpacity(0.14),
+              color: AppColors.darkPink.withOpacity(0.14),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -1888,7 +1889,7 @@ class _CategoryFilterCard extends StatelessWidget {
               ),
               child: Icon(
                 icon,
-                color: selected ? const Color(0xFFE84D7A) : const Color(0xFF6F3C4B),
+                color: selected ? AppColors.darkPink : AppColors.textDark,
               ),
             ),
             const SizedBox(height: 7),
@@ -1899,7 +1900,7 @@ class _CategoryFilterCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
-                color: selected ? const Color(0xFFE84D7A) : const Color(0xFF49313A),
+                color: selected ? AppColors.darkPink : AppColors.textDark,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -1935,16 +1936,16 @@ class _CategoryChip extends StatelessWidget {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFE84D7A) : Colors.white,
+            color: selected ? AppColors.darkPink : Colors.white,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
-              color: selected ? const Color(0xFFE84D7A) : const Color(0xFFFFD5E1),
+              color: selected ? AppColors.darkPink : AppColors.borderPink,
             ),
           ),
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF9B7380),
+              color: selected ? Colors.white : AppColors.textGrey,
               fontWeight: FontWeight.w900,
               fontSize: 12,
             ),
@@ -1978,16 +1979,16 @@ class _SortChip extends StatelessWidget {
         duration: const Duration(milliseconds: 160),
         padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE84D7A) : Colors.white,
+          color: selected ? AppColors.darkPink : Colors.white,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
-            color: selected ? const Color(0xFFE84D7A) : const Color(0xFFFFD5E1),
+            color: selected ? AppColors.darkPink : AppColors.borderPink,
           ),
         ),
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : const Color(0xFF9B7380),
+            color: selected ? Colors.white : AppColors.textGrey,
             fontWeight: FontWeight.w900,
             fontSize: 12,
           ),

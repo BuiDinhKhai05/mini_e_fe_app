@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import '../../theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
@@ -9,22 +10,6 @@ import '../../models/product_model.dart';
 import '../../providers/cart_provider.dart';
 import '../../providers/product_provider.dart';
 import '../products/product_detail_screen.dart';
-
-// -----------------------------------------------------------------------------
-// Bảng màu dùng chung theo format Soft Pink Card UI của phần product.
-// -----------------------------------------------------------------------------
-class AppColors {
-  static const Color background = Color(0xFFFFF5F8);
-  static const Color primaryPink = Color(0xFFE84B82);
-  static const Color accentPink = Color(0xFFFF6FA5);
-  static const Color softPink = Color(0xFFFFEEF4);
-  static const Color lighterPink = Color(0xFFFFF8FB);
-  static const Color borderPink = Color(0xFFFFD6E3);
-  static const Color textDark = Color(0xFF4A2C36);
-  static const Color textGrey = Color(0xFF8A6F78);
-  static const Color dangerRed = Color(0xFFFF4D5E);
-  static const Color successGreen = Color(0xFF20B26B);
-}
 
 class CartScreen extends StatefulWidget {
   const CartScreen({super.key});
@@ -58,7 +43,7 @@ class _CartScreenState extends State<CartScreen> {
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isError ? AppColors.dangerRed : AppColors.successGreen,
+        backgroundColor: isError ? AppColors.error : AppColors.success,
       ),
     );
   }
@@ -94,7 +79,7 @@ class _CartScreenState extends State<CartScreen> {
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               elevation: 0,
-              backgroundColor: AppColors.dangerRed,
+              backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -153,7 +138,7 @@ class _CartScreenState extends State<CartScreen> {
               return IconButton(
                 tooltip: 'Xóa tất cả',
                 onPressed: () => _confirmClearCart(context, provider),
-                icon: const Icon(Icons.delete_sweep_outlined, color: AppColors.dangerRed),
+                icon: const Icon(Icons.delete_sweep_outlined, color: AppColors.error),
               );
             },
           ),
@@ -630,7 +615,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: isSelected ? AppColors.softPink : AppColors.lighterPink,
+                        color: isSelected ? AppColors.softPink : AppColors.softPink,
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
                           color: isSelected ? AppColors.primaryPink : AppColors.borderPink,
@@ -709,7 +694,7 @@ class _VariantPickerSheetState extends State<_VariantPickerSheet> {
                                       isOutOfStock ? 'Hết hàng' : 'Kho: ${variant.stock}',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: isOutOfStock ? AppColors.dangerRed : AppColors.textGrey,
+                                        color: isOutOfStock ? AppColors.error : AppColors.textGrey,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -848,7 +833,7 @@ class _CartItemWidgetState extends State<CartItemWidget> {
       SnackBar(
         content: Text(message),
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isError ? AppColors.dangerRed : AppColors.successGreen,
+        backgroundColor: isError ? AppColors.error : AppColors.success,
       ),
     );
   }
@@ -912,7 +897,7 @@ class _CartItemWidgetState extends State<CartItemWidget> {
             onPressed: () => Navigator.pop(ctx, true),
             style: ElevatedButton.styleFrom(
               elevation: 0,
-              backgroundColor: AppColors.dangerRed,
+              backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
@@ -1152,7 +1137,7 @@ class _CartItemWidgetState extends State<CartItemWidget> {
         placeholder: (_, __) => Container(
           width: 86,
           height: 86,
-          color: AppColors.lighterPink,
+          color: AppColors.softPink,
           child: const Center(
             child: SizedBox(
               width: 20,
@@ -1164,7 +1149,7 @@ class _CartItemWidgetState extends State<CartItemWidget> {
         errorWidget: (_, __, ___) => Container(
           width: 86,
           height: 86,
-          color: AppColors.lighterPink,
+          color: AppColors.softPink,
           child: const Icon(Icons.image_not_supported_rounded, color: AppColors.textGrey),
         ),
       ),
@@ -1199,10 +1184,10 @@ class _CartItemWidgetState extends State<CartItemWidget> {
                 width: 34,
                 height: 34,
                 decoration: const BoxDecoration(
-                  color: AppColors.lighterPink,
+                  color: AppColors.softPink,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.delete_outline_rounded, color: AppColors.dangerRed, size: 19),
+                child: const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 19),
               ),
             ),
           ],

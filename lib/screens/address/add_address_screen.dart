@@ -6,13 +6,14 @@ import 'dart:convert'; // Dùng để decode JSON từ API
 import '../../models/address_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/address_provider.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/vietnam_address_selector.dart';
 import '../../widgets/osm_location_picker.dart';
 
 class AddAddressScreen extends StatefulWidget {
   final AddressModel? address;
 
-  const AddAddressScreen({Key? key, this.address}) : super(key: key);
+  const AddAddressScreen({super.key, this.address});
 
   @override
   State<AddAddressScreen> createState() => _AddAddressScreenState();
@@ -32,16 +33,6 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   double? _lat;
   double? _lng;
   bool _isDefault = false;
-
-  // =========================
-  // Màu dùng chung cho màn hình
-  // =========================
-  static const Color _primaryPink = Color(0xFFFF5C8A);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _lighterPink = Color(0xFFFFF7FA);
-  static const Color _borderPink = Color(0xFFFFD8E4);
-  static const Color _textDark = Color(0xFF222222);
-  static const Color _textGrey = Color(0xFF707070);
 
   @override
   void initState() {
@@ -166,7 +157,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: isError ? Colors.red : _primaryPink,
+        backgroundColor: isError ? AppColors.error : AppColors.primaryPink,
       ),
     );
   }
@@ -181,10 +172,10 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _borderPink),
+        border: Border.all(color: AppColors.borderPink),
         boxShadow: [
           BoxShadow(
-            color: _primaryPink.withOpacity(0.08),
+            color: AppColors.primaryPink.withOpacity(0.08),
             blurRadius: 22,
             offset: const Offset(0, 10),
           ),
@@ -199,13 +190,13 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(
-                color: _lighterPink,
+                color: AppColors.background,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: const Icon(
                 Icons.arrow_back_ios_new_rounded,
                 size: 18,
-                color: _primaryPink,
+                color: AppColors.primaryPink,
               ),
             ),
           ),
@@ -225,7 +216,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    color: _textDark,
+                    color: AppColors.textDark,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -235,7 +226,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                       : 'Tạo địa chỉ giao hàng cho đơn hàng 💗',
                   style: const TextStyle(
                     fontSize: 12,
-                    color: _textGrey,
+                    color: AppColors.textGrey,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -261,11 +252,11 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: _borderPink),
+        borderRadius: BorderRadius.circular(AppRadius.extraLarge),
+        border: Border.all(color: AppColors.borderPink),
         boxShadow: [
           BoxShadow(
-            color: _primaryPink.withOpacity(0.05),
+            color: AppColors.primaryPink.withOpacity(0.05),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -280,10 +271,10 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                 width: 34,
                 height: 34,
                 decoration: BoxDecoration(
-                  color: _softPink,
-                  borderRadius: BorderRadius.circular(12),
+                  color: AppColors.lightPink,
+                  borderRadius: BorderRadius.circular(AppRadius.medium),
                 ),
-                child: Icon(icon, color: _primaryPink, size: 20),
+                child: Icon(icon, color: AppColors.primaryPink, size: 20),
               ),
               const SizedBox(width: 10),
               Text(
@@ -291,7 +282,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                 style: const TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.w900,
-                  color: _textDark,
+                  color: AppColors.textDark,
                 ),
               ),
             ],
@@ -318,25 +309,25 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       keyboardType: keyboardType,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(icon, color: _primaryPink),
+        prefixIcon: Icon(icon, color: AppColors.primaryPink),
         filled: true,
-        fillColor: _lighterPink,
+        fillColor: AppColors.background,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: _borderPink),
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          borderSide: const BorderSide(color: AppColors.borderPink),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: _primaryPink, width: 1.4),
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          borderSide: const BorderSide(color: AppColors.primaryPink, width: 1.4),
         ),
         errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.redAccent),
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          borderSide: const BorderSide(color: AppColors.error),
         ),
         focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: const BorderSide(color: Colors.redAccent),
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          borderSide: const BorderSide(color: AppColors.error),
         ),
       ),
       validator: validator,
@@ -352,7 +343,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       height: 52,
       child: ElevatedButton.icon(
         style: ElevatedButton.styleFrom(
-          backgroundColor: _primaryPink,
+          backgroundColor: AppColors.primaryPink,
           foregroundColor: Colors.white,
           elevation: 0,
           shape: RoundedRectangleBorder(
@@ -397,10 +388,10 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
       width: size,
       height: size,
       decoration: const BoxDecoration(
-        color: _softPink,
+        color: AppColors.lightPink,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: _primaryPink, size: iconSize),
+      child: Icon(icon, color: AppColors.primaryPink, size: iconSize),
     );
   }
 
@@ -410,7 +401,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
     final isEditing = widget.address != null;
 
     return Scaffold(
-      backgroundColor: _lighterPink,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -483,15 +474,15 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                                 width: double.infinity,
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: _lighterPink,
+                                  color: AppColors.background,
                                   borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(color: _borderPink),
+                                  border: Border.all(color: AppColors.borderPink),
                                 ),
                                 child: Text(
                                   _finalFormattedAddress,
                                   style: const TextStyle(
                                     fontSize: 12,
-                                    color: _textGrey,
+                                    color: AppColors.textGrey,
                                     height: 1.35,
                                   ),
                                 ),
@@ -528,7 +519,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                                   const Icon(
                                     Icons.my_location_rounded,
                                     size: 18,
-                                    color: _primaryPink,
+                                    color: AppColors.primaryPink,
                                   ),
                                   const SizedBox(width: 8),
                                   Expanded(
@@ -536,7 +527,7 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                                       'Tọa độ: ${_lat!.toStringAsFixed(6)}, ${_lng!.toStringAsFixed(6)}',
                                       style: const TextStyle(
                                         fontSize: 12,
-                                        color: _primaryPink,
+                                        color: AppColors.primaryPink,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -558,17 +549,17 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
                           icon: Icons.star_rounded,
                           child: SwitchListTile(
                             contentPadding: EdgeInsets.zero,
-                            activeColor: _primaryPink,
+                            activeColor: AppColors.primaryPink,
                             title: const Text(
                               'Đặt làm địa chỉ mặc định',
                               style: TextStyle(
                                 fontWeight: FontWeight.w800,
-                                color: _textDark,
+                                color: AppColors.textDark,
                               ),
                             ),
                             subtitle: const Text(
                               'Địa chỉ này sẽ được ưu tiên khi đặt hàng.',
-                              style: TextStyle(fontSize: 12, color: _textGrey),
+                              style: TextStyle(fontSize: 12, color: AppColors.textGrey),
                             ),
                             value: _isDefault,
                             onChanged: (val) => setState(() => _isDefault = val),

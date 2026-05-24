@@ -21,6 +21,7 @@ import '../providers/cart_provider.dart';
 import '../providers/category_provider.dart';
 import '../models/product_model.dart';
 import '../models/category_model.dart';
+import '../theme/app_theme.dart';
 import 'categories/category_screen.dart';
 import 'package:mini_e_fe_app/screens/products/widgets/product_cart_action_sheet.dart';
 
@@ -33,7 +34,7 @@ const String _kHomeHeroAsset = 'assets/images/mochi/basket_chick.png';
 // keyword tìm kiếm, danh mục đang chọn, cache tồn kho...
 // ================================================================
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({Key? key}) : super(key: key);
+  const HomeScreen({super.key});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -302,8 +303,8 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (_) => Container(
         constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.72),
         decoration: const BoxDecoration(
-          color: Color(0xFFFFFAFC),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          color: AppColors.softPink,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.extraLarge)),
         ),
         child: SafeArea(
           child: Column(
@@ -314,8 +315,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 44,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF3C7D4),
-                  borderRadius: BorderRadius.circular(999),
+                  color: AppColors.borderPink,
+                  borderRadius: BorderRadius.circular(AppRadius.circle),
                 ),
               ),
               Padding(
@@ -325,16 +326,16 @@ class _HomeScreenState extends State<HomeScreen> {
                     Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFEAF1),
-                        borderRadius: BorderRadius.circular(16),
+                        color: AppColors.lightPink,
+                        borderRadius: BorderRadius.circular(AppRadius.large),
                       ),
-                      child: const Icon(Icons.widgets_outlined, color: Color(0xFFE84D7A)),
+                      child: const Icon(Icons.widgets_outlined, color: AppColors.darkPink),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
                       child: Text(
                         'Chọn danh mục',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF49313A)),
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textDark),
                       ),
                     ),
                   ],
@@ -389,12 +390,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFFFFEAF1) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: selected ? const Color(0xFFE84D7A) : const Color(0xFFF6DDE5)),
+        color: selected ? AppColors.lightPink : Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        border: Border.all(color: selected ? AppColors.darkPink : AppColors.borderPink),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE84D7A).withOpacity(0.06),
+            color: AppColors.darkPink.withOpacity(0.06),
             blurRadius: 14,
             offset: const Offset(0, 8),
           ),
@@ -405,21 +406,21 @@ class _HomeScreenState extends State<HomeScreen> {
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFE84D7A) : const Color(0xFFFFF3F7),
-            borderRadius: BorderRadius.circular(14),
+            color: selected ? AppColors.darkPink : AppColors.softPink,
+            borderRadius: BorderRadius.circular(AppRadius.medium),
           ),
-          child: Icon(icon, color: selected ? Colors.white : const Color(0xFFE84D7A)),
+          child: Icon(icon, color: selected ? Colors.white : AppColors.darkPink),
         ),
         title: Text(
           title,
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: selected ? const Color(0xFFE84D7A) : const Color(0xFF49313A),
+            color: selected ? AppColors.darkPink : AppColors.textDark,
           ),
         ),
         trailing: selected
-            ? const Icon(Icons.check_circle_rounded, color: Color(0xFFE84D7A))
-            : const Icon(Icons.chevron_right_rounded, color: Color(0xFFC8A6B0)),
+            ? const Icon(Icons.check_circle_rounded, color: AppColors.darkPink)
+            : const Icon(Icons.chevron_right_rounded, color: AppColors.textLight),
         onTap: onTap,
       ),
     );
@@ -438,16 +439,16 @@ class _HomeScreenState extends State<HomeScreen> {
   // - nút thêm vào giỏ hoặc mua ngay
   // ================================================================
 
-    Future<void> _showProductCartDialog(
-        ProductModel product, {
-          bool isBuyNow = false,
-        }) {
-      return ProductCartActionSheet.show(
-        context: context,
-        product: product,
-        isBuyNow: isBuyNow,
-      );
-    }
+  Future<void> _showProductCartDialog(
+      ProductModel product, {
+        bool isBuyNow = false,
+      }) {
+    return ProductCartActionSheet.show(
+      context: context,
+      product: product,
+      isBuyNow: isBuyNow,
+    );
+  }
 
 
   // ================================================================
@@ -458,8 +459,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _header(BuildContext context, CategoryProvider cp) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFFFFF7FA),
-        border: Border(bottom: BorderSide(color: Color(0xFFFFE0E9))),
+        color: AppColors.background,
+        border: Border(bottom: BorderSide(color: AppColors.borderPink)),
       ),
       child: SafeArea(
         bottom: false,
@@ -474,11 +475,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     height: 48,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFFFD5E1)),
+                      borderRadius: BorderRadius.circular(AppRadius.large),
+                      border: Border.all(color: AppColors.borderPink),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFFE84D7A).withOpacity(0.10),
+                          color: AppColors.darkPink.withOpacity(0.10),
                           blurRadius: 16,
                           offset: const Offset(0, 8),
                         ),
@@ -489,7 +490,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Image.asset(
                         _kMochiLogoAsset,
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.favorite_rounded, color: Color(0xFFE84D7A), size: 24),
+                        errorBuilder: (_, __, ___) => const Icon(Icons.favorite_rounded, color: AppColors.darkPink, size: 24),
                       ),
                     ),
                   ),
@@ -501,7 +502,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(
                           'Mochi Shop',
                           style: TextStyle(
-                            color: Color(0xFFE84D7A),
+                            color: AppColors.darkPink,
                             fontSize: 22,
                             fontWeight: FontWeight.w900,
                             letterSpacing: 0.2,
@@ -510,7 +511,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         SizedBox(height: 2),
                         Text(
                           'Cute things for you ♡',
-                          style: TextStyle(color: Color(0xFF9B7380), fontSize: 12, fontWeight: FontWeight.w700),
+                          style: TextStyle(color: AppColors.textGrey, fontSize: 12, fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -529,7 +530,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             top: -5,
                             child: Container(
                               padding: const EdgeInsets.all(5),
-                              decoration: const BoxDecoration(color: Color(0xFFE84D7A), shape: BoxShape.circle),
+                              decoration: const BoxDecoration(color: AppColors.darkPink, shape: BoxShape.circle),
                               child: Text(
                                 '${provider.cartData!.itemsCount}',
                                 style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
@@ -550,30 +551,30 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: const Color(0xFFFFDCE7)),
+                  borderRadius: BorderRadius.circular(AppRadius.large),
+                  border: Border.all(color: AppColors.borderPink),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFFE84D7A).withOpacity(0.08),
+                      color: AppColors.darkPink.withOpacity(0.08),
                       blurRadius: 18,
                       offset: const Offset(0, 8),
                     ),
                   ],
                 ),
                 child: TextField(
-                    controller: _searchCtrl,
-                    textInputAction: TextInputAction.search,
-                    onChanged: (_) => setState(() {}),
-                    // Khi người dùng bấm Enter/Search thì chuyển sang CategoryScreen.
-                    onSubmitted: (v) {
-                      final keyword = v.trim();
-                      if (keyword.isEmpty) return;
-                      _openCategoryProducts(keyword: keyword);
-                    },
-                    decoration: InputDecoration(
-                        hintText: 'Bạn tìm gì hôm nay?',
-                    hintStyle: const TextStyle(color: Color(0xFFC5A6B0), fontWeight: FontWeight.w600),
-                    prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFFE84D7A)),
+                  controller: _searchCtrl,
+                  textInputAction: TextInputAction.search,
+                  onChanged: (_) => setState(() {}),
+                  // Khi người dùng bấm Enter/Search thì chuyển sang CategoryScreen.
+                  onSubmitted: (v) {
+                    final keyword = v.trim();
+                    if (keyword.isEmpty) return;
+                    _openCategoryProducts(keyword: keyword);
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Bạn tìm gì hôm nay?',
+                    hintStyle: AppTextStyles.bodyGrey.copyWith(color: AppColors.textLight, fontWeight: FontWeight.w600),
+                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.darkPink),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
                     suffixIcon: Row(
@@ -581,13 +582,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         IconButton(
                           tooltip: 'Chọn danh mục',
-                          icon: const Icon(Icons.tune_rounded, color: Color(0xFFE84D7A)),
+                          icon: const Icon(Icons.tune_rounded, color: AppColors.darkPink),
                           onPressed: () => _openCategoryPicker(cp),
                         ),
                         if (_searchCtrl.text.isNotEmpty)
                           IconButton(
                             tooltip: 'Xoá tìm kiếm',
-                            icon: const Icon(Icons.clear_rounded, color: Color(0xFF9B7380)),
+                            icon: const Icon(Icons.clear_rounded, color: AppColors.textGrey),
                             onPressed: () {
                               _searchCtrl.clear();
                               setState(() {});
@@ -612,16 +613,16 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _roundHeaderButton({required IconData icon, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
+      borderRadius: BorderRadius.circular(AppRadius.circle),
       child: Container(
         width: 42,
         height: 42,
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
-          border: Border.all(color: const Color(0xFFFFD5E1)),
+          border: Border.all(color: AppColors.borderPink),
         ),
-        child: Icon(icon, color: const Color(0xFF49313A), size: 22),
+        child: Icon(icon, color: AppColors.textDark, size: 22),
       ),
     );
   }
@@ -637,16 +638,16 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         height: 184,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
+          borderRadius: BorderRadius.circular(AppRadius.extraLarge),
           gradient: const LinearGradient(
             colors: [Color(0xFFFFF0F5), Color(0xFFFFF8E8)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
-          border: Border.all(color: Color(0xFFFFDCE7)),
+          border: Border.all(color: AppColors.borderPink),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE84D7A).withOpacity(0.08),
+              color: AppColors.darkPink.withOpacity(0.08),
               blurRadius: 22,
               offset: const Offset(0, 12),
             ),
@@ -675,7 +676,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white.withOpacity(0.82),
                   borderRadius: BorderRadius.circular(34),
-                  border: Border.all(color: const Color(0xFFFFD5E1), width: 2),
+                  border: Border.all(color: AppColors.borderPink, width: 2),
                 ),
                 clipBehavior: Clip.antiAlias,
                 child: Padding(
@@ -683,7 +684,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Image.asset(
                     _kHomeHeroAsset,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.shopping_basket_outlined, size: 50, color: Color(0xFFE84D7A)),
+                    errorBuilder: (_, __, ___) => const Icon(Icons.shopping_basket_outlined, size: 50, color: AppColors.darkPink),
                   ),
                 ),
               ),
@@ -696,7 +697,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const Positioned(
               right: 20,
               top: 38,
-              child: Icon(Icons.favorite_rounded, color: Color(0xFFE84D7A), size: 20),
+              child: Icon(Icons.favorite_rounded, color: AppColors.darkPink, size: 20),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 22, 150, 18),
@@ -705,19 +706,19 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   const Text(
                     'Sưu tập đồ cute',
-                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, color: Color(0xFFE84D7A), height: 1.08),
+                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, color: AppColors.darkPink, height: 1.08),
                   ),
                   const SizedBox(height: 4),
                   const Text(
                     'Cho ngày thêm vui! ✨',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF6F3C4B), height: 1.15),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textDark, height: 1.15),
                   ),
                   const SizedBox(height: 10),
                   const Text(
                     'Thế giới đồ dễ thương dành riêng cho bạn',
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: Color(0xFF9B7380), fontSize: 12.5, fontWeight: FontWeight.w600),
+                    style: TextStyle(color: AppColors.textGrey, fontSize: 12.5, fontWeight: FontWeight.w600),
                   ),
                   const Spacer(),
                   Row(
@@ -725,8 +726,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE84D7A),
-                          borderRadius: BorderRadius.circular(14),
+                          color: AppColors.darkPink,
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
                         ),
                         child: const Row(
                           mainAxisSize: MainAxisSize.min,
@@ -742,10 +743,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: const Color(0xFFFFD5E1)),
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
+                          border: Border.all(color: AppColors.borderPink),
                         ),
-                        child: const Text('Collection', style: TextStyle(color: Color(0xFF6F3C4B), fontWeight: FontWeight.w900, fontSize: 12)),
+                        child: const Text('Collection', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w900, fontSize: 12)),
                       ),
                     ],
                   ),
@@ -765,9 +766,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // ================================================================
   Widget _serviceHighlights() {
     final items = [
-      _SupportItem(Icons.local_shipping_outlined, 'Miễn phí ship', 'Đơn từ 300k', const Color(0xFFE84D7A)),
-      _SupportItem(Icons.replay_rounded, 'Đổi trả dễ dàng', 'Trong 7 ngày', const Color(0xFF37B26C)),
-      _SupportItem(Icons.lock_outline_rounded, 'Thanh toán an toàn', 'Bảo mật tuyệt đối', const Color(0xFF4C9BE8)),
+      _SupportItem(Icons.local_shipping_outlined, 'Miễn phí ship', 'Đơn từ 300k', AppColors.darkPink),
+      _SupportItem(Icons.replay_rounded, 'Đổi trả dễ dàng', 'Trong 7 ngày', AppColors.success),
+      _SupportItem(Icons.lock_outline_rounded, 'Thanh toán an toàn', 'Bảo mật tuyệt đối', AppColors.info),
       _SupportItem(Icons.support_agent_rounded, 'Hỗ trợ 24/7', 'Luôn sẵn sàng', const Color(0xFF8E5BE8)),
     ];
 
@@ -789,8 +790,8 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFFFEDF3)),
+              borderRadius: BorderRadius.circular(AppRadius.large),
+              border: Border.all(color: AppColors.lightPink),
             ),
             child: Row(
               children: [
@@ -799,7 +800,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   height: 38,
                   decoration: BoxDecoration(
                     color: item.color.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(AppRadius.medium),
                   ),
                   child: Icon(item.icon, color: item.color, size: 21),
                 ),
@@ -813,14 +814,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         item.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.2, color: Color(0xFF49313A)),
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.2, color: AppColors.textDark),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         item.subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10.8, color: Color(0xFF9B7380)),
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10.8, color: AppColors.textGrey),
                       ),
                     ],
                   ),
@@ -850,7 +851,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (cp.loadingTree) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 18),
-        child: Center(child: CircularProgressIndicator(color: Color(0xFFE84D7A))),
+        child: Center(child: CircularProgressIndicator(color: AppColors.darkPink)),
       );
     }
 
@@ -920,19 +921,19 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(AppRadius.extraLarge),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         width: 118,
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: selected ? const Color(0xFFE84D7A) : Colors.white, width: selected ? 1.6 : 1),
+          borderRadius: BorderRadius.circular(AppRadius.extraLarge),
+          border: Border.all(color: selected ? AppColors.darkPink : Colors.white, width: selected ? 1.6 : 1),
           boxShadow: selected
               ? [
             BoxShadow(
-              color: const Color(0xFFE84D7A).withOpacity(0.14),
+              color: AppColors.darkPink.withOpacity(0.14),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -949,7 +950,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.white.withOpacity(0.80),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: selected ? const Color(0xFFE84D7A) : const Color(0xFF6F3C4B)),
+              child: Icon(icon, color: selected ? AppColors.darkPink : AppColors.textDark),
             ),
             const SizedBox(height: 8),
             Text(
@@ -959,7 +960,7 @@ class _HomeScreenState extends State<HomeScreen> {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 12,
-                color: selected ? const Color(0xFFE84D7A) : const Color(0xFF49313A),
+                color: selected ? AppColors.darkPink : AppColors.textDark,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -1014,20 +1015,20 @@ class _HomeScreenState extends State<HomeScreen> {
           Expanded(
             child: Text(
               title,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF49313A)),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textDark),
             ),
           ),
           if (onViewAll != null)
             InkWell(
               onTap: onViewAll,
-              borderRadius: BorderRadius.circular(999),
+              borderRadius: BorderRadius.circular(AppRadius.circle),
               child: const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                 child: Row(
                   children: [
-                    Text('Xem tất cả', style: TextStyle(color: Color(0xFFE84D7A), fontWeight: FontWeight.w900, fontSize: 12)),
+                    Text('Xem tất cả', style: TextStyle(color: AppColors.darkPink, fontWeight: FontWeight.w900, fontSize: 12)),
                     SizedBox(width: 4),
-                    Icon(Icons.arrow_forward_rounded, color: Color(0xFFE84D7A), size: 16),
+                    Icon(Icons.arrow_forward_rounded, color: AppColors.darkPink, size: 16),
                   ],
                 ),
               ),
@@ -1046,15 +1047,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _productCard(ProductModel product) {
     return InkWell(
       onTap: () => Navigator.pushNamed(context, '/product-detail', arguments: product),
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(AppRadius.extraLarge),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: const Color(0xFFFFEDF3)),
+          borderRadius: BorderRadius.circular(AppRadius.extraLarge),
+          border: Border.all(color: AppColors.lightPink),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE84D7A).withOpacity(0.07),
+              color: AppColors.darkPink.withOpacity(0.07),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -1068,19 +1069,19 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.extraLarge)),
                     child: CachedNetworkImage(
                       imageUrl: product.imageUrl.isNotEmpty ? product.imageUrl : 'https://via.placeholder.com/300',
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
                       placeholder: (_, __) => Container(
-                        color: const Color(0xFFFFF3F7),
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFE84D7A))),
+                        color: AppColors.softPink,
+                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.darkPink)),
                       ),
                       errorWidget: (_, __, ___) => Container(
-                        color: const Color(0xFFFFF3F7),
-                        child: const Center(child: Icon(Icons.image_not_supported_outlined, size: 38, color: Color(0xFFC8A6B0))),
+                        color: AppColors.softPink,
+                        child: const Center(child: Icon(Icons.image_not_supported_outlined, size: 38, color: AppColors.textLight)),
                       ),
                     ),
                   ),
@@ -1090,11 +1091,11 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE84D7A),
-                        borderRadius: BorderRadius.circular(999),
+                        color: AppColors.darkPink,
+                        borderRadius: BorderRadius.circular(AppRadius.circle),
                         boxShadow: [
                           BoxShadow(
-                            color: const Color(0xFFE84D7A).withOpacity(0.22),
+                            color: AppColors.darkPink.withOpacity(0.22),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),
@@ -1113,7 +1114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         color: Colors.white.withOpacity(0.92),
                         shape: BoxShape.circle,
                       ),
-                      child: const Icon(Icons.favorite_border_rounded, color: Color(0xFFE84D7A), size: 18),
+                      child: const Icon(Icons.favorite_border_rounded, color: AppColors.darkPink, size: 18),
                     ),
                   ),
                 ],
@@ -1128,14 +1129,14 @@ class _HomeScreenState extends State<HomeScreen> {
                   children: [
                     Text(
                       product.title,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, color: Color(0xFF49313A), height: 1.15),
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, color: AppColors.textDark, height: 1.15),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 7),
                     Text(
                       '${_formatPrice(product.price)} VNĐ',
-                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: Color(0xFFE84D7A)),
+                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: AppColors.darkPink),
                     ),
                     const SizedBox(height: 4),
                     FutureBuilder<int>(
@@ -1148,7 +1149,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 11.5,
-                            color: stock > 0 ? const Color(0xFF9B7380) : Colors.red,
+                            color: stock > 0 ? AppColors.textGrey : AppColors.error,
                             fontWeight: FontWeight.w700,
                           ),
                         );
@@ -1162,25 +1163,25 @@ class _HomeScreenState extends State<HomeScreen> {
                             height: 34,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFF3F7),
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.softPink,
+                              borderRadius: BorderRadius.circular(AppRadius.medium),
                             ),
                             child: const Text(
                               'Chi tiết',
-                              style: TextStyle(color: Color(0xFF9B7380), fontWeight: FontWeight.w900, fontSize: 12),
+                              style: TextStyle(color: AppColors.textGrey, fontWeight: FontWeight.w900, fontSize: 12),
                             ),
                           ),
                         ),
                         const SizedBox(width: 8),
                         InkWell(
                           onTap: () => _showProductCartDialog(product),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
                           child: Container(
                             width: 38,
                             height: 34,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFE84D7A),
-                              borderRadius: BorderRadius.circular(12),
+                              color: AppColors.darkPink,
+                              borderRadius: BorderRadius.circular(AppRadius.medium),
                             ),
                             child: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 19),
                           ),
@@ -1208,7 +1209,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFFAFC),
+      backgroundColor: AppColors.softPink,
       body: Consumer2<ProductProvider, CategoryProvider>(
         builder: (context, productProvider, categoryProvider, child) {
           // Danh sách sản phẩm sau khi lọc theo keyword và danh mục.
@@ -1221,7 +1222,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Builder(
                   builder: (_) {
                     if (productProvider.isLoading) {
-                      return const Center(child: CircularProgressIndicator(color: Color(0xFFE84D7A)));
+                      return const Center(child: CircularProgressIndicator(color: AppColors.darkPink));
                     }
 
                     return CustomScrollView(
@@ -1242,7 +1243,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Text(
                                   'Không tải được sản phẩm.\nVui lòng kiểm tra kết nối mạng.',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(color: Color(0xFF9B7380), fontWeight: FontWeight.w700),
+                                  style: TextStyle(color: AppColors.textGrey, fontWeight: FontWeight.w700),
                                 ),
                               ),
                             ),
@@ -1256,7 +1257,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                 child: Text(
                                   'Không có sản phẩm trong bộ lọc hiện tại.',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(color: Color(0xFF9B7380), fontWeight: FontWeight.w700),
+                                  style: TextStyle(color: AppColors.textGrey, fontWeight: FontWeight.w700),
                                 ),
                               ),
                             ),
@@ -1296,10 +1297,10 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border.all(color: const Color(0xFFFFE0E9)),
+          border: Border.all(color: AppColors.borderPink),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFFE84D7A).withOpacity(0.10),
+              color: AppColors.darkPink.withOpacity(0.10),
               blurRadius: 18,
               offset: const Offset(0, -8),
             ),
@@ -1312,8 +1313,8 @@ class _HomeScreenState extends State<HomeScreen> {
             currentIndex: 0,
             elevation: 0,
             backgroundColor: Colors.white,
-            selectedItemColor: const Color(0xFFE84D7A),
-            unselectedItemColor: const Color(0xFFC8A6B0),
+            selectedItemColor: AppColors.darkPink,
+            unselectedItemColor: AppColors.textLight,
             selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
             unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
             onTap: (index) {
@@ -1372,18 +1373,18 @@ class _CategoryChip extends StatelessWidget {
       margin: const EdgeInsets.only(right: 10),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(999),
+        borderRadius: BorderRadius.circular(AppRadius.circle),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFE84D7A) : Colors.white,
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: selected ? const Color(0xFFE84D7A) : const Color(0xFFFFD5E1)),
+            color: selected ? AppColors.darkPink : Colors.white,
+            borderRadius: BorderRadius.circular(AppRadius.circle),
+            border: Border.all(color: selected ? AppColors.darkPink : AppColors.borderPink),
             boxShadow: selected
                 ? [
               BoxShadow(
-                color: const Color(0xFFE84D7A).withOpacity(0.18),
+                color: AppColors.darkPink.withOpacity(0.18),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
@@ -1393,7 +1394,7 @@ class _CategoryChip extends StatelessWidget {
           child: Text(
             label,
             style: TextStyle(
-              color: selected ? Colors.white : const Color(0xFF9B7380),
+              color: selected ? Colors.white : AppColors.textGrey,
               fontWeight: FontWeight.w900,
               fontSize: 12,
             ),

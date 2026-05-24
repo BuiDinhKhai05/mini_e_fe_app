@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/address_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/address_provider.dart';
+import '../../theme/app_theme.dart';
 import 'add_address_screen.dart';
 
 class AddressListScreen extends StatefulWidget {
@@ -11,10 +12,10 @@ class AddressListScreen extends StatefulWidget {
   final int? initialSelectedId; // ID địa chỉ đang được chọn ban đầu
 
   const AddressListScreen({
-    Key? key,
+    super.key,
     this.selectMode = false,
     this.initialSelectedId,
-  }) : super(key: key);
+  });
 
   @override
   State<AddressListScreen> createState() => _AddressListScreenState();
@@ -22,16 +23,6 @@ class AddressListScreen extends StatefulWidget {
 
 class _AddressListScreenState extends State<AddressListScreen> {
   int? _selectedId;
-
-  // =========================
-  // Màu dùng chung cho màn hình
-  // =========================
-  static const Color _primaryPink = Color(0xFFFF5C8A);
-  static const Color _softPink = Color(0xFFFFEEF4);
-  static const Color _lighterPink = Color(0xFFFFF7FA);
-  static const Color _borderPink = Color(0xFFFFD8E4);
-  static const Color _textDark = Color(0xFF222222);
-  static const Color _textGrey = Color(0xFF707070);
 
   @override
   void initState() {
@@ -100,10 +91,10 @@ class _AddressListScreenState extends State<AddressListScreen> {
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
+              backgroundColor: AppColors.error,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppRadius.medium),
               ),
             ),
             onPressed: () => Navigator.pop(ctx, true),
@@ -131,7 +122,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi xóa: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: AppColors.error,
           ),
         );
       }
@@ -163,7 +154,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Lỗi: $e'),
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         ),
       );
     }
@@ -200,8 +191,8 @@ class _AddressListScreenState extends State<AddressListScreen> {
                       width: 46,
                       height: 5,
                       decoration: BoxDecoration(
-                        color: _borderPink,
-                        borderRadius: BorderRadius.circular(99),
+                        color: AppColors.borderPink,
+                        borderRadius: BorderRadius.circular(AppRadius.circle),
                       ),
                     ),
                   ),
@@ -222,7 +213,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.w900,
-                            color: _textDark,
+                            color: AppColors.textDark,
                           ),
                         ),
                       ),
@@ -253,11 +244,11 @@ class _AddressListScreenState extends State<AddressListScreen> {
                     height: 48,
                     child: ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: addr.isDefault ? Colors.grey.shade300 : _primaryPink,
+                        backgroundColor: addr.isDefault ? AppColors.borderGrey : AppColors.primaryPink,
                         foregroundColor: Colors.white,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadius.large),
                         ),
                       ),
                       onPressed: addr.isDefault
@@ -277,9 +268,9 @@ class _AddressListScreenState extends State<AddressListScreen> {
                     height: 46,
                     child: TextButton(
                       style: TextButton.styleFrom(
-                        foregroundColor: _textGrey,
+                        foregroundColor: AppColors.textGrey,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(AppRadius.large),
                         ),
                       ),
                       onPressed: () => Navigator.pop(context),
@@ -305,10 +296,10 @@ class _AddressListScreenState extends State<AddressListScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _borderPink),
+        border: Border.all(color: AppColors.borderPink),
         boxShadow: [
           BoxShadow(
-            color: _primaryPink.withOpacity(0.08),
+            color: AppColors.primaryPink.withOpacity(0.08),
             blurRadius: 22,
             offset: const Offset(0, 10),
           ),
@@ -324,13 +315,13 @@ class _AddressListScreenState extends State<AddressListScreen> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: _lighterPink,
+                  color: AppColors.background,
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Icon(
                   Icons.arrow_back_ios_new_rounded,
                   size: 18,
-                  color: _primaryPink,
+                  color: AppColors.primaryPink,
                 ),
               ),
             ),
@@ -351,7 +342,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                   style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w900,
-                    color: _textDark,
+                    color: AppColors.textDark,
                   ),
                 ),
                 const SizedBox(height: 4),
@@ -361,7 +352,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                       : 'Quản lý địa chỉ giao hàng của bạn 💗',
                   style: const TextStyle(
                     fontSize: 12,
-                    color: _textGrey,
+                    color: AppColors.textGrey,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -371,7 +362,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
           const SizedBox(width: 8),
           ElevatedButton.icon(
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryPink,
+              backgroundColor: AppColors.primaryPink,
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -398,7 +389,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
     final hasCoordinates = addr.lat != null && addr.lng != null;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(AppRadius.extraLarge),
       onTap: () {
         if (widget.selectMode) {
           setState(() => _selectedId = addr.id);
@@ -413,14 +404,14 @@ class _AddressListScreenState extends State<AddressListScreen> {
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(AppRadius.extraLarge),
           border: Border.all(
-            color: isPicked || addr.isDefault ? _primaryPink.withOpacity(0.45) : _borderPink,
+            color: isPicked || addr.isDefault ? AppColors.primaryPink.withOpacity(0.45) : AppColors.borderPink,
             width: isPicked ? 1.4 : 1,
           ),
           boxShadow: [
             BoxShadow(
-              color: _primaryPink.withOpacity(0.06),
+              color: AppColors.primaryPink.withOpacity(0.06),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -444,7 +435,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                     isPicked
                         ? Icons.radio_button_checked_rounded
                         : Icons.radio_button_off_rounded,
-                    color: isPicked ? _primaryPink : Colors.grey.shade400,
+                    color: isPicked ? AppColors.primaryPink : Colors.grey.shade400,
                   ),
                   const SizedBox(width: 10),
                 ],
@@ -474,7 +465,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                               style: const TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w900,
-                                color: _textDark,
+                                color: AppColors.textDark,
                               ),
                             ),
                           ),
@@ -484,7 +475,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                               child: Text(
                                 'Mặc định',
                                 style: TextStyle(
-                                  color: _primaryPink,
+                                  color: AppColors.primaryPink,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -505,7 +496,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                         Text(
                           'Tọa độ: ${addr.lat!.toStringAsFixed(6)}, ${addr.lng!.toStringAsFixed(6)}',
                           style: const TextStyle(
-                            color: _primaryPink,
+                            color: AppColors.primaryPink,
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
                           ),
@@ -520,7 +511,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
             // Chế độ chọn địa chỉ thì ẩn sửa/xóa để giao diện gọn hơn
             if (!widget.selectMode) ...[
               const SizedBox(height: 14),
-              Divider(height: 1, color: _borderPink.withOpacity(0.8)),
+              Divider(height: 1, color: AppColors.borderPink.withOpacity(0.8)),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
@@ -532,20 +523,20 @@ class _AddressListScreenState extends State<AddressListScreen> {
                         ? Icons.check_circle_outline_rounded
                         : Icons.star_border_rounded,
                     label: addr.isDefault ? 'Mặc định' : 'Đặt mặc định',
-                    color: _primaryPink,
+                    color: AppColors.primaryPink,
                     isDisabled: addr.isDefault,
                     onTap: () => _setAsDefault(addr.id),
                   ),
                   _buildCardActionButton(
                     icon: Icons.edit_outlined,
                     label: 'Sửa',
-                    color: _textDark,
+                    color: AppColors.textDark,
                     onTap: () => _openEditAddressScreen(addr),
                   ),
                   _buildCardActionButton(
                     icon: Icons.delete_outline_rounded,
                     label: 'Xóa',
-                    color: Colors.redAccent,
+                    color: AppColors.error,
                     onTap: () => _deleteAddress(addr.id),
                   ),
                 ],
@@ -564,7 +555,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, size: 16, color: _textGrey),
+        Icon(icon, size: 16, color: AppColors.textGrey),
         const SizedBox(width: 8),
         Expanded(
           child: Text(
@@ -574,7 +565,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
             style: const TextStyle(
               fontSize: 13,
               height: 1.35,
-              color: _textDark,
+              color: AppColors.textDark,
             ),
           ),
         ),
@@ -594,15 +585,15 @@ class _AddressListScreenState extends State<AddressListScreen> {
   }) {
     return OutlinedButton.icon(
       style: OutlinedButton.styleFrom(
-        foregroundColor: isDisabled ? _textGrey : color,
+        foregroundColor: isDisabled ? AppColors.textGrey : color,
         side: BorderSide(
-          color: isDisabled ? _borderPink : color.withOpacity(0.28),
+          color: isDisabled ? AppColors.borderPink : color.withOpacity(0.28),
         ),
-        backgroundColor: isDisabled ? _lighterPink : Colors.white,
+        backgroundColor: isDisabled ? AppColors.background : Colors.white,
         minimumSize: const Size(0, 36),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(AppRadius.medium),
         ),
       ),
       onPressed: isDisabled ? null : onTap,
@@ -626,10 +617,10 @@ class _AddressListScreenState extends State<AddressListScreen> {
       width: size,
       height: size,
       decoration: const BoxDecoration(
-        color: _softPink,
+        color: AppColors.lightPink,
         shape: BoxShape.circle,
       ),
-      child: Icon(icon, color: _primaryPink, size: iconSize),
+      child: Icon(icon, color: AppColors.primaryPink, size: iconSize),
     );
   }
 
@@ -640,8 +631,8 @@ class _AddressListScreenState extends State<AddressListScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: _primaryPink,
-        borderRadius: BorderRadius.circular(999),
+        color: AppColors.primaryPink,
+        borderRadius: BorderRadius.circular(AppRadius.circle),
       ),
       child: const Text(
         'Mặc định',
@@ -662,14 +653,14 @@ class _AddressListScreenState extends State<AddressListScreen> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: _lighterPink,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _borderPink),
+        color: AppColors.background,
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        border: Border.all(color: AppColors.borderPink),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: _primaryPink),
+          Icon(icon, size: 20, color: AppColors.primaryPink),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -679,7 +670,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                   label,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: _textGrey,
+                    color: AppColors.textGrey,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -689,7 +680,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                   style: const TextStyle(
                     fontSize: 14,
                     height: 1.35,
-                    color: _textDark,
+                    color: AppColors.textDark,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -706,7 +697,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
   // =========================
   Widget _buildLoadingState() {
     return const Center(
-      child: CircularProgressIndicator(color: _primaryPink),
+      child: CircularProgressIndicator(color: AppColors.primaryPink),
     );
   }
 
@@ -731,24 +722,24 @@ class _AddressListScreenState extends State<AddressListScreen> {
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w900,
-                color: _textDark,
+                color: AppColors.textDark,
               ),
             ),
             const SizedBox(height: 6),
             const Text(
               'Thêm địa chỉ giao hàng để đặt hàng nhanh hơn nhé.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: _textGrey),
+              style: TextStyle(color: AppColors.textGrey),
             ),
             const SizedBox(height: 18),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryPink,
+                backgroundColor: AppColors.primaryPink,
                 foregroundColor: Colors.white,
                 elevation: 0,
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(AppRadius.large),
                 ),
               ),
               onPressed: _openAddAddressScreen,
@@ -766,7 +757,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
     final title = widget.selectMode ? 'Chọn địa chỉ' : 'Địa chỉ của tôi';
 
     return Scaffold(
-      backgroundColor: _lighterPink,
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -783,7 +774,7 @@ class _AddressListScreenState extends State<AddressListScreen> {
                   }
 
                   return RefreshIndicator(
-                    color: _primaryPink,
+                    color: AppColors.primaryPink,
                     onRefresh: _refreshList,
                     child: ListView.builder(
                       physics: const AlwaysScrollableScrollPhysics(),
