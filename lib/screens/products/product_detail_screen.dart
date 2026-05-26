@@ -10,6 +10,7 @@ import 'package:mini_e_fe_app/providers/product_provider.dart';
 import 'package:mini_e_fe_app/providers/auth_provider.dart';
 import 'package:mini_e_fe_app/providers/shop_provider.dart';
 import 'package:mini_e_fe_app/providers/cart_provider.dart';
+import 'package:mini_e_fe_app/providers/recommendation_provider.dart';
 
 import 'edit_product_screen.dart';
 import '../shops/shop_detail_screen.dart';
@@ -52,6 +53,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   bool _isDescriptionExpanded = false;
   bool _isUpdatingStatus = false;
+  bool _hasTrackedViewDetail = false;
 
   final Color _primaryColor = AppColors.primaryPink;
   final Color _accentColor = AppColors.primaryPink;
@@ -71,7 +73,23 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     // Tải thông tin shop để hiển thị bên dưới phần đánh giá sản phẩm.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _fetchProductShop();
+      _trackViewDetail();
     });
+  }
+
+  Future<void> _trackViewDetail() async {
+    if (_hasTrackedViewDetail) return;
+    if (widget.isFromShopManagement) return;
+
+    _hasTrackedViewDetail = true;
+
+    await Provider.of<RecommendationProvider>(
+      context,
+      listen: false,
+    ).trackViewDetail(
+      _currentProduct.id,
+      source: 'product_detail',
+    );
   }
 
   @override

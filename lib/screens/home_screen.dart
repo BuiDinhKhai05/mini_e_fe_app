@@ -19,6 +19,7 @@ import 'package:provider/provider.dart';
 import '../providers/product_provider.dart';
 import '../providers/cart_provider.dart';
 import '../providers/category_provider.dart';
+import '../providers/recommendation_provider.dart';
 import '../models/product_model.dart';
 import '../models/category_model.dart';
 import '../theme/app_theme.dart';
@@ -75,6 +76,18 @@ class _HomeScreenState extends State<HomeScreen> {
       Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
       Provider.of<CartProvider>(context, listen: false).fetchCart();
       Provider.of<CategoryProvider>(context, listen: false).fetchTree(); // ✅
+
+      // Recommendation cần token đăng nhập. Nếu user chưa login hoặc token hết hạn,
+      // provider sẽ tự bỏ qua lỗi để không làm hỏng Home.
+      Provider.of<RecommendationProvider>(
+        context,
+        listen: false,
+      ).fetchRecommendedProducts(page: 1, limit: 12, silent: true);
+
+      Provider.of<RecommendationProvider>(
+        context,
+        listen: false,
+      ).fetchFavorites(page: 1, limit: 50, silent: true);
     });
   }
 
@@ -254,6 +267,40 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openProductDetail(
+      ProductModel product, {
+        String source = 'home_product_card',
+      }) async {
+    await Provider.of<RecommendationProvider>(
+      context,
+      listen: false,
+    ).trackClick(
+      product.id,
+      source: source,
+    );
+
+    if (!mounted) return;
+    Navigator.pushNamed(context, '/product-detail', arguments: product);
+  }
+
+  Future<void> _toggleFavorite(ProductModel product) async {
+    try {
+      await Provider.of<RecommendationProvider>(
+        context,
+        listen: false,
+      ).toggleFavorite(product.id);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Không thể cập nhật sản phẩm yêu thích'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   // ================================================================
@@ -1044,9 +1091,12 @@ class _HomeScreenState extends State<HomeScreen> {
   // nút chi tiết và nút thêm vào giỏ.
   // Chức năng bấm card vẫn đi đến trang chi tiết sản phẩm.
   // ================================================================
-  Widget _productCard(ProductModel product) {
+  Widget _productCard(
+      ProductModel product, {
+        String source = 'home_product_card',
+      }) {
     return InkWell(
-      onTap: () => Navigator.pushNamed(context, '/product-detail', arguments: product),
+      onTap: () => _openProductDetail(product, source: source),
       borderRadius: BorderRadius.circular(AppRadius.extraLarge),
       child: Container(
         decoration: BoxDecoration(
@@ -1107,14 +1157,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   Positioned(
                     right: 10,
                     top: 10,
-                    child: Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.92),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.favorite_border_rounded, color: AppColors.darkPink, size: 18),
+                    child: Consumer<RecommendationProvider>(
+                      builder: (_, recommendationProvider, __) {
+                        final isFavorite =
+                        recommendationProvider.isFavorite(product.id);
+
+                        return InkWell(
+                          onTap: () => _toggleFavorite(product),
+                          borderRadius: BorderRadius.circular(AppRadius.circle),
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.92),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              isFavorite
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: AppColors.darkPink,
+                              size: 18,
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -1198,6 +1265,43 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _recommendedProductsSection() {
+    return Consumer<RecommendationProvider>(
+      builder: (context, recommendationProvider, child) {
+        final products = recommendationProvider.recommendedProducts;
+
+        if (products.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _sectionHeader('Gợi ý cho bạn ✨'),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+              itemCount: products.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 14,
+                childAspectRatio: 0.66,
+              ),
+              itemBuilder: (context, index) {
+                return _productCard(
+                  products[index],
+                  source: 'home_recommendation',
+                );
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   // ================================================================
   // BUILD GIAO DIỆN CHÍNH
   // Scaffold gồm:
@@ -1263,6 +1367,9 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                           )
                         else ...[
+                            SliverToBoxAdapter(
+                              child: _recommendedProductsSection(),
+                            ),
                             SliverToBoxAdapter(
                               child: _sectionHeader('Sản phẩm bán chạy 🧸', onViewAll: () => _openCategoryProducts()),
                             ),

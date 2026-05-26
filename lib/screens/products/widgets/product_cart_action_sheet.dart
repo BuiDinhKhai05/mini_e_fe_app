@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:mini_e_fe_app/models/product_model.dart';
 import 'package:mini_e_fe_app/providers/cart_provider.dart';
 import 'package:mini_e_fe_app/providers/product_provider.dart';
+import 'package:mini_e_fe_app/providers/recommendation_provider.dart';
 
 class ProductCartActionSheet {
   static const Color _primaryColor = AppColors.darkPink;
@@ -628,6 +629,20 @@ class ProductCartActionSheet {
                                 variantId: selectedVariantId!,
                                 quantity: quantity,
                               );
+
+                              if (rootContext.mounted) {
+                                await Provider.of<RecommendationProvider>(
+                                  rootContext,
+                                  listen: false,
+                                ).trackAddToCart(
+                                  dialogProduct.id,
+                                  source: isBuyNow
+                                      ? 'product_cart_action_sheet_buy_now'
+                                      : 'product_cart_action_sheet_add_cart',
+                                  variantId: selectedVariantId,
+                                  quantity: quantity,
+                                );
+                              }
 
                               if (!rootContext.mounted ||
                                   !dialogContext.mounted) {
