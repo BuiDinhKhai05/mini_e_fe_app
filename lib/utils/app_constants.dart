@@ -1,25 +1,49 @@
-// 1. Cần import thư viện này để dùng biến kIsWeb
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
-// utils/app_constants.dart
+// ================================================================
+// APP CONSTANTS
+// ----------------------------------------------------------------
+// File này gom baseUrl và toàn bộ endpoint API để các service dùng chung.
+// Khi đổi môi trường chạy app, ưu tiên đổi ở đây thay vì sửa từng service.
+// ================================================================
 class AppConstants {
-  // 2. Sửa đoạn baseUrl thành logic kiểm tra môi trường
+  // --------------------------------------------------------------
+  // BASE URL
+  // --------------------------------------------------------------
+  // Hiện tại bạn đang dev bằng Flutter Web nên dùng localhost.
+  // Mục tiêu chính là mobile app:
+  // - Android Emulator: dùng http://10.0.2.2:3000/api
+  // - Điện thoại thật: đổi thành IP LAN máy tính, ví dụ http://192.168.1.10:3000/api
+  // - iOS Simulator: thường có thể dùng http://localhost:3000/api
+  // --------------------------------------------------------------
   static const String baseUrl = kIsWeb
-      ? 'http://localhost:3000/api' // Nếu chạy trên Web (Chrome)
-      : 'http://10.0.2.2:3000/api'; // Nếu chạy trên máy ảo Android
+      ? 'http://localhost:3000/api'
+      : 'http://10.0.2.2:3000/api';
 
-  // AUTH
+  // --------------------------------------------------------------
+  // AUTH API
+  // --------------------------------------------------------------
   static const String registerEndpoint = '/auth/register';
   static const String loginEndpoint = '/auth/login';
   static const String logoutEndpoint = '/auth/logout';
+
+  // Endpoint quan trọng để sửa lỗi access_token hết hạn.
+  // FE sẽ tự gọi endpoint này khi request thường bị 401.
+  static const String refreshEndpoint = '/auth/refresh';
+
   static const String forgotPasswordEndpoint = '/auth/forgot-password';
   static const String requestVerifyEndpoint = '/auth/request-verify';
   static const String verifyAccountEndpoint = '/auth/verify-account';
   static const String resetPasswordEndpoint = '/auth/reset-password';
+
+  // Hiện BE bạn gửi chưa có API này thật sự.
+  // Giữ constant để sau này nếu thêm BE /auth/change-password thì dùng lại.
   static const String changePasswordEndpoint = '/auth/change-password';
 }
 
+// ================================================================
 // USERS API
+// ================================================================
 class UsersApi {
   static const String users = '/users';
   static const String me = '/users/me';
@@ -30,6 +54,9 @@ class UsersApi {
   static String hardDelete(String id) => '/users/$id/hard';
 }
 
+// ================================================================
+// SHOPS API
+// ================================================================
 class ShopsApi {
   // Public
   static const String shops = '/shops';
@@ -55,7 +82,9 @@ class ShopsApi {
   static String byId(String id) => '/shops/$id';
 }
 
+// ================================================================
 // PRODUCT API
+// ================================================================
 class ProductApi {
   // Public
   static const String products = '/products';
@@ -70,19 +99,27 @@ class ProductApi {
       '/products/$productId/variants/$variantId';
 }
 
-// ✅ CATEGORY API
+// ================================================================
+// CATEGORY API
+// ================================================================
 class CategoryApi {
   static const String categories = '/categories';
   static const String tree = '/categories/tree';
+
   static String byId(int id) => '/categories/$id';
 }
 
+// ================================================================
+// CART API
+// ================================================================
 class CartApi {
   static const String myCart = '/cart';
   static const String items = '/cart/items';
 }
 
+// ================================================================
 // ADDRESS API
+// ================================================================
 class AddressApi {
   static const String base = '/addresses';
   static const String list = '/addresses';
@@ -91,7 +128,9 @@ class AddressApi {
   static String setDefault(int id) => '/addresses/$id/set-default';
 }
 
-// Order API
+// ================================================================
+// ORDER API
+// ================================================================
 class OrderApi {
   static const String preview = '/orders/preview';
   static const String create = '/orders';
@@ -103,13 +142,17 @@ class OrderApi {
   static String requestReturn(String id) => '/orders/$id/request-return';
 }
 
-// Payment API
+// ================================================================
+// PAYMENT API
+// ================================================================
 class PaymentApi {
-  // Backend trả về URL để QR...
+  // Backend hiện tại trả về URL/QR thông qua các API order/payment liên quan.
+  // Bổ sung endpoint cụ thể vào đây nếu sau này tách payment service riêng.
 }
 
+// ================================================================
 // REVIEW API
-// Chứa các endpoint liên quan đến đánh giá sản phẩm.
+// ================================================================
 class ReviewApi {
   // Public: lấy danh sách đánh giá của một sản phẩm.
   // BE: GET /products/:productId/reviews?page=1&limit=20
