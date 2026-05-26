@@ -12,10 +12,12 @@ import 'providers/address_provider.dart';
 import 'providers/order_provider.dart';
 import 'providers/category_provider.dart';
 import 'providers/review_provider.dart';
+import 'providers/recommendation_provider.dart';
 
 // Services
 import 'service/api_client.dart';
 import 'service/shop_service.dart';
+import 'service/recommendation_service.dart';
 
 // Theme
 import 'theme/app_theme.dart';
@@ -69,6 +71,11 @@ void main() async {
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
         ChangeNotifierProvider(create: (_) => ReviewProvider()),
+        ChangeNotifierProvider(
+          create: (_) => RecommendationProvider(
+            RecommendationService(),
+          ),
+        ),
       ],
       child: const MyApp(),
     ),
