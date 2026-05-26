@@ -190,6 +190,10 @@ class ApiClient {
   // validateStatus < 500 giữ cách xử lý hiện tại của app:
   // - 400/401/403/404 không bị Dio throw ngay
   // - Service vẫn đọc được response.data['message'] để báo lỗi đẹp
+  //
+  // Lưu ý Flutter Web:
+  // Dio trên Web cảnh báo nếu set sendTimeout cho request không có body
+  // như GET. Vì vậy mobile giữ sendTimeout, còn Web để null.
   // ==============================================================
   Dio _createDio() {
     return Dio(
@@ -197,7 +201,7 @@ class ApiClient {
         baseUrl: AppConstants.baseUrl,
         connectTimeout: const Duration(seconds: 20),
         receiveTimeout: const Duration(seconds: 20),
-        sendTimeout: const Duration(seconds: 20),
+        sendTimeout: kIsWeb ? null : const Duration(seconds: 20),
         contentType: 'application/json',
         headers: const {
           'Accept': 'application/json',

@@ -12,4 +12,9 @@ import 'package:dio/dio.dart';
 // ================================================================
 void configureDioForPlatform(Dio dio) {
   (dio.httpClientAdapter as BrowserHttpClientAdapter).withCredentials = true;
+
+  // Dio Web cảnh báo nếu set sendTimeout cho request không có body
+  // như GET/DELETE. Mobile vẫn dùng sendTimeout trong api_client.dart,
+  // còn Web tắt riêng ở đây để log sạch khi dev bằng Chrome.
+  dio.options.sendTimeout = null;
 }
