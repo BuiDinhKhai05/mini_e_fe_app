@@ -58,6 +58,8 @@ class OrderItemModel {
     this.value5,
   });
 
+  // Ghép các giá trị biến thể để FE hiển thị rõ ràng trên card đơn hàng.
+  // Ví dụ: "Đỏ / Size M" hoặc "Hộp 6 cái".
   String get variantText {
     final values = [
       value1,
@@ -74,34 +76,117 @@ class OrderItemModel {
   }
 
   factory OrderItemModel.fromJson(Map<String, dynamic> json) {
+    final product = _asMap(
+      json['product'] ?? json['productSnapshot'] ?? json['product_snapshot'],
+    );
+    final variant = _asMap(
+      json['variant'] ??
+          json['productVariant'] ??
+          json['product_variant'] ??
+          json['variantSnapshot'] ??
+          json['variant_snapshot'],
+    );
+
+    final image = _firstNonEmpty([
+      json['imageSnapshot'],
+      json['image_snapshot'],
+      json['imageUrl'],
+      json['image_url'],
+      json['productImage'],
+      json['product_image'],
+    ]) ??
+        _imageFromMap(variant) ??
+        _imageFromMap(product);
+
+    final variantName = _firstNonEmpty([
+      json['variantName'],
+      json['variant_name'],
+      json['optionName'],
+      json['option_name'],
+      variant?['name'],
+      variant?['label'],
+      variant?['title'],
+    ]);
+
     return OrderItemModel(
       id: (json['id'] ?? '').toString(),
-      productId: _toIntNullable(json['productId'] ?? json['product_id']),
+      productId: _toIntNullable(
+        json['productId'] ?? json['product_id'] ?? product?['id'],
+      ),
       productVariantId: _toIntNullable(
         json['productVariantId'] ??
             json['product_variant_id'] ??
-            json['variantId'],
+            json['variantId'] ??
+            json['variant_id'] ??
+            variant?['id'],
       ),
-      nameSnapshot: (
-          json['nameSnapshot'] ??
-              json['name_snapshot'] ??
-              json['name'] ??
-              'Sản phẩm'
-      )
-          .toString(),
-      imageSnapshot: (
-          json['imageSnapshot'] ??
-              json['image_snapshot'] ??
-              json['imageUrl']
-      )?.toString(),
-      price: _toDouble(json['price']),
+      nameSnapshot: _firstNonEmpty([
+        json['nameSnapshot'],
+        json['name_snapshot'],
+        json['productName'],
+        json['product_name'],
+        json['name'],
+        product?['name'],
+        product?['title'],
+      ]) ??
+          'Sản phẩm',
+      imageSnapshot: image,
+      price: _toDouble(json['price'] ?? json['unitPrice'] ?? json['unit_price']),
       quantity: _toInt(json['quantity']),
-      totalLine: _toDouble(json['totalLine'] ?? json['total_line']),
-      value1: json['value1']?.toString(),
-      value2: json['value2']?.toString(),
-      value3: json['value3']?.toString(),
-      value4: json['value4']?.toString(),
-      value5: json['value5']?.toString(),
+      totalLine: _toDouble(
+        json['totalLine'] ?? json['total_line'] ?? json['lineTotal'] ?? json['line_total'],
+      ),
+      value1: _firstNonEmpty([
+        json['value1'],
+        json['option1'],
+        json['attribute1'],
+        json['variantValue1'],
+        json['variant_value_1'],
+        variant?['value1'],
+        variant?['option1'],
+        variant?['attribute1'],
+      ]) ??
+          variantName,
+      value2: _firstNonEmpty([
+        json['value2'],
+        json['option2'],
+        json['attribute2'],
+        json['variantValue2'],
+        json['variant_value_2'],
+        variant?['value2'],
+        variant?['option2'],
+        variant?['attribute2'],
+      ]),
+      value3: _firstNonEmpty([
+        json['value3'],
+        json['option3'],
+        json['attribute3'],
+        json['variantValue3'],
+        json['variant_value_3'],
+        variant?['value3'],
+        variant?['option3'],
+        variant?['attribute3'],
+      ]),
+      value4: _firstNonEmpty([
+        json['value4'],
+        json['option4'],
+        json['attribute4'],
+        json['variantValue4'],
+        json['variant_value_4'],
+        variant?['value4'],
+        variant?['option4'],
+        variant?['attribute4'],
+      ]),
+      value5: _firstNonEmpty([
+        json['value5'],
+        json['option5'],
+        json['attribute5'],
+        json['variantValue5'],
+        json['variant_value_5'],
+        variant?['value5'],
+        variant?['option5'],
+        variant?['attribute5'],
+      ]),
     );
   }
 }
@@ -187,34 +272,32 @@ class OrderModel {
       address = Map<String, dynamic>.from(rawAddress);
     }
 
-    final rawItems = json['items'];
+    final rawItems = json['items'] ?? json['orderItems'] ?? json['order_items'];
 
     return OrderModel(
       id: (json['id'] ?? '').toString(),
-      code: (json['code'] ?? '').toString(),
+      code: _firstNonEmpty([
+        json['code'],
+        json['orderCode'],
+        json['order_code'],
+        json['orderNumber'],
+        json['order_number'],
+      ]) ??
+          '',
       status: (json['status'] ?? 'PENDING').toString(),
       paymentStatus: (
-          json['payment_status'] ??
-              json['paymentStatus'] ??
-              'UNPAID'
-      )
-          .toString(),
+          json['payment_status'] ?? json['paymentStatus'] ?? 'UNPAID'
+      ).toString(),
       paymentMethod: (
-          json['payment_method'] ??
-              json['paymentMethod'] ??
-              'COD'
-      )
-          .toString(),
+          json['payment_method'] ?? json['paymentMethod'] ?? 'COD'
+      ).toString(),
       shippingStatus: (
-          json['shipping_status'] ??
-              json['shippingStatus'] ??
-              'PENDING'
-      )
-          .toString(),
+          json['shipping_status'] ?? json['shippingStatus'] ?? 'PENDING'
+      ).toString(),
       subtotal: _toDouble(json['subtotal']),
       discount: _toDouble(json['discount']),
       shippingFee: _toDouble(json['shipping_fee'] ?? json['shippingFee']),
-      total: _toDouble(json['total']),
+      total: _toDouble(json['total'] ?? json['totalAmount'] ?? json['total_amount']),
       note: json['note']?.toString(),
       createdAt: createdRaw != null
           ? DateTime.tryParse(createdRaw.toString()) ?? DateTime.now()
@@ -257,4 +340,50 @@ int? _toIntNullable(dynamic value) {
   if (value is int) return value;
 
   return int.tryParse(value.toString());
+}
+
+Map<String, dynamic>? _asMap(dynamic value) {
+  if (value is Map<String, dynamic>) return value;
+  if (value is Map) return Map<String, dynamic>.from(value);
+  return null;
+}
+
+String? _firstNonEmpty(List<dynamic> values) {
+  for (final value in values) {
+    if (value == null) continue;
+
+    final text = value.toString().trim();
+    if (text.isNotEmpty && text != 'null') return text;
+  }
+
+  return null;
+}
+
+String? _imageFromMap(Map<String, dynamic>? map) {
+  if (map == null) return null;
+
+  final directImage = _firstNonEmpty([
+    map['imageSnapshot'],
+    map['image_snapshot'],
+    map['imageUrl'],
+    map['image_url'],
+    map['thumbnail'],
+    map['thumbnailUrl'],
+    map['thumbnail_url'],
+    map['cover'],
+    map['url'],
+  ]);
+
+  if (directImage != null) return directImage;
+
+  final images = map['images'];
+  if (images is List && images.isNotEmpty) {
+    final firstImage = images.first;
+    if (firstImage is String) return _firstNonEmpty([firstImage]);
+    if (firstImage is Map) {
+      return _imageFromMap(Map<String, dynamic>.from(firstImage));
+    }
+  }
+
+  return null;
 }

@@ -31,12 +31,32 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
   // BE: POST /orders/:id/review
   final ReviewService _reviewService = ReviewService();
 
+  // Cache future chi tiết đơn để card có thể hiển thị tên sản phẩm/biến thể
+  // mà không gọi lại API liên tục khi ListView rebuild.
+  final Map<String, Future<OrderModel?>> _orderDetailFutures = {};
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      Provider.of<OrderProvider>(context, listen: false).fetchMyOrders(refresh: true);
+      final provider = Provider.of<OrderProvider>(context, listen: false);
+      _refreshOrders(provider);
     });
+  }
+
+  Future<void> _refreshOrders(OrderProvider provider) async {
+    _orderDetailFutures.clear();
+    await provider.fetchMyOrders(refresh: true);
+  }
+
+  Future<OrderModel?> _getOrderDetailFuture(
+      OrderProvider provider,
+      OrderModel order,
+      ) {
+    return _orderDetailFutures.putIfAbsent(
+      order.id,
+          () => provider.fetchOrderDetail(order.id),
+    );
   }
 
   @override
@@ -96,7 +116,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
 
             return RefreshIndicator(
               color: _primaryPink,
-              onRefresh: () => orderProvider.fetchMyOrders(refresh: true),
+              onRefresh: () => _refreshOrders(orderProvider),
               child: TabBarView(
                 children: [
                   _buildOrderList(orderProvider, pendingOrders, 'Chưa có đơn hàng chờ xử lý'),
@@ -262,6 +282,10 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           ),
           const SizedBox(height: 14),
           Divider(height: 1, color: _primaryPink.withOpacity(0.12)),
+          const SizedBox(height: 12),
+          _buildOrderProductSummary(provider, order),
+          const SizedBox(height: 12),
+          Divider(height: 1, color: _primaryPink.withOpacity(0.12)),
           const SizedBox(height: 14),
           _buildInfoRow('Thanh toán', '${order.paymentMethod} • ${_paymentLabel(order.paymentStatus)}'),
           const SizedBox(height: 8),
@@ -409,6 +433,179 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
           ),
         ),
       ],
+    );
+  }
+
+
+  // Hiển thị nhanh tên sản phẩm và biến thể ngay trên card đơn hàng.
+  // Nếu API danh sách đơn hàng chưa trả items, widget sẽ lấy thêm chi tiết đơn
+  // và cache lại bằng _orderDetailFutures.
+  Widget _buildOrderProductSummary(OrderProvider provider, OrderModel order) {
+    final currentItems = order.items ?? [];
+
+    if (currentItems.isNotEmpty) {
+      return _buildOrderProductPreview(currentItems);
+    }
+
+    return FutureBuilder<OrderModel?>(
+      future: _getOrderDetailFuture(provider, order),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildOrderProductLoading();
+        }
+
+        final loadedItems = snapshot.data?.items ?? [];
+        if (loadedItems.isEmpty) {
+          return _buildOrderProductEmpty();
+        }
+
+        return _buildOrderProductPreview(loadedItems);
+      },
+    );
+  }
+
+  Widget _buildOrderProductLoading() {
+    return Row(
+      children: const [
+        SizedBox(
+          width: 46,
+          height: 46,
+          child: Center(
+            child: SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(
+                color: _primaryPink,
+                strokeWidth: 2,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'Đang tải sản phẩm trong đơn...',
+            style: TextStyle(
+              color: _textMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderProductEmpty() {
+    return Row(
+      children: const [
+        Icon(Icons.inventory_2_outlined, color: _primaryPink, size: 22),
+        SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            'Chưa có dữ liệu sản phẩm trong đơn',
+            style: TextStyle(
+              color: _textMuted,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderProductPreview(List<OrderItemModel> items) {
+    final firstItem = items.first;
+    final otherCount = items.length - 1;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildOrderProductImage(firstItem, size: 54),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                firstItem.nameSnapshot,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: _textDark,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  height: 1.25,
+                ),
+              ),
+              if (firstItem.variantText.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  'Biến thể: ${firstItem.variantText}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Text(
+                    'Số lượng: x${firstItem.quantity}',
+                    style: const TextStyle(
+                      color: _textMuted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  if (otherCount > 0) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '+ $otherCount sản phẩm khác',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.right,
+                        style: const TextStyle(
+                          color: _primaryPink,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOrderProductImage(OrderItemModel item, {double size = 58}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(AppRadius.medium),
+      child: Container(
+        width: size,
+        height: size,
+        color: _softPink,
+        child: item.imageSnapshot != null && item.imageSnapshot!.isNotEmpty
+            ? Image.network(
+          item.imageSnapshot!,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => const Icon(
+            Icons.image_not_supported_outlined,
+            color: _textMuted,
+          ),
+        )
+            : const Icon(Icons.shopping_bag_outlined, color: _primaryPink),
+      ),
     );
   }
 
@@ -1078,7 +1275,7 @@ class _MyOrdersScreenState extends State<MyOrdersScreen> {
                 if (item.variantText.isNotEmpty) ...[
                   const SizedBox(height: 5),
                   Text(
-                    item.variantText,
+                    'Biến thể: ${item.variantText}',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(color: _textMuted, fontSize: 12, fontWeight: FontWeight.w600),
