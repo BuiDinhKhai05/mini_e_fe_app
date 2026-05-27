@@ -49,6 +49,13 @@ class UsersApi {
   static const String me = '/users/me';
   static const String deletedAll = '/users/deleted/all';
 
+  // Đổi mật khẩu tài khoản đang đăng nhập.
+  // BE: POST /users/me/change-password/request-otp
+  // BE: PATCH /users/me/change-password
+  static const String requestChangePasswordOtp =
+      '/users/me/change-password/request-otp';
+  static const String changePassword = '/users/me/change-password';
+
   static String byId(String id) => '/users/$id';
   static String restore(String id) => '/users/$id/restore';
   static String hardDelete(String id) => '/users/$id/hard';

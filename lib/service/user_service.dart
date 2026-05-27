@@ -178,6 +178,27 @@ class UserService {
     return UserModel.fromJson(_unwrapDataMap(res.data));
   }
 
+  Future<void> requestChangePasswordOtp() async {
+    await _dio.post(UsersApi.requestChangePasswordOtp);
+  }
+
+  Future<void> changeMyPassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmNewPassword,
+    required String otp,
+  }) async {
+    await _dio.patch(
+      UsersApi.changePassword,
+      data: {
+        'currentPassword': currentPassword,
+        'newPassword': newPassword,
+        'confirmNewPassword': confirmNewPassword,
+        'otp': otp,
+      },
+    );
+  }
+
   Future<void> deleteMeSoft() async {
     await _dio.delete(UsersApi.me);
   }

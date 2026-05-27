@@ -1,11 +1,12 @@
 // Màn hình đổi mật khẩu.
-// Giao diện giữ style Mochi, phần chức năng gọi AuthProvider.changePassword().
-// Backend hiện tại đổi mật khẩu qua UsersService.update() bằng field password.
+// Kết nối với BE mới qua Users API:
+// POST  /users/me/change-password/request-otp
+// PATCH /users/me/change-password
 
 import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'package:provider/provider.dart';
-import '../../providers/auth_provider.dart';
+import '../../providers/user_provider.dart';
 
 const Color _kMochiPink = Color(0xFFE94D86);
 const Color _kMochiPinkLight = AppColors.lightPink;
@@ -28,16 +29,44 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _otpController = TextEditingController();
 
   bool _obscureCurrentPassword = true;
   bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
   bool _isSubmitting = false;
+  bool _isRequestingOtp = false;
+  bool _otpSent = false;
 
-  Future<void> _handleChangePassword(AuthProvider authProvider) async {
+  Future<void> _handleRequestOtp(UserProvider userProvider) async {
+    if (_isRequestingOtp || _isSubmitting) return;
+
+    setState(() => _isRequestingOtp = true);
+
+    try {
+      final ok = await userProvider.requestChangePasswordOtp();
+
+      if (!mounted) return;
+
+      if (ok) {
+        setState(() => _otpSent = true);
+        _showSnackBar('Đã gửi mã OTP đổi mật khẩu về email của bạn');
+      } else {
+        _showSnackBar(userProvider.error ?? 'Không thể gửi OTP đổi mật khẩu');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnackBar('Không thể gửi OTP: $e');
+    } finally {
+      if (mounted) setState(() => _isRequestingOtp = false);
+    }
+  }
+
+  Future<void> _handleChangePassword(UserProvider userProvider) async {
     final currentPassword = _currentPasswordController.text.trim();
     final newPassword = _newPasswordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
+    final otp = _otpController.text.trim();
 
     if (currentPassword.isEmpty) {
       _showSnackBar('Vui lòng nhập mật khẩu hiện tại');
@@ -54,12 +83,17 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
 
-    final passwordRegex = RegExp(
-      r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#\$%^&*()_+\-=\[\]{};:\\|,.<>/?]).{8,}$',
-    );
+    if (newPassword.length > 72) {
+      _showSnackBar('Mật khẩu mới tối đa 72 ký tự');
+      return;
+    }
+
+    // Đồng bộ với ChangePasswordDto của BE:
+    // /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$/
+    final passwordRegex = RegExp(r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).+$');
 
     if (!passwordRegex.hasMatch(newPassword)) {
-      _showSnackBar('Mật khẩu phải có chữ hoa, chữ thường, số và ký tự đặc biệt');
+      _showSnackBar('Mật khẩu mới phải có chữ hoa, chữ thường và số');
       return;
     }
 
@@ -78,18 +112,34 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       return;
     }
 
+    if (otp.isEmpty) {
+      _showSnackBar('Vui lòng nhập mã OTP');
+      return;
+    }
+
+    if (otp.length < 4 || otp.length > 10) {
+      _showSnackBar('OTP không hợp lệ');
+      return;
+    }
+
     setState(() => _isSubmitting = true);
 
     try {
-      // Gọi AuthProvider để xử lý đổi mật khẩu.
-      // Provider sẽ gọi AuthService, còn AuthService sẽ gọi API backend.
-      await authProvider.changePassword(
-        currentPassword,
-        newPassword,
-        confirmPassword,
+      final ok = await userProvider.changeMyPassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+        confirmNewPassword: confirmPassword,
+        otp: otp,
       );
 
       if (!mounted) return;
+
+      if (!ok) {
+        _showSnackBar(userProvider.error ?? 'Đổi mật khẩu thất bại');
+        return;
+      }
+
+      _showSnackBar('Đổi mật khẩu thành công');
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
@@ -107,8 +157,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final authProvider = Provider.of<AuthProvider>(context);
-    final isLoading = authProvider.isLoading || _isSubmitting;
+    final userProvider = Provider.of<UserProvider>(context);
+    final isLoading = userProvider.isLoading || _isSubmitting || _isRequestingOtp;
 
     return Scaffold(
       backgroundColor: _kMochiPinkSoft,
@@ -124,6 +174,28 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            _InfoBox(
+              icon: Icons.mail_outline_rounded,
+              title: _otpSent ? 'OTP đã được gửi' : 'Xác thực bằng OTP',
+              subtitle: _otpSent
+                  ? 'Kiểm tra email tài khoản, sau đó nhập mã OTP bên dưới.'
+                  : 'Bấm gửi OTP trước khi cập nhật mật khẩu.',
+            ),
+            const SizedBox(height: 14),
+            _MochiPrimaryButton(
+              text: _isRequestingOtp ? 'Đang gửi OTP...' : 'Gửi OTP đổi mật khẩu',
+              isLoading: _isRequestingOtp || userProvider.isLoading,
+              onPressed: isLoading ? () {} : () => _handleRequestOtp(userProvider),
+            ),
+            const SizedBox(height: 16),
+            _MochiInput(
+              controller: _otpController,
+              label: 'Mã OTP',
+              hintText: 'Nhập OTP đã gửi về email',
+              icon: Icons.pin_outlined,
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 16),
             _MochiInput(
               controller: _currentPasswordController,
               label: 'Mật khẩu hiện tại',
@@ -171,8 +243,8 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             const SizedBox(height: 22),
             _MochiPrimaryButton(
               text: 'Cập nhật mật khẩu',
-              isLoading: isLoading,
-              onPressed: () => _handleChangePassword(authProvider),
+              isLoading: _isSubmitting || userProvider.isLoading,
+              onPressed: isLoading ? () {} : () => _handleChangePassword(userProvider),
             ),
           ],
         ),
@@ -185,6 +257,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+    _otpController.dispose();
     super.dispose();
   }
 }

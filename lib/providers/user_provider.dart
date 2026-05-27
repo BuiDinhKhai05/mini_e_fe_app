@@ -90,6 +90,44 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> requestChangePasswordOtp() async {
+    _setLoading(true);
+    try {
+      await _userService.requestChangePasswordOtp();
+      _setError(null);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  Future<bool> changeMyPassword({
+    required String currentPassword,
+    required String newPassword,
+    required String confirmNewPassword,
+    required String otp,
+  }) async {
+    _setLoading(true);
+    try {
+      await _userService.changeMyPassword(
+        currentPassword: currentPassword,
+        newPassword: newPassword,
+        confirmNewPassword: confirmNewPassword,
+        otp: otp,
+      );
+      _setError(null);
+      return true;
+    } catch (e) {
+      _setError(e.toString());
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   Future<bool> deleteMeSoft() async {
     if (_me?.id == null) return false;
 
