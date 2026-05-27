@@ -86,6 +86,14 @@ class AdminHomeScreen extends StatelessWidget {
                         desc: 'Xem, sửa role, khóa hoặc mở khóa tài khoản',
                         route: '/admin/users',
                       ),
+                      _adminActionCard(
+                        context,
+                        icon: Icons.category_outlined,
+                        color: AppColors.primaryPink,
+                        title: 'Quản lý danh mục',
+                        desc: 'Tạo, sửa, xóa và sắp xếp danh mục sản phẩm',
+                        route: '/admin/categories',
+                      ),
                     ],
                   )
                 else
@@ -107,6 +115,15 @@ class AdminHomeScreen extends StatelessWidget {
                         title: 'Quản lý người dùng',
                         desc: 'Xem, sửa role, khóa hoặc mở khóa tài khoản',
                         route: '/admin/users',
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      _adminActionCard(
+                        context,
+                        icon: Icons.category_outlined,
+                        color: AppColors.primaryPink,
+                        title: 'Quản lý danh mục',
+                        desc: 'Tạo, sửa, xóa và sắp xếp danh mục sản phẩm',
+                        route: '/admin/categories',
                       ),
                     ],
                   ),
@@ -155,7 +172,7 @@ class AdminHomeScreen extends StatelessWidget {
                 ),
                 SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Quản lý shop, người dùng và các chức năng hệ thống.',
+                  'Quản lý shop, người dùng, danh mục và các chức năng hệ thống.',
                   style: AppTextStyles.bodyGrey,
                 ),
               ],

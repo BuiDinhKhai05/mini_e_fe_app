@@ -31,6 +31,7 @@ import 'screens/admins/admin_shops_screen.dart';
 import 'screens/admins/admin_users_screen.dart';
 import 'screens/admins/admin_shop_approval_screen.dart';
 import 'screens/admins/admin_home_screen.dart';
+import 'screens/admins/admin_categories_screen.dart';
 import 'screens/auths/login_screen.dart';
 import 'screens/auths/register_screen.dart';
 import 'screens/home_screen.dart';
@@ -153,6 +154,7 @@ class MyApp extends StatelessWidget {
         '/admin-home': (context) => AdminHomeScreen(),
         '/admin/shops': (context) => AdminShopsScreen(),
         '/admin/users': (context) => AdminUsersScreen(),
+        '/admin/categories': (context) => const AdminCategoriesScreen(),
         '/admin-shop-approval': (context) => AdminShopApprovalScreen(),
 
         // === SHOP DETAIL ===

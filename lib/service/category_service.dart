@@ -85,19 +85,26 @@ class CategoryService {
   }
 
   Future<CategoryModel> update(
-    int id, {
-    String? name,
-    String? slug,
-    String? description,
-    int? parentId,
-    bool? isActive,
-    int? sortOrder,
-  }) async {
+      int id, {
+        String? name,
+        String? slug,
+        String? description,
+        int? parentId,
+        bool updateParent = false,
+        bool? isActive,
+        int? sortOrder,
+      }) async {
     final body = <String, dynamic>{
-      if (name != null) 'name': name,
-      if (slug != null) 'slug': slug,
+      if (name != null) 'name': name.trim(),
+      if (slug != null && slug.trim().isNotEmpty) 'slug': slug.trim(),
       if (description != null) 'description': description,
-      if (parentId != null) 'parentId': parentId,
+
+      // Quan trọng cho màn admin:
+      // - Khi chọn danh mục cha: gửi parentId = id cha
+      // - Khi chuyển về danh mục gốc: gửi parentId = null
+      // Nếu chỉ dùng `if (parentId != null)` thì FE không thể xóa parent cũ.
+      if (updateParent) 'parentId': parentId,
+
       if (isActive != null) 'isActive': isActive,
       if (sortOrder != null) 'sortOrder': sortOrder,
     };

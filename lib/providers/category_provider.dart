@@ -66,14 +66,15 @@ class CategoryProvider extends ChangeNotifier {
   }
 
   Future<void> update(
-    int id, {
-    String? name,
-    String? slug,
-    String? description,
-    int? parentId,
-    bool? isActive,
-    int? sortOrder,
-  }) async {
+      int id, {
+        String? name,
+        String? slug,
+        String? description,
+        int? parentId,
+        bool updateParent = false,
+        bool? isActive,
+        int? sortOrder,
+      }) async {
     error = null;
     notifyListeners();
     await _service.update(
@@ -82,6 +83,7 @@ class CategoryProvider extends ChangeNotifier {
       slug: slug,
       description: description,
       parentId: parentId,
+      updateParent: updateParent,
       isActive: isActive,
       sortOrder: sortOrder,
     );
