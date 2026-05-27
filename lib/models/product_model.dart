@@ -17,6 +17,9 @@ class ProductModel {
   final int shopId;
   final String? slug;
 
+  // ID danh mục của sản phẩm. Cần field này để màn chỉnh sửa biết sản phẩm đang thuộc danh mục nào.
+  final int? categoryId;
+
   // Cấu trúc thuộc tính (VD: Màu, Size)
   final List<OptionSchema>? optionSchema;
 
@@ -34,6 +37,7 @@ class ProductModel {
     this.status = 'DRAFT',
     required this.shopId,
     this.slug,
+    this.categoryId,
     this.optionSchema,
     this.variants,
   });
@@ -52,6 +56,7 @@ class ProductModel {
     String? status,
     int? shopId,
     String? slug,
+    int? categoryId,
     List<OptionSchema>? optionSchema,
     List<VariantItem>? variants,
   }) {
@@ -66,9 +71,16 @@ class ProductModel {
       status: status ?? this.status,
       shopId: shopId ?? this.shopId,
       slug: slug ?? this.slug,
+      categoryId: categoryId ?? this.categoryId,
       optionSchema: optionSchema ?? this.optionSchema,
       variants: variants ?? this.variants,
     );
+  }
+
+  static int? _parseNullableInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    return int.tryParse(value.toString());
   }
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -111,6 +123,9 @@ class ProductModel {
       parsedPrice = double.tryParse(json['price'].toString()) ?? 0.0;
     }
 
+    final dynamic rawCategoryId = json['categoryId'] ??
+        (json['category'] is Map ? (json['category'] as Map)['id'] : null);
+
     return ProductModel(
       id: json['id'] ?? 0,
       title: json['title'] ?? 'Không tên',
@@ -122,6 +137,7 @@ class ProductModel {
       status: json['status'] ?? 'DRAFT',
       shopId: json['shopId'] ?? 0,
       slug: json['slug'],
+      categoryId: _parseNullableInt(rawCategoryId),
 
       // Parse Option Schema
       optionSchema: json['optionSchema'] != null

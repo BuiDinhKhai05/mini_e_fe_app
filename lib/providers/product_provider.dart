@@ -224,6 +224,7 @@ class ProductProvider with ChangeNotifier {
     required String title,
     required double price,
     int? stock, // Giữ tham số để tránh sửa nhiều UI, nhưng BE hiện không nhận stock product.
+    int? categoryId, // BE dùng field này để gắn sản phẩm với danh mục.
     String? description,
     String? slug,
     List<dynamic>? images, // File (mobile) hoặc Uint8List (web)
@@ -238,6 +239,8 @@ class ProductProvider with ChangeNotifier {
       final formData = FormData.fromMap({
         'title': title.trim(),
         'price': price,
+        // Gửi categoryId trong multipart/form-data để BE lưu product.categoryId.
+        if (categoryId != null) 'categoryId': categoryId,
         if (description != null && description.trim().isNotEmpty)
           'description': description.trim(),
         if (slug != null && slug.trim().isNotEmpty) 'slug': slug.trim(),
@@ -301,6 +304,7 @@ class ProductProvider with ChangeNotifier {
     String? title,
     double? price,
     int? stock, // BE không nhận field này ở product, tồn kho được sync từ variants.
+    int? categoryId, // Cho phép cập nhật danh mục nếu FE truyền lên.
     String? description,
     String? slug,
     String? status,
@@ -316,11 +320,13 @@ class ProductProvider with ChangeNotifier {
 
       if (title != null) jsonBody['title'] = title.trim();
       if (price != null) jsonBody['price'] = price;
+      if (categoryId != null) jsonBody['categoryId'] = categoryId;
       if (description != null) jsonBody['description'] = description.trim();
       if (slug != null) jsonBody['slug'] = slug.trim();
       if (status != null) jsonBody['status'] = status;
 
       // Không gửi stock/images vì UpdateProductDto và PATCH hiện tại của BE chưa hỗ trợ.
+      // categoryId thì BE đã hỗ trợ trong UpdateProductDto nên có thể gửi khi cần.
       if (jsonBody.isEmpty) {
         _isLoading = false;
         notifyListeners();

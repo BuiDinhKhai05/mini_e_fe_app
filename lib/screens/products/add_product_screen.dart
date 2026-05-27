@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 
 import 'package:mini_e_fe_app/models/product_model.dart';
 import 'package:mini_e_fe_app/providers/product_provider.dart';
+import 'package:mini_e_fe_app/providers/category_provider.dart';
 import 'add_variant_screen.dart';
 
 class AddProductScreen extends StatefulWidget {
@@ -49,6 +50,10 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   bool _isSubmitting = false;
 
+  // categoryId được BE dùng để gắn sản phẩm vào danh mục.
+  // Seller bắt buộc chọn danh mục khi tạo sản phẩm mới.
+  int? _selectedCategoryId;
+
   bool get _isEditMode => widget.editProduct != null;
   int get _selectedImageCount => kIsWeb ? _imageBytes.length : _images.length;
   List<dynamic> get _selectedImages => kIsWeb ? _imageBytes : _images;
@@ -57,6 +62,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
   void initState() {
     super.initState();
     final product = widget.editProduct;
+    _selectedCategoryId = product?.categoryId;
     _titleController = TextEditingController(text: product?.title ?? '');
     _descriptionController = TextEditingController(text: product?.description ?? '');
     _priceController = TextEditingController(
@@ -66,6 +72,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
       text: product == null ? '' : product.stock.toString(),
     );
     _slugController = TextEditingController(text: product?.slug ?? '');
+
+    // Load danh mục sau frame đầu tiên để tránh gọi Provider khi widget chưa gắn xong vào tree.
+    // Lưu ý: main.dart cần đăng ký CategoryProvider bằng MultiProvider.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadSelectableCategories();
+    });
   }
 
   @override
@@ -76,6 +89,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
     _stockController.dispose();
     _slugController.dispose();
     super.dispose();
+  }
+
+
+  // =========================
+  // Load danh mục cho dropdown
+  // =========================
+  Future<void> _loadSelectableCategories() async {
+    // API list đang được gọi với isActive=true. Nếu list rỗng do format response/service,
+    // ta fallback sang tree rồi flatten ở dropdown để tránh UI báo sai là chưa có danh mục.
+    final categoryProvider = context.read<CategoryProvider>();
+    await categoryProvider.fetchCategories(isActive: true);
+
+    if (!mounted) return;
+    if (categoryProvider.categories.isEmpty) {
+      await categoryProvider.fetchTree();
+    }
   }
 
   // =========================
@@ -192,6 +221,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
           productId: widget.editProduct!.id,
           title: _titleController.text.trim(),
           price: price,
+          // Khi edit mode, nếu seller có chọn danh mục mới thì gửi categoryId để BE cập nhật.
+          categoryId: _selectedCategoryId,
           description: description,
           slug: slug.isEmpty ? null : slug,
           // BE hiện tại chưa có FilesInterceptor cho PATCH /products/:id,
@@ -212,6 +243,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
       final newProduct = await provider.createProduct(
         title: _titleController.text.trim(),
         price: price,
+        // Đây là phần quan trọng: gửi categoryId để BE lưu product.categoryId.
+        categoryId: _selectedCategoryId,
         description: description,
         slug: slug.isEmpty ? null : slug,
         images: _selectedImages,
@@ -372,6 +405,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       },
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  _buildCategoryDropdown(),
                   const SizedBox(height: 12),
                   _buildTextField(
                     controller: _descriptionController,
@@ -575,6 +610,168 @@ class _AddProductScreenState extends State<AddProductScreen> {
         ],
       ),
     );
+  }
+
+  // =========================
+  // CATEGORY DROPDOWN
+  // =========================
+  // Dropdown này đọc danh sách category từ CategoryProvider và lưu id được chọn
+  // vào _selectedCategoryId. Khi submit, id này được gửi lên ProductProvider.
+  Widget _buildCategoryDropdown() {
+    return Consumer<CategoryProvider>(
+      builder: (context, categoryProvider, _) {
+        // Ưu tiên danh sách từ GET /categories?isActive=true.
+        // Nếu API list/service trả rỗng, dùng cây danh mục đã fetchTree() rồi flatten.
+        // Không lọc isActive thêm ở FE vì API đã lọc isActive=true; lọc lại quá chặt
+        // có thể làm dropdown rỗng nếu CategoryModel parse isActive khác kiểu.
+        final categories = List<dynamic>.from(
+          categoryProvider.categories.isNotEmpty
+              ? categoryProvider.categories
+              : categoryProvider.flattenTree(),
+        );
+
+        // Provider hiện tại của bạn không có loadCategories(),
+        // mà dùng fetchCategories(isActive: true) và trạng thái loadingList/loadingTree.
+        if (categoryProvider.loadingList || categoryProvider.loadingTree) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _lighterPink,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _borderPink),
+            ),
+            child: const Row(
+              children: [
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Đang tải danh mục...',
+                    style: TextStyle(color: _textGrey),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final items = categories.map((category) {
+          final id = _readCategoryId(category);
+          if (id == null) return null;
+
+          return DropdownMenuItem<int>(
+            value: id,
+            child: Text(
+              _readCategoryName(category),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          );
+        }).whereType<DropdownMenuItem<int>>().toList();
+
+        // Tránh lỗi DropdownButtonFormField khi value không nằm trong danh sách items.
+        final hasSelectedValue = items.any((item) => item.value == _selectedCategoryId);
+
+        if (items.isEmpty) {
+          return Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: _lighterPink,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: _borderPink),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.category_outlined, color: _primaryPink),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Chưa có danh mục để chọn',
+                    style: TextStyle(color: _textGrey),
+                  ),
+                ),
+                TextButton(
+                  onPressed: _isSubmitting
+                      ? null
+                      : _loadSelectableCategories,
+                  child: const Text('Tải lại'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return DropdownButtonFormField<int>(
+          value: hasSelectedValue ? _selectedCategoryId : null,
+          isExpanded: true,
+          decoration: InputDecoration(
+            labelText: 'Danh mục',
+            hintText: 'Chọn danh mục sản phẩm',
+            prefixIcon: const Icon(Icons.category_outlined, color: _primaryPink),
+            filled: true,
+            fillColor: _lighterPink,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: _borderPink),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: _borderPink),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: _primaryPink, width: 1.4),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: const BorderSide(color: _dangerRed),
+            ),
+          ),
+          items: items,
+          onChanged: _isSubmitting
+              ? null
+              : (value) {
+            setState(() => _selectedCategoryId = value);
+          },
+          validator: (value) {
+            // Chỉ bắt buộc chọn danh mục khi tạo mới.
+            // Edit mode không bắt buộc để tránh lỗi nếu product cũ chưa có categoryId trong model.
+            if (!_isEditMode && value == null) {
+              return 'Vui lòng chọn danh mục';
+            }
+            return null;
+          },
+        );
+      },
+    );
+  }
+
+  int? _readCategoryId(dynamic category) {
+    try {
+      final value = category is Map ? category['id'] : category.id;
+      if (value == null) return null;
+      if (value is int) return value;
+      return int.tryParse(value.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  String _readCategoryName(dynamic category) {
+    try {
+      final value = category is Map ? category['name'] : category.name;
+      final text = value?.toString().trim() ?? '';
+      return text.isEmpty ? 'Danh mục không tên' : text;
+    } catch (_) {
+      return 'Danh mục không tên';
+    }
   }
 
   Widget _buildTextField({
