@@ -10,6 +10,9 @@ class ShopService {
   final ApiClient _api = ApiClient();
 
   // ==================== REGISTER ====================
+  // BE: POST /shops/register
+  // Body theo CreateShopDto:
+  // name, email, description, shopAddress, shopLat, shopLng, shopPlaceId, shopPhone.
   Future<ShopModel> register(Map<String, dynamic> data) async {
     final resp = await _api.post(
       ShopsApi.register,
@@ -17,26 +20,31 @@ class ShopService {
     );
 
     _throwIfError(resp);
-    return ShopModel.fromJson(resp.data['data']);
+    return ShopModel.fromJson(Map<String, dynamic>.from(resp.data['data']));
   }
 
   // ==================== MY SHOP ====================
+  // BE: GET /shops/me
   Future<ShopModel> getMyShop() async {
     final resp = await _api.get(ShopsApi.myShop);
 
     _throwIfError(resp);
-    return ShopModel.fromJson(resp.data['data']);
+    return ShopModel.fromJson(Map<String, dynamic>.from(resp.data['data']));
   }
 
   // ==================== PUBLIC DETAIL ====================
+  // BE: GET /shops/:id
+  // Chỉ xem được shop ACTIVE, shop bị xóa mềm hoặc PENDING/SUSPENDED sẽ 404.
   Future<ShopModel> getShopById(int id) async {
     final resp = await _api.get(ShopsApi.byId('$id'));
 
     _throwIfError(resp);
-    return ShopModel.fromJson(resp.data['data']);
+    return ShopModel.fromJson(Map<String, dynamic>.from(resp.data['data']));
   }
 
   // ==================== UPDATE SHOP PROFILE ====================
+  // BE: PATCH /shops/:id
+  // Owner không được gửi status. Admin mới được đổi status.
   Future<ShopModel> update(int shopId, Map<String, dynamic> data) async {
     final resp = await _api.patch(
       ShopsApi.byId('$shopId'),
@@ -44,10 +52,11 @@ class ShopService {
     );
 
     _throwIfError(resp);
-    return ShopModel.fromJson(resp.data['data']);
+    return ShopModel.fromJson(Map<String, dynamic>.from(resp.data['data']));
   }
 
   // ==================== UPLOAD LOGO ====================
+  // BE: PATCH /shops/me/logo, form field: file
   Future<ShopModel> uploadLogo({
     String? filePath,
     List<int>? fileBytes,
@@ -63,10 +72,11 @@ class ShopService {
     );
 
     _throwIfError(resp);
-    return ShopModel.fromJson(resp.data['data']);
+    return ShopModel.fromJson(Map<String, dynamic>.from(resp.data['data']));
   }
 
   // ==================== UPLOAD COVER ====================
+  // BE: PATCH /shops/me/cover, form field: file
   Future<ShopModel> uploadCover({
     String? filePath,
     List<int>? fileBytes,
@@ -82,7 +92,7 @@ class ShopService {
     );
 
     _throwIfError(resp);
-    return ShopModel.fromJson(resp.data['data']);
+    return ShopModel.fromJson(Map<String, dynamic>.from(resp.data['data']));
   }
 
   Future<FormData> _buildImageFormData({
@@ -128,7 +138,8 @@ class ShopService {
     return resp.data['data']['exists'] as bool;
   }
 
-  // ==================== LIST / SEARCH SHOPS ====================
+  // ==================== PUBLIC LIST / SEARCH SHOPS ====================
+  // BE mới: GET /shops là PUBLIC và chỉ trả shop ACTIVE.
   Future<List<ShopModel>> getShops({
     String? q,
     String? status,
@@ -139,6 +150,7 @@ class ShopService {
       'page': page,
       'limit': limit,
       if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+      // BE public hiện ép status ACTIVE, nhưng vẫn giữ để không vỡ code cũ.
       if (status != null && status.isNotEmpty) 'status': status,
     };
 
@@ -164,7 +176,33 @@ class ShopService {
     );
   }
 
+  // ==================== ADMIN LIST SHOPS ====================
+  // BE mới: GET /shops/admin/all dành cho ADMIN.
+  Future<List<ShopModel>> getAdminShops({
+    String? q,
+    String? status,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final resp = await _api.get(
+      ShopsApi.adminAll,
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+        if (status != null && status.isNotEmpty) 'status': status,
+      },
+    );
+
+    _throwIfError(resp);
+
+    final items = _extractShopItems(resp.data);
+    return items.map((e) => ShopModel.fromJson(e)).toList();
+  }
+
   // ==================== SELLER ORDERS / REVENUE ====================
+  // BE: GET /shops/me/orders?page=1&limit=1000&range=1|7|30|all
+  // BE đang lọc order theo order_items.shop_id, app không cần tự join product nữa.
   Future<ShopOrdersResult> getMyShopOrders({
     int page = 1,
     int limit = 1000,
@@ -185,17 +223,17 @@ class ShopService {
     return ShopOrdersResult.fromJson(data);
   }
 
-  // ==================== HELPER ====================
+  // ==================== HELPERS ====================
   Map<String, dynamic> _normalizeShopPayload(Map<String, dynamic> data) {
     final normalized = Map<String, dynamic>.from(data);
 
-    if (normalized.containsKey('phone') &&
-        !normalized.containsKey('shopPhone')) {
+    // App cũ dùng phone, BE dùng shopPhone.
+    if (normalized.containsKey('phone') && !normalized.containsKey('shopPhone')) {
       normalized['shopPhone'] = normalized['phone'];
     }
-
     normalized.remove('phone');
 
+    // Owner không được tự đổi status. Admin mới được phép gửi status.
     if (normalized['status'] == null) {
       normalized.remove('status');
     }
@@ -216,10 +254,7 @@ class ShopService {
     dynamic current = body;
 
     if (current is List) {
-      return current
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+      return current.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     }
 
     if (current is! Map) {
@@ -230,10 +265,7 @@ class ShopService {
     current = root['data'] ?? root['result'] ?? root['payload'] ?? root;
 
     if (current is List) {
-      return current
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+      return current.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     }
 
     if (current is! Map) {
@@ -265,10 +297,7 @@ class ShopService {
       return [];
     }
 
-    return items
-        .whereType<Map>()
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
+    return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   void _throwIfError(Response resp) {

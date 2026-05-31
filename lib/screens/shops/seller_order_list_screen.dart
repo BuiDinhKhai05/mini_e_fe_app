@@ -548,7 +548,7 @@ class _SellerOrderListScreenState extends State<SellerOrderListScreen> {
                 foregroundColor: _dangerRed,
                 side: const BorderSide(color: _dangerRed),
               ),
-              child: const Text('Hủy đơn'),
+              child: const Text('Hủy giao hàng'),
             ),
           ),
           const SizedBox(width: 10),
@@ -559,7 +559,7 @@ class _SellerOrderListScreenState extends State<SellerOrderListScreen> {
                 backgroundColor: _primaryPink,
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Xác nhận lấy hàng'),
+              child: const Text('Nhận đơn hàng'),
             ),
           ),
         ],
@@ -567,30 +567,18 @@ class _SellerOrderListScreenState extends State<SellerOrderListScreen> {
     }
 
     if (order.shippingStatus == 'PICKED') {
-      return Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => _updateShippingStatus(order, 'CANCELED'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: _dangerRed,
-                side: const BorderSide(color: _dangerRed),
-              ),
-              child: const Text('Hủy đơn'),
-            ),
+      // BE hiện tại chỉ cho PICKED -> IN_TRANSIT.
+      // Không còn cho hủy khi shop đã nhận/lấy đơn.
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => _updateShippingStatus(order, 'IN_TRANSIT'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _primaryPink,
+            foregroundColor: Colors.white,
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => _updateShippingStatus(order, 'IN_TRANSIT'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _primaryPink,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Giao vận chuyển'),
-            ),
-          ),
-        ],
+          child: const Text('Đã chuyển cho đơn vị vận chuyển'),
+        ),
       );
     }
 

@@ -97,7 +97,7 @@ class ShopProvider with ChangeNotifier {
     } catch (e) {
       _revenueOrders = [];
       _revenueTotal = 0;
-      _revenueError = e.toString();
+      _revenueError = e.toString().replaceFirst('Exception: ', '');
     } finally {
       _isRevenueLoading = false;
       notifyListeners();
@@ -113,7 +113,7 @@ class ShopProvider with ChangeNotifier {
       _error = null;
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       return false;
     } finally {
       _setLoading(false);
@@ -129,7 +129,7 @@ class ShopProvider with ChangeNotifier {
       _error = null;
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       return false;
     } finally {
       _setLoading(false);
@@ -154,7 +154,7 @@ class ShopProvider with ChangeNotifier {
       _error = null;
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       return false;
     } finally {
       _setLoading(false);
@@ -178,7 +178,7 @@ class ShopProvider with ChangeNotifier {
       _error = null;
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       return false;
     } finally {
       _setLoading(false);
@@ -195,7 +195,7 @@ class ShopProvider with ChangeNotifier {
       _error = null;
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       return false;
     } finally {
       _setLoading(false);
@@ -207,13 +207,13 @@ class ShopProvider with ChangeNotifier {
     try {
       return await service.checkName(name);
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       notifyListeners();
       return true;
     }
   }
 
-  // ==================== LIST / SEARCH SHOPS ====================
+  // ==================== PUBLIC LIST / SEARCH SHOPS ====================
   Future<void> fetchShops({
     String? q,
     String? status,
@@ -239,7 +239,7 @@ class ShopProvider with ChangeNotifier {
 
       _error = null;
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
     } finally {
       _setLoading(false);
     }
@@ -257,6 +257,38 @@ class ShopProvider with ChangeNotifier {
       page: page,
       limit: limit,
     );
+  }
+
+  // ==================== ADMIN LIST SHOPS ====================
+  Future<void> fetchAdminShops({
+    String? q,
+    String? status,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    final keyword = q?.trim() ?? '';
+
+    _shopSearchKeyword = keyword;
+    _shopStatusFilter = status;
+    _shopPage = page;
+    _shopLimit = limit;
+
+    _setLoading(true);
+
+    try {
+      _shops = await service.getAdminShops(
+        q: keyword.isEmpty ? null : keyword,
+        status: status,
+        page: page,
+        limit: limit,
+      );
+
+      _error = null;
+    } catch (e) {
+      _error = e.toString().replaceFirst('Exception: ', '');
+    } finally {
+      _setLoading(false);
+    }
   }
 
   Future<void> refreshShops() async {
@@ -288,11 +320,7 @@ class ShopProvider with ChangeNotifier {
 
   // ==================== PUBLIC DETAIL ====================
   Future<ShopModel> getShopById(int id) async {
-    try {
-      return await service.getShopById(id);
-    } catch (_) {
-      rethrow;
-    }
+    return service.getShopById(id);
   }
 
   void clearShops({bool notify = true}) {

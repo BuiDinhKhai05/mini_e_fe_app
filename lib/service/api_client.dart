@@ -74,18 +74,31 @@ class ApiClient {
     }
 
     _dio.interceptors.add(
-      InterceptorsWrapper(
+      QueuedInterceptorsWrapper(
         // ----------------------------------------------------------
         // 2.1. Trước mỗi request: gắn Authorization Bearer token
         // ----------------------------------------------------------
         onRequest: (options, handler) async {
           final prefs = await SharedPreferences.getInstance();
-          final token = prefs.getString('access_token');
+          var token = prefs.getString('access_token');
 
-          if (token != null &&
-              token.isNotEmpty &&
-              _shouldAttachAccessToken(options.path)) {
-            options.headers['Authorization'] = 'Bearer $token';
+          // Dự phòng: nếu token vừa được set vào Dio nhưng SharedPreferences
+          // chưa kịp ghi/xuất hiện, vẫn lấy từ header mặc định của Dio.
+          final defaultAuthHeader = _dio.options.headers['Authorization'];
+          if ((token == null || token.isEmpty) &&
+              defaultAuthHeader is String &&
+              defaultAuthHeader.startsWith('Bearer ')) {
+            token = defaultAuthHeader.substring('Bearer '.length);
+          }
+
+          if (_shouldAttachAccessToken(options.path)) {
+            if (token != null && token.isNotEmpty) {
+              options.headers['Authorization'] = 'Bearer $token';
+            } else {
+              options.headers.remove('Authorization');
+            }
+          } else {
+            options.headers.remove('Authorization');
           }
 
           debugPrint('[REQUEST] ${options.method} ${options.uri}');
@@ -331,8 +344,16 @@ class ApiClient {
 
     final body = response.data;
     final data = body is Map<String, dynamic> ? body['data'] : null;
+
+    // Hỗ trợ nhiều format BE có thể trả:
+    // 1. { data: { access_token: '...' } }
+    // 2. { data: { accessToken: '...' } }
+    // 3. { access_token: '...' }
+    // 4. { accessToken: '...' }
     final accessToken = data is Map<String, dynamic>
-        ? data['access_token']
+        ? (data['access_token'] ?? data['accessToken'])
+        : body is Map<String, dynamic>
+        ? (body['access_token'] ?? body['accessToken'])
         : null;
 
     if (accessToken is! String || accessToken.isEmpty) {
@@ -394,17 +415,41 @@ class ApiClient {
   }
 
   bool _shouldTryRefresh(String path) {
-    return !path.startsWith('/auth/');
+    final normalized = _normalizeApiPath(path);
+
+    // Không refresh cho chính nhóm auth để tránh vòng lặp vô hạn.
+    return !normalized.startsWith('/auth/');
   }
 
   bool _isPublicAuthEndpoint(String path) {
-    return path.startsWith('/auth/login') ||
-        path.startsWith('/auth/register') ||
-        path.startsWith('/auth/refresh') ||
-        path.startsWith('/auth/logout') ||
-        path.startsWith('/auth/forgot-password') ||
-        path.startsWith('/auth/reset-password') ||
-        path.startsWith('/auth/account/recover/request') ||
-        path.startsWith('/auth/account/recover/confirm');
+    final normalized = _normalizeApiPath(path);
+
+    return normalized.startsWith('/auth/login') ||
+        normalized.startsWith('/auth/register') ||
+        normalized.startsWith('/auth/refresh') ||
+        normalized.startsWith('/auth/logout') ||
+        normalized.startsWith('/auth/forgot-password') ||
+        normalized.startsWith('/auth/reset-password') ||
+        normalized.startsWith('/auth/account/recover/request') ||
+        normalized.startsWith('/auth/account/recover/confirm');
+  }
+
+  // Một số chỗ trong app/service có thể truyền path tương đối
+  // `/shops/me/orders`, nhưng Dio đôi khi lưu lại path dạng full URL
+  // `http://localhost:3000/api/shops/me/orders` trong requestOptions.
+  // Chuẩn hóa về `/shops/me/orders` để rule attach/refresh luôn đúng.
+  String _normalizeApiPath(String path) {
+    String value = path.trim();
+
+    final uri = Uri.tryParse(value);
+    if (uri != null && uri.hasScheme) {
+      value = uri.path;
+    }
+
+    if (value.startsWith('/api/')) {
+      value = value.substring(4);
+    }
+
+    return value;
   }
 }

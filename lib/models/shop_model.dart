@@ -1,5 +1,11 @@
 // lib/models/shop_model.dart
 
+// BE hiện tại dùng query range cho /shops/me/orders:
+// 1   => hôm nay
+// 7   => 7 ngày theo lịch
+// 30  => 30 ngày theo lịch
+// all => tất cả
+
 enum ShopOrderRange {
   today,
   sevenDays,
@@ -44,10 +50,11 @@ class ShopModel {
   final String? logoUrl;
   final String? coverUrl;
 
+  // App dùng phone cho tiện hiển thị, BE lưu field là shopPhone.
   final String? phone;
   final String? email;
   final String? shopAddress;
-  final String status;
+  final String status; // PENDING, ACTIVE, SUSPENDED
   final DateTime? verifiedAt;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -85,28 +92,29 @@ class ShopModel {
     return ShopModel(
       id: _toInt(json['id']),
       userId: _extractUserId(json),
-      name: (json['name'] ?? json['shopName'] ?? json['storeName'] ?? '')
-          .toString(),
-      slug: (json['slug'] ?? '').toString(),
+      name: _toStringValue(json['name'] ?? json['shopName'] ?? json['storeName']),
+      slug: _toStringValue(json['slug']),
       description: _toNullableString(json['description']),
-      logoUrl: _toNullableString(
-        json['logoUrl'] ?? json['logo'] ?? json['avatarUrl'],
-      ),
-      coverUrl: _toNullableString(json['coverUrl'] ?? json['coverImageUrl']),
-      phone: _toNullableString(json['shopPhone'] ?? json['phone']),
+      logoUrl: _toNullableString(json['logoUrl'] ?? json['logo_url'] ?? json['logo']),
+      coverUrl: _toNullableString(json['coverUrl'] ?? json['cover_url'] ?? json['coverImageUrl']),
+      phone: _toNullableString(json['shopPhone'] ?? json['shop_phone'] ?? json['phone']),
       email: _toNullableString(json['email']),
-      shopAddress: _toNullableString(json['shopAddress'] ?? json['address']),
-      status: (json['status'] ?? 'PENDING').toString(),
-      verifiedAt: _toDateTime(json['verifiedAt']),
-      createdAt: _toDateTime(json['createdAt']) ?? DateTime.now(),
-      updatedAt: _toDateTime(json['updatedAt']) ?? DateTime.now(),
+      shopAddress: _toNullableString(json['shopAddress'] ?? json['shop_address'] ?? json['address']),
+      status: _toStringValue(json['status']).isEmpty ? 'PENDING' : _toStringValue(json['status']),
+      verifiedAt: _toDateTime(json['verifiedAt'] ?? json['verified_at']),
+      createdAt: _toDateTime(json['createdAt'] ?? json['created_at']) ?? DateTime.now(),
+      updatedAt: _toDateTime(json['updatedAt'] ?? json['updated_at']) ?? DateTime.now(),
       stats: ShopStatsModel.fromJson(
-        json['stats'] is Map<String, dynamic> ? json['stats'] : json,
+        json['stats'] is Map<String, dynamic>
+            ? json['stats']
+            : json['stats'] is Map
+            ? Map<String, dynamic>.from(json['stats'])
+            : json,
       ),
       products: json['products'] is List ? List<dynamic>.from(json['products']) : null,
-      shopLat: _toDouble(json['shopLat']),
-      shopLng: _toDouble(json['shopLng']),
-      shopPlaceId: _toNullableString(json['shopPlaceId']),
+      shopLat: _toDouble(json['shopLat'] ?? json['shop_lat']),
+      shopLng: _toDouble(json['shopLng'] ?? json['shop_lng']),
+      shopPlaceId: _toNullableString(json['shopPlaceId'] ?? json['shop_place_id']),
     );
   }
 
@@ -120,18 +128,15 @@ class ShopModel {
       'shopLng': shopLng,
       'shopPlaceId': shopPlaceId,
       'shopPhone': phone,
-    };
+    }..removeWhere((key, value) => value == null);
   }
 
   static int? _extractUserId(Map<String, dynamic> json) {
-    final direct =
-        json['userId'] ?? json['user_id'] ?? json['ownerId'] ?? json['owner_id'];
-
+    final direct = json['userId'] ?? json['user_id'] ?? json['ownerId'] ?? json['owner_id'];
     final directId = _toNullableInt(direct);
     if (directId != null) return directId;
 
     final user = json['user'] ?? json['owner'] ?? json['seller'];
-
     if (user is Map) {
       return _toNullableInt(user['id']);
     }
@@ -145,6 +150,9 @@ class ShopStatsModel {
   final int orderCount;
   final int totalSold;
   final double totalRevenue;
+
+  // BE shop_stats hiện tại chưa có ratingAvg/reviewCount.
+  // Giữ field này để không vỡ màn cũ, mặc định 0.
   final double ratingAvg;
   final int reviewCount;
 
@@ -159,12 +167,12 @@ class ShopStatsModel {
 
   factory ShopStatsModel.fromJson(Map<String, dynamic> json) {
     return ShopStatsModel(
-      productCount: _toInt(json['productCount']),
-      orderCount: _toInt(json['totalOrders'] ?? json['orderCount']),
-      totalSold: _toInt(json['totalSold']),
-      totalRevenue: _toDouble(json['totalRevenue']) ?? 0.0,
-      ratingAvg: _toDouble(json['ratingAvg']) ?? 0.0,
-      reviewCount: _toInt(json['reviewCount']),
+      productCount: _toInt(json['productCount'] ?? json['product_count']),
+      orderCount: _toInt(json['totalOrders'] ?? json['total_orders'] ?? json['orderCount']),
+      totalSold: _toInt(json['totalSold'] ?? json['total_sold']),
+      totalRevenue: _toDouble(json['totalRevenue'] ?? json['total_revenue']) ?? 0.0,
+      ratingAvg: _toDouble(json['ratingAvg'] ?? json['rating_avg']) ?? 0.0,
+      reviewCount: _toInt(json['reviewCount'] ?? json['review_count']),
     );
   }
 }
@@ -190,12 +198,7 @@ class ShopOrdersResult {
     }
 
     if (current is! Map) {
-      return ShopOrdersResult(
-        items: const [],
-        page: 1,
-        limit: 20,
-        total: 0,
-      );
+      return ShopOrdersResult(items: const [], page: 1, limit: 20, total: 0);
     }
 
     final map = Map<String, dynamic>.from(current);
@@ -210,9 +213,7 @@ class ShopOrdersResult {
     final items = rawItems is List
         ? rawItems
         .whereType<Map>()
-        .map((item) => ShopOrderModel.fromJson(
-      Map<String, dynamic>.from(item),
-    ))
+        .map((item) => ShopOrderModel.fromJson(Map<String, dynamic>.from(item)))
         .toList()
         : <ShopOrderModel>[];
 
@@ -249,17 +250,17 @@ class ShopOrderModel {
   factory ShopOrderModel.fromJson(Map<String, dynamic> json) {
     return ShopOrderModel(
       id: _toStringValue(json['id']),
-      code: _toStringValue(json['code'] ?? json['orderCode'] ?? json['id']),
-      status: _toStringValue(json['status']),
-      paymentStatus: _toStringValue(
-        json['paymentStatus'] ?? json['payment_status'],
-      ),
-      paymentMethod: _toStringValue(
-        json['paymentMethod'] ?? json['payment_method'],
-      ),
-      shippingStatus: _toStringValue(
-        json['shippingStatus'] ?? json['shipping_status'],
-      ),
+      code: _toStringValue(json['code'] ?? json['orderCode'] ?? json['order_code'] ?? json['id']),
+      status: _toStringValue(json['status']).isEmpty ? 'PENDING' : _toStringValue(json['status']),
+      paymentStatus: _toStringValue(json['paymentStatus'] ?? json['payment_status']).isEmpty
+          ? 'UNPAID'
+          : _toStringValue(json['paymentStatus'] ?? json['payment_status']),
+      paymentMethod: _toStringValue(json['paymentMethod'] ?? json['payment_method']).isEmpty
+          ? 'COD'
+          : _toStringValue(json['paymentMethod'] ?? json['payment_method']),
+      shippingStatus: _toStringValue(json['shippingStatus'] ?? json['shipping_status']).isEmpty
+          ? 'PENDING'
+          : _toStringValue(json['shippingStatus'] ?? json['shipping_status']),
       total: _toDouble(json['total']) ?? 0.0,
       createdAt: _toDateTime(json['createdAt'] ?? json['created_at']),
     );
@@ -282,9 +283,7 @@ class ShopOrderModel {
     final orderStatus = status.toUpperCase();
     final payStatus = paymentStatus.toUpperCase();
 
-    return orderStatus == 'COMPLETED' ||
-        orderStatus == 'PAID' ||
-        payStatus == 'PAID';
+    return orderStatus == 'COMPLETED' || orderStatus == 'PAID' || payStatus == 'PAID';
   }
 }
 
@@ -295,14 +294,17 @@ int? _toNullableInt(dynamic value) {
 }
 
 int _toInt(dynamic value) {
+  if (value == null) return 0;
   if (value is int) return value;
-  return int.tryParse(value?.toString() ?? '') ?? 0;
+  if (value is num) return value.toInt();
+  return int.tryParse(value.toString()) ?? 0;
 }
 
 double? _toDouble(dynamic value) {
   if (value == null) return null;
   if (value is double) return value;
   if (value is int) return value.toDouble();
+  if (value is num) return value.toDouble();
   return double.tryParse(value.toString());
 }
 
@@ -314,9 +316,10 @@ DateTime? _toDateTime(dynamic value) {
 String? _toNullableString(dynamic value) {
   if (value == null) return null;
   final text = value.toString().trim();
-  return text.isEmpty ? null : text;
+  return text.isEmpty || text == 'null' ? null : text;
 }
 
 String _toStringValue(dynamic value) {
-  return (value ?? '').toString();
+  if (value == null) return '';
+  return value.toString();
 }

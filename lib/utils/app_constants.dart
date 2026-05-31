@@ -67,6 +67,7 @@ class UsersApi {
 class ShopsApi {
   // Public
   static const String shops = '/shops';
+  static const String adminAll = '/shops/admin/all';
   static const String checkName = '/shops/check-name';
 
   // Authenticated

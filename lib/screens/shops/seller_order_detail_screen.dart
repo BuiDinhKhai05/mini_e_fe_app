@@ -507,7 +507,8 @@ class _SellerOrderDetailScreenState extends State<SellerOrderDetailScreen> {
           child: CircularProgressIndicator(color: _primaryPink),
         ),
       )
-          : Row(
+          : order.shippingStatus == 'PENDING'
+          ? Row(
         children: [
           Expanded(
             child: OutlinedButton(
@@ -520,19 +521,13 @@ class _SellerOrderDetailScreenState extends State<SellerOrderDetailScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              child: const Text('Hủy đơn'),
+              child: const Text('Hủy giao hàng'),
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: ElevatedButton(
-              onPressed: () {
-                if (order.shippingStatus == 'PENDING') {
-                  _updateShippingStatus('PICKED');
-                } else if (order.shippingStatus == 'PICKED') {
-                  _updateShippingStatus('IN_TRANSIT');
-                }
-              },
+              onPressed: () => _updateShippingStatus('PICKED'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _primaryPink,
                 foregroundColor: Colors.white,
@@ -542,14 +537,26 @@ class _SellerOrderDetailScreenState extends State<SellerOrderDetailScreen> {
                   borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              child: Text(
-                order.shippingStatus == 'PENDING'
-                    ? 'Xác nhận lấy hàng'
-                    : 'Giao vận chuyển',
-              ),
+              child: const Text('Nhận đơn hàng'),
             ),
           ),
         ],
+      )
+          : SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => _updateShippingStatus('IN_TRANSIT'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _primaryPink,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(0, 48),
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+          ),
+          child: const Text('Đã chuyển cho đơn vị vận chuyển'),
+        ),
       ),
     );
   }

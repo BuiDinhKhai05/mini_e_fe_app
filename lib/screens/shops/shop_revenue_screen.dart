@@ -98,18 +98,24 @@ class _ShopRevenueScreenState extends State<ShopRevenueScreen> {
           padding: const EdgeInsets.all(16),
           child: Column(
             children: [
-              if (error != null && shop == null)
+              if (shop == null && error != null)
                 _buildErrorCard(error)
               else if (shop == null)
                 _buildEmptyCard()
               else ...[
                   _buildRangeFilterCard(loading),
                   const SizedBox(height: 14),
+                  if (error != null) ...[
+                    _buildErrorCard(error),
+                    const SizedBox(height: 14),
+                  ],
                   _buildRevenueMainCard(shop, metrics),
                   const SizedBox(height: 14),
                   _buildRevenueDetailCard(metrics),
                   const SizedBox(height: 14),
                   _buildOrdersCard(orders, loading),
+                  const SizedBox(height: 14),
+                  _buildQuickActionsCard(),
                   const SizedBox(height: 14),
                 ],
             ],
@@ -181,6 +187,16 @@ class _ShopRevenueScreenState extends State<ShopRevenueScreen> {
             },
           ),
           const SizedBox(height: 8),
+          Text(
+            _selectedRange == ShopOrderRange.today
+                ? 'Hôm nay lấy đơn theo query range=1 từ BE.'
+                : 'Dữ liệu được lọc trực tiếp từ BE bằng query range=${_selectedRange.queryValue}.',
+            style: const TextStyle(
+              color: _textGrey,
+              fontSize: 12,
+              height: 1.4,
+            ),
+          ),
         ],
       ),
     );
@@ -433,6 +449,14 @@ class _ShopRevenueScreenState extends State<ShopRevenueScreen> {
             ],
           ),
           const SizedBox(height: 8),
+          const Text(
+            'Màn này không xem chi tiết đơn, chỉ hiển thị trạng thái giao hàng để biết đơn có bị hoàn trả hay không.',
+            style: TextStyle(
+              color: _textGrey,
+              height: 1.4,
+              fontSize: 12,
+            ),
+          ),
           const SizedBox(height: 14),
           if (loading)
             const Padding(
@@ -578,7 +602,45 @@ class _ShopRevenueScreenState extends State<ShopRevenueScreen> {
     );
   }
 
-
+  Widget _buildQuickActionsCard() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: _cardDecoration(radius: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Thao tác nhanh',
+            style: TextStyle(
+              color: _textDark,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.receipt_long_outlined,
+                  label: 'Đơn hàng',
+                  onTap: _openSellerOrders,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _buildActionButton(
+                  icon: Icons.inventory_2_outlined,
+                  label: 'Sản phẩm',
+                  onTap: _openSellerProducts,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _buildActionButton({
     required IconData icon,
@@ -816,7 +878,8 @@ class _ShopRevenueScreenState extends State<ShopRevenueScreen> {
   }
 
   String _formatCurrency(num value) {
-    final raw = value.round().toString();
+    final negative = value < 0;
+    final raw = value.abs().round().toString();
     final buffer = StringBuffer();
 
     for (int i = 0; i < raw.length; i++) {
@@ -828,7 +891,7 @@ class _ShopRevenueScreenState extends State<ShopRevenueScreen> {
       }
     }
 
-    return '${buffer.toString()}đ';
+    return '${negative ? '-' : ''}${buffer.toString()}đ';
   }
 }
 
@@ -848,12 +911,10 @@ class _RevenueMetrics {
   });
 
   factory _RevenueMetrics.fromOrders(List<ShopOrderModel> orders) {
-    final revenueOrders = orders.where((order) => order.isRevenueOrder)
-        .toList();
+    final revenueOrders = orders.where((order) => order.isRevenueOrder).toList();
 
-    final returnedOrCanceledOrders = orders
-        .where((order) => order.isReturnedOrCanceled)
-        .toList();
+    final returnedOrCanceledOrders =
+    orders.where((order) => order.isReturnedOrCanceled).toList();
 
     final revenue = revenueOrders.fold<double>(
       0,

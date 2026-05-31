@@ -121,18 +121,28 @@ class OrderService {
 // ==================== SELLER / SHOP ORDERS ====================
 
 // Seller lấy danh sách đơn hàng thuộc shop của mình.
-// BE: GET /shops/me/orders?page=1&limit=30
+// BE: GET /shops/me/orders?page=1&limit=30&range=all
+// range bỏ trống thì BE tự hiểu là all.
   Future<List<OrderModel>> getMyShopOrders({
     int page = 1,
     int limit = 30,
+    String? range,
   }) async {
     final response = await _apiClient.get(
-      '${ShopsApi.myShopOrders}?page=$page&limit=$limit',
+      ShopsApi.myShopOrders,
+      queryParameters: {
+        'page': page,
+        'limit': limit,
+        if (range != null && range.trim().isNotEmpty) 'range': range.trim(),
+      },
     );
 
     if (response.data['success'] == true) {
       final List<dynamic> listData = response.data['data']?['items'] ?? [];
-      return listData.map((item) => OrderModel.fromJson(item)).toList();
+      return listData
+          .whereType<Map>()
+          .map((item) => OrderModel.fromJson(Map<String, dynamic>.from(item)))
+          .toList();
     }
 
     throw Exception(response.data['message'] ?? 'Lỗi tải đơn hàng của shop');

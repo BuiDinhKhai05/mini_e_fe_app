@@ -28,6 +28,7 @@ class OrderItemModel {
   final String id;
   final int? productId;
   final int? productVariantId;
+  final int? shopId;
 
   final String nameSnapshot;
   final String? imageSnapshot;
@@ -46,6 +47,7 @@ class OrderItemModel {
     required this.id,
     this.productId,
     this.productVariantId,
+    this.shopId,
     required this.nameSnapshot,
     this.imageSnapshot,
     required this.price,
@@ -120,6 +122,7 @@ class OrderItemModel {
             json['variant_id'] ??
             variant?['id'],
       ),
+      shopId: _toIntNullable(json['shopId'] ?? json['shop_id']),
       nameSnapshot: _firstNonEmpty([
         json['nameSnapshot'],
         json['name_snapshot'],
@@ -249,15 +252,47 @@ class OrderModel {
   }
 
   String get receiverName {
-    return addressSnapshot?['fullName']?.toString() ?? '';
+    return _firstNonEmpty([
+      addressSnapshot?['fullName'],
+      addressSnapshot?['receiverName'],
+      addressSnapshot?['name'],
+    ]) ??
+        '';
   }
 
   String get receiverPhone {
-    return addressSnapshot?['phone']?.toString() ?? '';
+    return _firstNonEmpty([addressSnapshot?['phone'], addressSnapshot?['receiverPhone']]) ?? '';
   }
 
   String get receiverAddress {
-    return addressSnapshot?['formattedAddress']?.toString() ?? '';
+    return _firstNonEmpty([
+      addressSnapshot?['formattedAddress'],
+      addressSnapshot?['fullAddress'],
+      addressSnapshot?['address'],
+      addressSnapshot?['detail'],
+      addressSnapshot?['street'],
+    ]) ??
+        '';
+  }
+
+  bool get isReturnedOrCanceled {
+    final orderStatus = status.toUpperCase();
+    final shipStatus = shippingStatus.toUpperCase();
+
+    return orderStatus == 'CANCELED' ||
+        orderStatus == 'CANCELLED' ||
+        shipStatus == 'CANCELED' ||
+        shipStatus == 'CANCELLED' ||
+        shipStatus == 'RETURNED';
+  }
+
+  bool get isRevenueOrder {
+    if (isReturnedOrCanceled) return false;
+
+    final orderStatus = status.toUpperCase();
+    final payStatus = paymentStatus.toUpperCase();
+
+    return orderStatus == 'COMPLETED' || orderStatus == 'PAID' || payStatus == 'PAID';
   }
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {

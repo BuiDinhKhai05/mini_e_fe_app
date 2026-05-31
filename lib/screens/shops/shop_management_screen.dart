@@ -5,8 +5,9 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-
+import '../../providers/shop_review_provider.dart';
 import '../../providers/shop_provider.dart';
+import '../../models/shop_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../utils/app_constants.dart';
@@ -38,6 +39,11 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
   static const Color _textDark = AppColors.textDark;
   static const Color _textGrey = AppColors.textGrey;
   static const Color _dangerRed = AppColors.error;
+
+  double _dashboardRevenue = 0;
+  int _dashboardOrderCount = 0;
+  bool _dashboardBusinessLoaded = false;
+  String? _dashboardBusinessError;
 
   @override
   void initState() {
@@ -76,6 +82,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
     final auth = context.read<AuthProvider>();
     final shopProvider = context.read<ShopProvider>();
     final productProvider = context.read<ProductProvider>();
+    final shopReviewProvider = context.read<ShopReviewProvider>();
 
     if (auth.accessToken == null || auth.accessToken!.isEmpty) {
       productProvider.clearProductsCache(notify: false);
@@ -90,9 +97,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
     if (!mounted) return;
 
     if (shopProvider.shop != null) {
-      // Không xóa cache nếu vẫn là cùng shop để các sản phẩm DRAFT vừa ẩn
-      // không biến mất ngay trong phiên hiện tại. Nếu đổi sang shop khác thì
-      // mới clear để tránh lẫn dữ liệu.
       if (clearProductsFirst &&
           previousShopId != null &&
           previousShopId != shopProvider.shop!.id) {
@@ -100,14 +104,68 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
       }
 
       await productProvider.fetchAllProductsForSeller(showLoading: showLoading);
+      await shopReviewProvider.loadMyShopReviews(refresh: true);
+      await _loadDashboardBusinessStats(shopProvider);
     } else {
       productProvider.clearProductsCache(notify: false);
+      if (mounted) {
+        setState(() {
+          _dashboardRevenue = 0;
+          _dashboardOrderCount = 0;
+          _dashboardBusinessLoaded = true;
+          _dashboardBusinessError = null;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadDashboardBusinessStats(ShopProvider shopProvider) async {
+    if (!mounted) return;
+
+    setState(() {
+      _dashboardBusinessLoaded = false;
+      _dashboardBusinessError = null;
+    });
+
+    try {
+      final result = await shopProvider.service.getMyShopOrders(
+        page: 1,
+        limit: 1000,
+        range: ShopOrderRange.all,
+      );
+
+      final orders = result.items;
+      final revenueOrders = orders.where((order) => order.isRevenueOrder);
+      final revenue = revenueOrders.fold<double>(
+        0,
+            (sum, order) => sum + order.total,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _dashboardRevenue = revenue;
+        _dashboardOrderCount = orders.length;
+        _dashboardBusinessLoaded = true;
+        _dashboardBusinessError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _dashboardRevenue = 0;
+        _dashboardOrderCount = 0;
+        _dashboardBusinessLoaded = true;
+        _dashboardBusinessError = e.toString();
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final shopProvider = Provider.of<ShopProvider>(context);
+    final productProvider = Provider.of<ProductProvider>(context);
+    final shopReviewProvider = Provider.of<ShopReviewProvider>(context);
     final myShop = shopProvider.shop;
 
     // 1. Loading
@@ -122,6 +180,15 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
     if (myShop == null) {
       return _buildWelcomeScreen(context);
     }
+
+    final sellerProductCount = productProvider.products
+        .where((product) => product.shopId == myShop.id)
+        .length;
+
+    final displayRevenue = _dashboardBusinessLoaded ? _dashboardRevenue : 0.0;
+    final displayOrderCount = _dashboardBusinessLoaded
+        ? _dashboardOrderCount
+        : 0;
 
     // 3. Dashboard Quản lý shop
     return Scaffold(
@@ -168,11 +235,22 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
               const SizedBox(height: 16),
 
               // Card thống kê kinh doanh
-              _buildBusinessStatsCard(myShop),
+              _buildBusinessStatsCard(
+                myShop,
+                shopReviewProvider,
+                totalRevenue: displayRevenue,
+                orderCount: displayOrderCount,
+                productCount: sellerProductCount,
+              ),
               const SizedBox(height: 16),
 
               // Menu chức năng quản lý shop
-              _buildManagementMenu(shopProvider, myShop.stats.productCount, myShop.stats.orderCount),
+              _buildManagementMenu(
+                shopProvider,
+                sellerProductCount,
+                displayOrderCount,
+                _getDashboardReviewCount(myShop, shopReviewProvider),
+              ),
               const SizedBox(height: 40),
             ],
           ),
@@ -334,9 +412,19 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
 
   // =========================
   // Card thống kê kết quả kinh doanh
-  // Ô "Đánh giá" có thể bấm để mở màn hình xem review shop.
   // =========================
-  Widget _buildBusinessStatsCard(dynamic myShop) {
+  Widget _buildBusinessStatsCard(
+      dynamic myShop,
+      ShopReviewProvider shopReviewProvider, {
+        required double totalRevenue,
+        required int orderCount,
+        required int productCount,
+      }) {
+    final ratingAvg = _getDashboardRatingAvg(myShop, shopReviewProvider);
+    final ratingText = shopReviewProvider.isInitialLoading
+        ? '...'
+        : '${ratingAvg.toStringAsFixed(1)} ⭐';
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: _cardDecoration(radius: 24),
@@ -364,7 +452,8 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
           ),
           const SizedBox(height: 18),
 
-          // Lấy doanh thu trực tiếp từ GET /shops/me -> stats.totalRevenue.
+          // Không dùng stats.totalRevenue từ GET /shops/me nữa vì shop_stats có thể bị cũ.
+          // Card này tính lại từ GET /shops/me/orders?range=all để đồng bộ với BE hiện tại.
           InkWell(
             onTap: () {
               Navigator.push(
@@ -419,7 +508,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                         ),
                         const SizedBox(height: 5),
                         Text(
-                          _formatCurrency(myShop.stats.totalRevenue),
+                          _formatCurrency(totalRevenue),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -437,6 +526,18 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
             ),
           ),
 
+          if (_dashboardBusinessError != null) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Không thể tải lại doanh thu từ đơn hàng. Đang hiển thị 0đ để tránh dùng dữ liệu shop_stats cũ.',
+              style: TextStyle(
+                color: _dangerRed,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+
           const SizedBox(height: 20),
 
           Row(
@@ -444,7 +545,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
               Expanded(
                 child: _buildDashboardStat(
                   'Đơn hàng',
-                  '${myShop.stats.orderCount}',
+                  '$orderCount',
                   Icons.shopping_bag_outlined,
                 ),
               ),
@@ -452,7 +553,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
               Expanded(
                 child: _buildDashboardStat(
                   'Đánh giá',
-                  '${myShop.stats.ratingAvg.toStringAsFixed(1)} ⭐',
+                  ratingText,
                   Icons.star_outline_rounded,
                   onTap: _openSellerShopReviewsScreen,
                 ),
@@ -461,7 +562,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
               Expanded(
                 child: _buildDashboardStat(
                   'Sản phẩm',
-                  '${myShop.stats.productCount}',
+                  '$productCount',
                   Icons.inventory_2_outlined,
                 ),
               ),
@@ -480,6 +581,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
       ShopProvider shopProvider,
       int productCount,
       int orderCount,
+      int reviewCount,
       ) {
     return GridView.count(
       shrinkWrap: true,
@@ -526,7 +628,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
           Icons.rate_review_outlined,
           'Đánh giá',
           _openSellerShopReviewsScreen,
-          badgeCount: shopProvider.shop?.stats.reviewCount ?? 0,
+          badgeCount: reviewCount,
         ),
         _buildMenuItem(Icons.campaign_outlined, 'Marketing', () {}),
 
@@ -611,6 +713,36 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
         ),
       ),
     );
+  }
+
+  double _getDashboardRatingAvg(
+      dynamic myShop,
+      ShopReviewProvider shopReviewProvider,
+      ) {
+    final summary = shopReviewProvider.summary;
+
+    if (summary.count > 0) {
+      return summary.avg;
+    }
+
+    return myShop.stats.ratingAvg;
+  }
+
+  int _getDashboardReviewCount(
+      dynamic myShop,
+      ShopReviewProvider shopReviewProvider,
+      ) {
+    final summary = shopReviewProvider.summary;
+
+    if (summary.count > 0) {
+      return summary.count;
+    }
+
+    if (shopReviewProvider.reviews.isNotEmpty) {
+      return shopReviewProvider.reviews.length;
+    }
+
+    return myShop.stats.reviewCount;
   }
 
   // =========================
