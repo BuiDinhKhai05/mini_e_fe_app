@@ -13,6 +13,7 @@ import 'providers/order_provider.dart';
 import 'providers/category_provider.dart';
 import 'providers/review_provider.dart';
 import 'providers/recommendation_provider.dart';
+import 'providers/shop_review_provider.dart';
 
 // Services
 import 'service/api_client.dart';
@@ -72,11 +73,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => OrderProvider()),
         ChangeNotifierProvider(create: (_) => CategoryProvider()),
         ChangeNotifierProvider(create: (_) => ReviewProvider()),
-        ChangeNotifierProvider(
-          create: (_) => RecommendationProvider(
-            RecommendationService(),
-          ),
-        ),
+        ChangeNotifierProvider(create: (_) => RecommendationProvider(RecommendationService(),),),
+        ChangeNotifierProvider(create: (_) => ShopReviewProvider()),
       ],
       child: const MyApp(),
     ),

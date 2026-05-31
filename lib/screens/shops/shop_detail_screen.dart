@@ -5,7 +5,8 @@ import 'package:flutter/material.dart';
 import '../../theme/app_theme.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-
+import '../../providers/shop_review_provider.dart';
+import '../../widgets/review_card.dart';
 import '../../models/product_model.dart';
 import '../../models/shop_model.dart';
 import '../../providers/product_provider.dart';
@@ -57,17 +58,27 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadProductsIfNeeded();
+      context.read<ShopReviewProvider>().loadShopReviews(
+        shop.id,
+        refresh: true,
+      );
     });
   }
 
   @override
   void didUpdateWidget(covariant ShopDetailScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+
     if (oldWidget.shop.id != widget.shop.id) {
       _loadedProducts = [];
       _productsError = null;
+
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadProductsIfNeeded();
+        context.read<ShopReviewProvider>().loadShopReviews(
+          shop.id,
+          refresh: true,
+        );
       });
     }
   }
@@ -300,6 +311,10 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
                     _buildAboutAndContactCard(context),
                     const SizedBox(height: 16),
 
+                      // Đánh giá shop
+                    _buildShopReviewsCard(context),
+                    const SizedBox(height: 16),
+
                     // Sản phẩm của shop hiển thị phía dưới phần giới thiệu
                     _buildShopProductsCard(context),
                   ],
@@ -458,6 +473,300 @@ class _ShopDetailScreenState extends State<ShopDetailScreen> {
     );
   }
 
+  // =========================
+// Card hiển thị review của shop.
+// Review shop được lấy từ các review sản phẩm thuộc shop.
+// =========================
+  Widget _buildShopReviewsCard(BuildContext context) {
+    return Consumer<ShopReviewProvider>(
+      builder: (context, provider, _) {
+        return Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: _cardDecoration(radius: 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  _buildSectionTitle(
+                    Icons.rate_review_outlined,
+                    'Đánh giá shop',
+                  ),
+                  const Spacer(),
+                  Text(
+                    '${provider.summary.count} đánh giá',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: _textGrey,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              _buildShopReviewSummary(provider),
+              const SizedBox(height: 14),
+              _buildShopReviewFilters(provider),
+              const SizedBox(height: 14),
+              _buildShopReviewBody(provider),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildShopReviewSummary(ShopReviewProvider provider) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _softPink,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _borderPink),
+      ),
+      child: Row(
+        children: [
+          Text(
+            provider.summary.avg.toStringAsFixed(1),
+            style: const TextStyle(
+              color: _primaryPink,
+              fontSize: 28,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Text(
+            '/5',
+            style: TextStyle(
+              color: _textGrey,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(width: 10),
+          _buildRatingStars(provider.summary.avg),
+          const Spacer(),
+          Text(
+            '${provider.summary.count} lượt',
+            style: const TextStyle(
+              color: _textDark,
+              fontWeight: FontWeight.w800,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShopReviewFilters(ShopReviewProvider provider) {
+    final filters = <int?>[null, 5, 4, 3, 2, 1];
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: filters.map((rating) {
+          final selected = provider.ratingFilter == rating;
+          final label = rating == null ? 'Tất cả' : '$rating sao';
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              selected: selected,
+              label: Text(label),
+              selectedColor: _primaryPink,
+              backgroundColor: Colors.white,
+              side: BorderSide(
+                color: selected ? _primaryPink : _borderPink,
+              ),
+              labelStyle: TextStyle(
+                color: selected ? Colors.white : _primaryPink,
+                fontWeight: FontWeight.w800,
+                fontSize: 12,
+              ),
+              onSelected: (_) {
+                provider.setRatingFilterForShop(shop.id, rating);
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildShopReviewBody(ShopReviewProvider provider) {
+    if (provider.isInitialLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 22),
+        child: Center(
+          child: CircularProgressIndicator(color: _primaryPink),
+        ),
+      );
+    }
+
+    if (provider.errorMessage != null && provider.reviews.isEmpty) {
+      return _buildShopReviewError(provider);
+    }
+
+    if (provider.reviews.isEmpty) {
+      return _buildEmptyShopReviews();
+    }
+
+    final visibleReviews = provider.reviews.take(3).toList();
+
+    return Column(
+      children: [
+        ...visibleReviews.map((review) {
+          return ReviewCard(
+            review: review,
+            showProductInfo: true,
+          );
+        }),
+
+        if (provider.hasMore || provider.reviews.length > 3)
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: OutlinedButton.icon(
+              onPressed: provider.isLoadingMore
+                  ? null
+                  : () {
+                provider.loadShopReviews(shop.id);
+              },
+              icon: provider.isLoadingMore
+                  ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: _primaryPink,
+                ),
+              )
+                  : const Icon(Icons.expand_more_rounded),
+              label: Text(
+                provider.isLoadingMore ? 'Đang tải...' : 'Xem thêm đánh giá',
+              ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _primaryPink,
+                side: const BorderSide(color: _primaryPink),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildShopReviewError(ShopReviewProvider provider) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+      decoration: BoxDecoration(
+        color: AppColors.error.withOpacity(0.10),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.error.withOpacity(0.22)),
+      ),
+      child: Column(
+        children: [
+          const Icon(
+            Icons.error_outline_rounded,
+            size: 38,
+            color: AppColors.error,
+          ),
+          const SizedBox(height: 10),
+          const Text(
+            'Không thể tải đánh giá shop',
+            style: TextStyle(
+              fontSize: 14,
+              color: _textDark,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            provider.errorMessage ?? 'Vui lòng thử lại sau.',
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 12,
+              color: _textGrey,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () {
+              provider.refreshShopReviews(shop.id);
+            },
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+            label: const Text('Thử lại'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: _primaryPink,
+              side: const BorderSide(color: _primaryPink),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyShopReviews() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 26),
+      decoration: BoxDecoration(
+        color: _lighterPink,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _borderPink),
+      ),
+      child: const Column(
+        children: [
+          Icon(
+            Icons.rate_review_outlined,
+            size: 42,
+            color: _primaryPink,
+          ),
+          SizedBox(height: 10),
+          Text(
+            'Shop chưa có đánh giá',
+            style: TextStyle(
+              fontSize: 14,
+              color: _textDark,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Khi khách hàng đánh giá sản phẩm của shop, đánh giá sẽ hiển thị tại đây.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 12,
+              color: _textGrey,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRatingStars(double rating) {
+    return Row(
+      children: List.generate(5, (index) {
+        return Icon(
+          index < rating.round()
+              ? Icons.star_rounded
+              : Icons.star_border_rounded,
+          size: 17,
+          color: AppColors.warning,
+        );
+      }),
+    );
+  }
   // =========================
   // Card hiển thị sản phẩm của shop
   // =========================

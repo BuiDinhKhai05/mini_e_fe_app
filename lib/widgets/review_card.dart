@@ -15,9 +15,14 @@ import '../models/review_model.dart';
 class ReviewCard extends StatelessWidget {
   final ProductReviewItem review;
 
+  // true khi card dùng trong màn review shop.
+  // Khi đó hiển thị thêm tên sản phẩm được đánh giá.
+  final bool showProductInfo;
+
   const ReviewCard({
     super.key,
     required this.review,
+    this.showProductInfo = false,
   });
 
   static const Color _primaryPink = Color(0xFFE84B82);
@@ -51,6 +56,10 @@ class ReviewCard extends StatelessWidget {
                 _buildStars(review.rating),
                 const SizedBox(height: 6),
                 _buildDate(),
+                if (showProductInfo && review.hasProductTitle) ...[
+                  const SizedBox(height: 7),
+                  _buildProductInfo(),
+                ],
                 if (review.hasComment) ...[
                   const SizedBox(height: 8),
                   _buildComment(),
@@ -59,6 +68,7 @@ class ReviewCard extends StatelessWidget {
                   const SizedBox(height: 10),
                   _buildImages(),
                 ],
+
               ],
             ),
           ),
@@ -148,6 +158,39 @@ class ReviewCard extends StatelessWidget {
     );
   }
 
+  Widget _buildProductInfo() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: _softPink,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: _borderPink),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.shopping_bag_outlined,
+            size: 14,
+            color: _primaryPink,
+          ),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              review.productTitle!,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: _primaryPink,
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
   // =======================================================
   // Nội dung bình luận.
   // =======================================================

@@ -93,8 +93,20 @@ class ProductReviewSummary {
 
   factory ProductReviewSummary.fromJson(Map<String, dynamic> json) {
     return ProductReviewSummary(
-      count: _toInt(json['count'] ?? json['total'] ?? json['totalReviews']) ?? 0,
-      avg: _toDouble(json['avg'] ?? json['average'] ?? json['averageRating']) ?? 0,
+      count: _toInt(
+        json['count'] ??
+            json['reviewCount'] ??
+            json['total'] ??
+            json['totalReviews'],
+      ) ??
+          0,
+      avg: _toDouble(
+        json['avg'] ??
+            json['ratingAvg'] ??
+            json['average'] ??
+            json['averageRating'],
+      ) ??
+          0,
     );
   }
 }
@@ -115,6 +127,11 @@ class ProductReviewItem {
   final String? userAvatarUrl;
   final bool isDeletedUser;
 
+  // Dùng khi hiển thị review shop.
+  // Vì BE review shop trả thêm product: { id, title, slug }.
+  final String? productTitle;
+  final String? productSlug;
+
   const ProductReviewItem({
     required this.id,
     required this.orderId,
@@ -128,10 +145,14 @@ class ProductReviewItem {
     required this.userName,
     required this.userAvatarUrl,
     required this.isDeletedUser,
+    this.productTitle,
+    this.productSlug,
   });
 
   bool get hasComment => comment != null && comment!.trim().isNotEmpty;
   bool get hasImages => images.isNotEmpty;
+  bool get hasProductTitle =>
+      productTitle != null && productTitle!.trim().isNotEmpty;
 
   factory ProductReviewItem.fromJson(Map<String, dynamic> json) {
     final rawUser = json['user'];
@@ -144,12 +165,16 @@ class ProductReviewItem {
         ? Map<String, dynamic>.from(rawProduct)
         : const <String, dynamic>{};
 
-    final name = user['name'] ??
+    final rawName = user['name'] ??
         json['userNameSnapshot'] ??
         json['user_name_snapshot'] ??
         json['userName'] ??
         json['user_name'] ??
-        'Người dùng đã xóa';
+        'Người dùng Mochi';
+
+    final safeUserName = rawName.toString().trim().isEmpty
+        ? 'Người dùng Mochi'
+        : rawName.toString().trim();
 
     final avatar = user['avatarUrl'] ??
         user['avatar_url'] ??
@@ -160,11 +185,36 @@ class ProductReviewItem {
 
     final parsedUserId = _toInt(json['userId'] ?? json['user_id'] ?? user['id']);
 
+    final parsedProductId = _toInt(
+      json['productId'] ??
+          json['product_id'] ??
+          product['id'],
+    ) ??
+        0;
+
+    final productTitle = _emptyToNull(
+      product['title'] ??
+          product['name'] ??
+          json['productTitle'] ??
+          json['product_title'] ??
+          json['productName'] ??
+          json['product_name'],
+    );
+
+    final productSlug = _emptyToNull(
+      product['slug'] ??
+          json['productSlug'] ??
+          json['product_slug'],
+    );
+
+    final hasUsefulName =
+        safeUserName.isNotEmpty && safeUserName != 'Người dùng đã xóa';
+
     return ProductReviewItem(
       id: json['id']?.toString() ?? '',
       orderId: json['orderId']?.toString() ?? json['order_id']?.toString(),
       userId: parsedUserId,
-      productId: _toInt(json['productId'] ?? json['product_id'] ?? product['id']) ?? 0,
+      productId: parsedProductId,
       rating: (_toInt(json['rating']) ?? 0).clamp(0, 5).toInt(),
       comment: _emptyToNull(json['comment'] ?? json['content']),
       images: _toStringList(json['images']),
@@ -175,11 +225,13 @@ class ProductReviewItem {
             json['createdAt'] ??
             json['created_at'],
       ),
-      userName: name.toString(),
+      userName: safeUserName,
       userAvatarUrl: _emptyToNull(avatar),
       isDeletedUser: user['isDeleted'] == true ||
           user['is_deleted'] == true ||
-          parsedUserId == null,
+          (parsedUserId == null && !hasUsefulName),
+      productTitle: productTitle,
+      productSlug: productSlug,
     );
   }
 }

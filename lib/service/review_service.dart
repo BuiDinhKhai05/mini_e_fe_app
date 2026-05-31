@@ -8,19 +8,12 @@ import 'api_client.dart';
 
 // =======================================================
 // REVIEW SERVICE
-// Chỉ sửa Frontend để thích nghi format BE hiện tại:
-// - BE trả wrapper { success: true, data: ... }
-// - GET /orders/:id/review có thể trả data = null/object/list
-// - POST trả data là review vừa tạo
 // =======================================================
 class ReviewService {
   final ApiClient _apiClient = ApiClient();
 
   // =======================================================
   // Lấy danh sách đánh giá của một sản phẩm.
-  // BE: GET /products/:productId/reviews?page=1&limit=20
-  // Response:
-  // { success: true, data: { summary, items, page, limit, total } }
   // =======================================================
   Future<ProductReviewResponse> fetchProductReviews({
     required int productId,
@@ -59,10 +52,94 @@ class ReviewService {
   }
 
   // =======================================================
+// Lấy danh sách đánh giá của một shop.
+// =======================================================
+  Future<ProductReviewResponse> fetchShopReviews({
+    required int shopId,
+    int page = 1,
+    int limit = 20,
+    int? rating,
+  }) async {
+    try {
+      final safePage = page < 1 ? 1 : page;
+      final safeLimit = limit < 1 ? 20 : (limit > 100 ? 100 : limit);
+
+      final endpoint = StringBuffer(
+        '${ReviewApi.shopReviews(shopId)}?page=$safePage&limit=$safeLimit',
+      );
+
+      if (rating != null && rating >= 1 && rating <= 5) {
+        endpoint.write('&rating=$rating');
+      }
+
+      final response = await _apiClient.get(endpoint.toString());
+      final body = response.data;
+
+      if (body is Map) {
+        final map = Map<String, dynamic>.from(body);
+
+        if (map['success'] == false) {
+          throw Exception(_extractMessage(map, 'Không thể tải đánh giá shop'));
+        }
+
+        return ProductReviewResponse.fromJson(map);
+      }
+
+      throw Exception('Dữ liệu đánh giá shop không hợp lệ');
+    } catch (e) {
+      throw Exception(_formatReviewError(
+        e,
+        fallback: 'Không thể tải đánh giá shop',
+      ));
+    }
+  }
+
+// =======================================================
+// Seller lấy danh sách đánh giá của shop mình.
+// =======================================================
+  Future<ProductReviewResponse> fetchMyShopReviews({
+    int page = 1,
+    int limit = 20,
+    int? rating,
+  }) async {
+    try {
+      final safePage = page < 1 ? 1 : page;
+      final safeLimit = limit < 1 ? 20 : (limit > 100 ? 100 : limit);
+
+      final endpoint = StringBuffer(
+        '${ReviewApi.myShopReviews}?page=$safePage&limit=$safeLimit',
+      );
+
+      if (rating != null && rating >= 1 && rating <= 5) {
+        endpoint.write('&rating=$rating');
+      }
+
+      final response = await _apiClient.get(endpoint.toString());
+      final body = response.data;
+
+      if (body is Map) {
+        final map = Map<String, dynamic>.from(body);
+
+        if (map['success'] == false) {
+          throw Exception(
+            _extractMessage(map, 'Không thể tải đánh giá shop của bạn'),
+          );
+        }
+
+        return ProductReviewResponse.fromJson(map);
+      }
+
+      throw Exception('Dữ liệu đánh giá shop không hợp lệ');
+    } catch (e) {
+      throw Exception(_formatReviewError(
+        e,
+        fallback: 'Không thể tải đánh giá shop của bạn',
+      ));
+    }
+  }
+
+  // =======================================================
   // Tạo đánh giá sản phẩm theo đơn hàng.
-  // BE: POST /orders/:id/review
-  // Body: { productId, rating, comment?, images? }
-  // Response: { success: true, data: review }
   // =======================================================
   Future<ProductReviewItem?> createReviewForOrder({
     required String orderId,
@@ -96,12 +173,7 @@ class ReviewService {
 
   // =======================================================
   // Lấy đánh giá của một đơn hàng.
-  // BE: GET /orders/:id/review?productId=
-  // Response có thể là:
-  // - { success: true, data: null }
-  // - { success: true, data: reviewObject }
-  // - { success: true, data: [reviewObject] }
-  // =======================================================
+   // =======================================================
   Future<List<ProductReviewItem>> fetchOrderReviews({
     required String orderId,
     int? productId,
@@ -167,9 +239,7 @@ class ReviewService {
 
   // =======================================================
   // Route mới nếu muốn dùng POST /product-reviews.
-  // BE: POST /product-reviews
-  // Body: { orderId, productId, rating, comment?, images? }
-  // =======================================================
+   // =======================================================
   Future<ProductReviewItem?> createProductReviewV2({
     required String orderId,
     required int productId,
