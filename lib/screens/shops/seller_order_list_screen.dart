@@ -168,7 +168,7 @@ class _SellerOrderListScreenState extends State<SellerOrderListScreen> {
   String _shippingText(String status) {
     switch (status) {
       case 'PENDING':
-        return 'Chờ shop xác nhận';
+        return 'Xác nhận';
       case 'PICKED':
         return 'Đã lấy hàng';
       case 'IN_TRANSIT':
