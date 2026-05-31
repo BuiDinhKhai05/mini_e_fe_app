@@ -100,9 +100,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ======== LOAD DETAIL (để có images[]) ========
   Future<void> _loadProductDetail() async {
-    // BE hiện tại chỉ cho public detail với sản phẩm ACTIVE.
-    // Nếu seller đang quản lý sản phẩm DRAFT thì giữ dữ liệu local để tránh 404.
-    if (widget.isFromShopManagement && _currentProduct.status.toUpperCase() != 'ACTIVE') {
+    // Public detail chỉ trả ACTIVE / OUT_OF_STOCK.
+    // Nếu seller mở sản phẩm LOCKED từ trang quản lý thì giữ dữ liệu local để tránh 404.
+    if (widget.isFromShopManagement && _currentProduct.isLocked) {
       return;
     }
 
@@ -123,8 +123,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   // ======== VARIANTS ========
   Future<void> _fetchVariants() async {
-    // BE hiện tại list variants public cũng chỉ hoạt động khi product ACTIVE.
-    if (widget.isFromShopManagement && _currentProduct.status.toUpperCase() != 'ACTIVE') {
+    // Public variants chỉ trả ACTIVE / OUT_OF_STOCK.
+    // Sản phẩm LOCKED không cho seller chỉnh nên không cần load variants ở màn public detail.
+    if (widget.isFromShopManagement && _currentProduct.isLocked) {
       return;
     }
 
@@ -299,6 +300,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     return _currentProduct.stock;
   }
 
+  bool get _isProductUnavailable =>
+      _currentProduct.isLocked ||
+          _currentProduct.normalizedStatus == ProductStatusValue.outOfStock ||
+          _displayStock <= 0;
+
   // ======== PERMISSION (seller manage) ========
   bool _canManageProduct() {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -314,7 +320,20 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     if (_isUpdatingStatus) return;
 
     final oldStatus = _currentProduct.status.toUpperCase();
-    final newStatus = oldStatus == 'ACTIVE' ? 'DRAFT' : 'ACTIVE';
+    if (oldStatus == ProductStatusValue.locked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Sản phẩm đã bị admin khóa, không thể đổi trạng thái'),
+          backgroundColor: AppColors.error,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final newStatus = oldStatus == ProductStatusValue.active
+        ? ProductStatusValue.outOfStock
+        : ProductStatusValue.active;
 
     setState(() => _isUpdatingStatus = true);
     final provider = Provider.of<ProductProvider>(context, listen: false);
@@ -327,14 +346,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     setState(() => _isUpdatingStatus = false);
 
     if (success) {
-      // Không gọi lại GET detail sau khi ẩn vì BE public detail không trả DRAFT.
+      // ACTIVE và OUT_OF_STOCK đều là public status nên có thể cập nhật local ngay.
       setState(() {
         _currentProduct = _currentProduct.copyWith(status: newStatus);
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(newStatus == 'ACTIVE' ? 'Đã bật bán' : 'Đã ẩn sản phẩm'),
+          content: Text(newStatus == ProductStatusValue.active ? 'Đã bật bán' : 'Đã chuyển sang hết hàng'),
           backgroundColor: AppColors.success,
           behavior: SnackBarBehavior.floating,
         ),
@@ -1377,7 +1396,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                               children: [
                                 Expanded(
                                   child: ElevatedButton.icon(
-                                    onPressed: _isUpdatingStatus ? null : _toggleProductStatus,
+                                    onPressed: (_isUpdatingStatus || _currentProduct.isLocked) ? null : _toggleProductStatus,
                                     icon: _isUpdatingStatus
                                         ? const SizedBox(
                                       width: 16,
@@ -1388,7 +1407,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                       ),
                                     )
                                         : Icon(
-                                      _currentProduct.status == 'ACTIVE'
+                                      _currentProduct.isActive
                                           ? Icons.visibility_off_rounded
                                           : Icons.visibility_rounded,
                                       size: 16,
@@ -1396,9 +1415,11 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                     label: Text(
                                       _isUpdatingStatus
                                           ? 'Đang lưu...'
-                                          : (_currentProduct.status == 'ACTIVE'
-                                          ? 'Ẩn sản phẩm'
-                                          : 'Hiện sản phẩm'),
+                                          : (_currentProduct.isLocked
+                                          ? 'Đã bị khóa'
+                                          : (_currentProduct.isActive
+                                          ? 'Đánh dấu hết hàng'
+                                          : 'Bật bán lại')),
                                     ),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.warning,
@@ -1467,7 +1488,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () => _showProductCartDialog(isBuyNow: false),
+                        onPressed: _isProductUnavailable
+                            ? null
+                            : () => _showProductCartDialog(isBuyNow: false),
                         icon: Icon(Icons.shopping_cart_outlined,
                             size: 18, color: _primaryColor),
                         label: Text(
@@ -1490,7 +1513,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () => _showProductCartDialog(isBuyNow: true),
+                        onPressed: _isProductUnavailable
+                            ? null
+                            : () => _showProductCartDialog(isBuyNow: true),
                         icon: const Icon(Icons.favorite_rounded,
                             size: 18, color: Colors.white),
                         label: const Text(

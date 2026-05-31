@@ -2,12 +2,16 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../models/product_model.dart';
+
 class ProductCard extends StatelessWidget {
-  final String id; // Lưu ý: Backend ID là int, nhưng FE có thể ép sang String để hiển thị
+  final String id;
   final String name;
   final double price;
   final String imageUrl;
   final int stock;
+  final String status;
+  final int sold;
   final VoidCallback onTap;
 
   const ProductCard({
@@ -17,8 +21,35 @@ class ProductCard extends StatelessWidget {
     required this.price,
     required this.imageUrl,
     this.stock = 0,
+    this.status = ProductStatusValue.active,
+    this.sold = 0,
     required this.onTap,
   });
+
+  bool get _isOutOfStock =>
+      status.toUpperCase().trim() == ProductStatusValue.outOfStock || stock <= 0;
+
+  bool get _isLocked => status.toUpperCase().trim() == ProductStatusValue.locked;
+
+  String get _statusText {
+    if (_isLocked) return 'Đã khóa';
+    if (_isOutOfStock) return 'Hết hàng';
+    return 'Còn $stock sản phẩm';
+  }
+
+  Color get _statusColor {
+    if (_isLocked) return Colors.red.shade700;
+    if (_isOutOfStock) return Colors.orange.shade800;
+    return Colors.grey.shade700;
+  }
+
+  String _formatPrice(double value) {
+    final text = value.toInt().toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (match) => '${match[1]}.',
+    );
+    return '$text VNĐ';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,20 +65,39 @@ class ProductCard extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // === PHẦN HIỂN THỊ ẢNH (DEBUG VERSION) ===
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: _buildProductImage(),
-                ),
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 100,
+                      height: 100,
+                      child: _buildProductImage(),
+                    ),
+                  ),
+                  if (_isOutOfStock || _isLocked)
+                    Positioned(
+                      top: 6,
+                      left: 6,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _isLocked ? Colors.red.shade600 : Colors.orange.shade700,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          _isLocked ? 'Khóa' : 'Hết hàng',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              // ==========================================
-
               const SizedBox(width: 12),
-
-              // Phần thông tin Text (Giữ nguyên)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -63,7 +113,7 @@ class ProductCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      '${price.toInt()} VNĐ',
+                      _formatPrice(price),
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -72,13 +122,26 @@ class ProductCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      stock > 0 ? 'Còn $stock sản phẩm' : 'Hết hàng',
+                      _statusText,
                       style: TextStyle(
                         fontSize: 12,
-                        color: stock > 0 ? Colors.grey.shade700 : Colors.red,
-                        fontWeight: stock > 0 ? FontWeight.normal : FontWeight.bold,
+                        color: _statusColor,
+                        fontWeight: (_isOutOfStock || _isLocked)
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     ),
+                    if (sold > 0) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        'Đã bán $sold',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -89,64 +152,28 @@ class ProductCard extends StatelessWidget {
     );
   }
 
-  // === HÀM XỬ LÝ ẢNH ĐỂ DEBUG ===
   Widget _buildProductImage() {
-    // 1. IN RA CONSOLE ĐỂ KIỂM TRA URL
-    // Hãy mở tab "Run" hoặc "Debug Console" trong IDE để xem dòng này
-    if (imageUrl.isNotEmpty) {
-      print('>>> DEBUG IMG [Product ID: $id]: $imageUrl');
-    } else {
-      print('>>> DEBUG IMG [Product ID: $id]: URL RỖNG !!!');
-    }
-
-    // TRƯỜNG HỢP 1: Không có link ảnh
-    if (imageUrl.isEmpty) {
+    if (imageUrl.trim().isEmpty) {
       return Container(
         color: Colors.grey[300],
         child: const Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.image_not_supported, color: Colors.grey, size: 30),
-              SizedBox(height: 4),
-              Text("No URL", style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
-            ],
-          ),
+          child: Icon(Icons.image_not_supported, color: Colors.grey, size: 30),
         ),
       );
     }
 
-    // TRƯỜNG HỢP 2: Có link -> Tải ảnh
     return CachedNetworkImage(
       imageUrl: imageUrl,
       fit: BoxFit.cover,
-
-      // Loading
       placeholder: (context, url) => Container(
         color: Colors.grey[100],
         child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
-
-      // Error Widget (Quan trọng để bắt lỗi)
       errorWidget: (context, url, error) {
-        // In lỗi chi tiết ra console
-        print('!!! LỖI TẢI ẢNH [ID: $id]: $error');
-        print('!!! URL GÂY LỖI: $url');
-
+        debugPrint('Lỗi tải ảnh product $id: $error | $url');
         return Container(
-          color: Colors.red[50], // Nền đỏ nhạt để dễ nhận biết lỗi
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.broken_image, color: Colors.red),
-              const SizedBox(height: 2),
-              Text(
-                "Error Load",
-                style: TextStyle(color: Colors.red[800], fontSize: 10),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
+          color: Colors.red[50],
+          child: const Icon(Icons.broken_image, color: Colors.red),
         );
       },
     );

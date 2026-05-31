@@ -148,18 +148,18 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   // =========================
-  // Chọn ảnh sản phẩm, giới hạn tối đa 10 ảnh.
+  // Chọn ảnh sản phẩm, giới hạn tối đa 6 ảnh.
   // =========================
   Future<void> _pickImages() async {
-    if (_selectedImageCount >= 10) {
-      _showSnack('Bạn chỉ được chọn tối đa 10 ảnh', isError: true);
+    if (_selectedImageCount >= 6) {
+      _showSnack('Bạn chỉ được chọn tối đa 6 ảnh', isError: true);
       return;
     }
 
     final picked = await _picker.pickMultiImage(imageQuality: 85);
     if (picked.isEmpty) return;
 
-    final remaining = 10 - _selectedImageCount;
+    final remaining = 6 - _selectedImageCount;
     final selected = picked.take(remaining).toList();
 
     if (kIsWeb) {
@@ -174,7 +174,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
     }
 
     if (picked.length > remaining) {
-      _showSnack('Chỉ lấy thêm $remaining ảnh vì giới hạn tối đa là 10 ảnh');
+      _showSnack('Chỉ lấy thêm $remaining ảnh vì giới hạn tối đa là 6 ảnh');
     }
   }
 

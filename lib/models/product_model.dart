@@ -1,29 +1,51 @@
 // lib/models/product_model.dart
 
+class ProductStatusValue {
+  static const String active = 'ACTIVE';
+  static const String outOfStock = 'OUT_OF_STOCK';
+  static const String locked = 'LOCKED';
+}
+
+class ProductSortValue {
+  static const String latest = 'latest';
+  static const String bestSelling = 'best_selling';
+}
+
 class ProductModel {
   final int id;
   final String title;
   final String? description;
   final double price;
 
-  // URL ảnh đại diện (đã xử lý logic ưu tiên isMain)
+  /// URL ảnh đại diện đã xử lý ưu tiên:
+  /// images.isMain -> images[0] -> mainImageUrl -> imageUrl.
   final String imageUrl;
 
-  // Danh sách tất cả ảnh từ server
+  /// Danh sách tất cả ảnh từ server.
   final List<ProductImage> images;
 
+  /// Tổng tồn kho product. BE hiện đồng bộ từ variants.
   final int stock;
+
+  /// BE hiện tại dùng: ACTIVE / OUT_OF_STOCK / LOCKED.
   final String status;
+
   final int shopId;
   final String? slug;
-
-  // ID danh mục của sản phẩm. Cần field này để màn chỉnh sửa biết sản phẩm đang thuộc danh mục nào.
   final int? categoryId;
 
-  // Cấu trúc thuộc tính (VD: Màu, Size)
+  /// Số lượng đã bán. Dùng cho sort/display bán chạy.
+  final int sold;
+
+  final String? deletedAt;
+  final String? createdAt;
+  final String? updatedAt;
+  final String? publishedAt;
+
+  /// Cấu trúc thuộc tính, ví dụ: Màu, Size.
   final List<OptionSchema>? optionSchema;
 
-  // Danh sách biến thể
+  /// Danh sách biến thể nếu API detail có trả kèm.
   final List<VariantItem>? variants;
 
   ProductModel({
@@ -34,17 +56,45 @@ class ProductModel {
     required this.imageUrl,
     this.images = const [],
     this.stock = 0,
-    this.status = 'DRAFT',
+    this.status = ProductStatusValue.active,
     required this.shopId,
     this.slug,
     this.categoryId,
+    this.sold = 0,
+    this.deletedAt,
+    this.createdAt,
+    this.updatedAt,
+    this.publishedAt,
     this.optionSchema,
     this.variants,
   });
 
+  String get normalizedStatus => status.toUpperCase().trim();
 
-  /// Tạo bản sao ProductModel khi FE cần cập nhật cục bộ
-  /// (ví dụ đổi ACTIVE/DRAFT) mà không phải gọi lại public detail.
+  bool get isActive => normalizedStatus == ProductStatusValue.active;
+
+  bool get isOutOfStock =>
+      normalizedStatus == ProductStatusValue.outOfStock || stock <= 0;
+
+  bool get isLocked => normalizedStatus == ProductStatusValue.locked;
+
+  bool get isDeleted => deletedAt != null && deletedAt!.trim().isNotEmpty;
+
+  bool get canBuy => isActive && !isOutOfStock && !isLocked && !isDeleted;
+
+  String get statusLabel {
+    switch (normalizedStatus) {
+      case ProductStatusValue.active:
+        return stock <= 0 ? 'Hết hàng' : 'Đang bán';
+      case ProductStatusValue.outOfStock:
+        return 'Hết hàng';
+      case ProductStatusValue.locked:
+        return 'Đã khóa';
+      default:
+        return status;
+    }
+  }
+
   ProductModel copyWith({
     int? id,
     String? title,
@@ -57,6 +107,11 @@ class ProductModel {
     int? shopId,
     String? slug,
     int? categoryId,
+    int? sold,
+    String? deletedAt,
+    String? createdAt,
+    String? updatedAt,
+    String? publishedAt,
     List<OptionSchema>? optionSchema,
     List<VariantItem>? variants,
   }) {
@@ -72,6 +127,11 @@ class ProductModel {
       shopId: shopId ?? this.shopId,
       slug: slug ?? this.slug,
       categoryId: categoryId ?? this.categoryId,
+      sold: sold ?? this.sold,
+      deletedAt: deletedAt ?? this.deletedAt,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      publishedAt: publishedAt ?? this.publishedAt,
       optionSchema: optionSchema ?? this.optionSchema,
       variants: variants ?? this.variants,
     );
@@ -80,85 +140,119 @@ class ProductModel {
   static int? _parseNullableInt(dynamic value) {
     if (value == null) return null;
     if (value is int) return value;
+    if (value is num) return value.toInt();
     return int.tryParse(value.toString());
   }
 
-  factory ProductModel.fromJson(Map<String, dynamic> json) {
-    // 1. Xử lý danh sách ảnh
-    List<ProductImage> parsedImages = [];
-    if (json['images'] != null && json['images'] is List) {
-      parsedImages = (json['images'] as List)
-          .map((item) => ProductImage.fromJson(item))
-          .toList();
+  static int _parseInt(dynamic value, {int fallback = 0}) {
+    if (value == null) return fallback;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString()) ?? fallback;
+  }
 
-      // Sắp xếp ảnh theo position (quan trọng để hiển thị đúng thứ tự)
-      parsedImages.sort((a, b) => a.position.compareTo(b.position));
+  static double _parseDouble(dynamic value, {double fallback = 0.0}) {
+    if (value == null) return fallback;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is num) return value.toDouble();
+    return double.tryParse(value.toString()) ?? fallback;
+  }
+
+  static String? _parseNullableString(dynamic value) {
+    if (value == null) return null;
+    final text = value.toString();
+    return text.trim().isEmpty ? null : text;
+  }
+
+  factory ProductModel.fromJson(Map<String, dynamic> json) {
+    final parsedImages = <ProductImage>[];
+
+    if (json['images'] is List) {
+      parsedImages.addAll(
+        (json['images'] as List)
+            .whereType<Map>()
+            .map((item) => ProductImage.fromJson(Map<String, dynamic>.from(item)))
+            .where((image) => image.url.trim().isNotEmpty)
+            .toList(),
+      );
+
+      parsedImages.sort((a, b) {
+        final byPosition = a.position.compareTo(b.position);
+        if (byPosition != 0) return byPosition;
+        return a.id.compareTo(b.id);
+      });
     }
 
-    // 2. Logic chọn ảnh Thumbnail (imageUrl)
     String finalUrl = '';
+
     if (parsedImages.isNotEmpty) {
-      // Ưu tiên 1: Ảnh có isMain = true
-      // Ưu tiên 2: Ảnh đầu tiên trong list
       final mainImg = parsedImages.firstWhere(
-            (img) => img.isMain == true,
+            (img) => img.isMain,
         orElse: () => parsedImages.first,
       );
       finalUrl = mainImg.url;
-    }
-    // ✅ LIST API (GET /products) của BE đang trả: mainImageUrl
-    else if (json['mainImageUrl'] != null &&
-        json['mainImageUrl'].toString().isNotEmpty) {
+    } else if ((json['mainImageUrl'] ?? '').toString().trim().isNotEmpty) {
       finalUrl = json['mainImageUrl'].toString();
-    }
-    // Fallback: Nếu backend gửi field imageUrl riêng lẻ (ít dùng nhưng cứ để dự phòng)
-    else if (json['imageUrl'] != null &&
-        json['imageUrl'].toString().isNotEmpty) {
+    } else if ((json['imageUrl'] ?? '').toString().trim().isNotEmpty) {
       finalUrl = json['imageUrl'].toString();
+    } else if ((json['thumbnailUrl'] ?? '').toString().trim().isNotEmpty) {
+      finalUrl = json['thumbnailUrl'].toString();
     }
 
-    // 3. Xử lý giá tiền (Chuyển đổi an toàn từ String/Number)
-    double parsedPrice = 0.0;
-    if (json['price'] != null) {
-      parsedPrice = double.tryParse(json['price'].toString()) ?? 0.0;
-    }
+    final dynamic rawShopId = json['shopId'] ??
+        (json['shop'] is Map ? (json['shop'] as Map)['id'] : null);
 
     final dynamic rawCategoryId = json['categoryId'] ??
         (json['category'] is Map ? (json['category'] as Map)['id'] : null);
 
+    final optionSchema = <OptionSchema>[];
+    if (json['optionSchema'] is List) {
+      optionSchema.addAll(
+        (json['optionSchema'] as List)
+            .whereType<Map>()
+            .map((item) => OptionSchema.fromJson(Map<String, dynamic>.from(item)))
+            .where((item) => item.name.trim().isNotEmpty && item.values.isNotEmpty)
+            .toList(),
+      );
+    }
+
+    final variants = <VariantItem>[];
+    if (json['variants'] is List) {
+      variants.addAll(
+        (json['variants'] as List)
+            .whereType<Map>()
+            .map((item) => VariantItem.fromJson(Map<String, dynamic>.from(item)))
+            .toList(),
+      );
+    }
+
     return ProductModel(
-      id: json['id'] ?? 0,
-      title: json['title'] ?? 'Không tên',
-      description: json['description'],
-      price: parsedPrice,
+      id: _parseInt(json['id']),
+      title: (json['title'] ?? json['name'] ?? 'Không tên').toString(),
+      description: _parseNullableString(json['description']),
+      price: _parseDouble(json['price']),
       imageUrl: finalUrl,
       images: parsedImages,
-      stock: int.tryParse(json['stock']?.toString() ?? '0') ?? 0,
-      status: json['status'] ?? 'DRAFT',
-      shopId: json['shopId'] ?? 0,
-      slug: json['slug'],
+      stock: _parseInt(json['stock']),
+      status: (json['status'] ?? ProductStatusValue.active).toString(),
+      shopId: _parseInt(rawShopId),
+      slug: _parseNullableString(json['slug']),
       categoryId: _parseNullableInt(rawCategoryId),
-
-      // Parse Option Schema
-      optionSchema: json['optionSchema'] != null
-          ? (json['optionSchema'] as List)
-          .map((e) => OptionSchema.fromJson(e))
-          .toList()
-          : [],
-
-      // Parse Variants
-      variants: json['variants'] != null
-          ? (json['variants'] as List)
-          .map((v) => VariantItem.fromJson(v))
-          .toList()
-          : [],
+      sold: _parseInt(json['sold']),
+      deletedAt: _parseNullableString(json['deletedAt'] ?? json['deleted_at']),
+      createdAt: _parseNullableString(json['createdAt'] ?? json['created_at']),
+      updatedAt: _parseNullableString(json['updatedAt'] ?? json['updated_at']),
+      publishedAt: _parseNullableString(json['publishedAt'] ?? json['published_at']),
+      optionSchema: optionSchema,
+      variants: variants,
     );
   }
 }
 
-// Class cho từng ảnh
 class ProductImage {
   final int id;
+  final int? productId;
   final String url;
   final bool isMain;
   final int position;
@@ -166,6 +260,7 @@ class ProductImage {
 
   ProductImage({
     required this.id,
+    this.productId,
     required this.url,
     required this.isMain,
     required this.position,
@@ -174,19 +269,16 @@ class ProductImage {
 
   factory ProductImage.fromJson(Map<String, dynamic> json) {
     return ProductImage(
-      id: json['id'] ?? 0,
-      // BE của bạn đang dùng field: url
-      // Để an toàn, hỗ trợ thêm key imageUrl (một số BE hay đặt vậy)
+      id: ProductModel._parseInt(json['id']),
+      productId: ProductModel._parseNullableInt(json['productId']),
       url: (json['url'] ?? json['imageUrl'] ?? '').toString(),
-      // Lưu ý: BE trả về boolean, nhưng đôi khi là 0/1 (tinyint)
-      isMain: (json['isMain'] == true || json['isMain'] == 1),
-      position: int.tryParse(json['position']?.toString() ?? '0') ?? 0,
-      alt: json['alt'],
+      isMain: json['isMain'] == true || json['isMain'] == 1,
+      position: ProductModel._parseInt(json['position']),
+      alt: ProductModel._parseNullableString(json['alt']),
     );
   }
 }
 
-// Giữ nguyên OptionSchema và VariantItem
 class OptionSchema {
   final String name;
   final List<String> values;
@@ -196,13 +288,15 @@ class OptionSchema {
   factory OptionSchema.fromJson(Map<String, dynamic> json) {
     return OptionSchema(
       name: json['name']?.toString() ?? '',
-      values:
-      (json['values'] as List?)?.map((e) => e.toString()).toList() ?? [],
+      values: (json['values'] as List?)
+          ?.map((e) => e.toString())
+          .where((value) => value.trim().isNotEmpty)
+          .toList() ??
+          [],
     );
   }
 }
 
-/// Class đại diện cho biến thể sản phẩm (Variant)
 class VariantItem {
   final int id;
   final String name;
@@ -210,7 +304,6 @@ class VariantItem {
   final double price;
   final int stock;
   final int? imageId;
-  // Options: Mapping linh hoạt để UI dễ hiển thị
   final List<Map<String, String>> options;
 
   VariantItem({
@@ -223,43 +316,42 @@ class VariantItem {
     this.options = const [],
   });
 
+  bool get isOutOfStock => stock <= 0;
+
   factory VariantItem.fromJson(Map<String, dynamic> json) {
-    // XỬ LÝ OPTIONS TỪ BE (Quan trọng)
-    // BE Entity dùng cột: value1, value2, value3...
-    // FE UI cần list: [{option: 'Màu', value: 'Đỏ'}]
+    final parsedOptions = <Map<String, String>>[];
 
-    List<Map<String, String>> parsedOptions = [];
-
-    // CÁCH 1: Nếu BE đã map sẵn thành mảng 'options' (DTO generated)
-    if (json['options'] != null && json['options'] is List) {
-      parsedOptions = (json['options'] as List).map((opt) {
-        return {
-          'option': opt['option']?.toString() ?? '',
-          'value': opt['value']?.toString() ?? '',
-        };
-      }).toList();
-    }
-    // CÁCH 2: Nếu BE trả về raw entity (value1, value2...)
-    else {
-      // Chúng ta gom value1 -> value5 vào list để UI hiển thị tạm
+    if (json['options'] is List) {
+      parsedOptions.addAll(
+        (json['options'] as List).whereType<Map>().map((opt) {
+          return {
+            'option': opt['option']?.toString() ?? '',
+            'value': opt['value']?.toString() ?? '',
+          };
+        }).where((opt) {
+          return (opt['option'] ?? '').trim().isNotEmpty ||
+              (opt['value'] ?? '').trim().isNotEmpty;
+        }).toList(),
+      );
+    } else {
       for (int i = 1; i <= 5; i++) {
-        String? val = json['value$i'];
-        if (val != null && val.isNotEmpty) {
+        final val = json['value$i'];
+        if (val != null && val.toString().trim().isNotEmpty) {
           parsedOptions.add({
             'option': 'Thuộc tính $i',
-            'value': val,
+            'value': val.toString(),
           });
         }
       }
     }
 
     return VariantItem(
-      id: json['id'] ?? 0,
-      name: json['name'] ?? '',
-      sku: json['sku'] ?? '',
-      price: double.tryParse(json['price']?.toString() ?? '0') ?? 0.0,
-      stock: int.tryParse(json['stock']?.toString() ?? '0') ?? 0,
-      imageId: json['imageId'],
+      id: ProductModel._parseInt(json['id']),
+      name: (json['name'] ?? '').toString(),
+      sku: (json['sku'] ?? '').toString(),
+      price: ProductModel._parseDouble(json['price']),
+      stock: ProductModel._parseInt(json['stock']),
+      imageId: ProductModel._parseNullableInt(json['imageId']),
       options: parsedOptions,
     );
   }

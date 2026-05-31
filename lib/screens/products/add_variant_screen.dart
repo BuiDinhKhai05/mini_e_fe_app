@@ -175,6 +175,11 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
   Future<void> _submitVariants() async {
     if (_isSubmitting) return;
 
+    if (widget.currentProduct?.isLocked == true) {
+      _showSnack('Sản phẩm đã bị admin khóa, không thể chỉnh sửa biến thể', isError: true);
+      return;
+    }
+
     final options = _buildOptionsPayload();
     final error = _validateOptions(options);
     if (error != null) {

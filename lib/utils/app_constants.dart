@@ -98,8 +98,14 @@ class ProductApi {
   static const String products = '/products';
   static const String search = '/products/search';
 
-  // Authenticated
+  // Seller/Admin
+  static const String myShopProducts = '/products/my-shop';
+  static const String adminAll = '/products/admin/all';
+
   static String byId(int id) => '/products/$id';
+  static String manageDetail(int id) => '/products/$id/manage';
+  static String byShop(int shopId) => '/products/by-shop/$shopId';
+
   static String variants(int productId) => '/products/$productId/variants';
   static String generateVariants(int productId) =>
       '/products/$productId/variants/generate';

@@ -176,6 +176,12 @@ class _EditProductScreenState extends State<EditProductScreen>
   // =========================
   Future<void> _saveProductInfo() async {
     if (_isSavingProduct) return;
+
+    if (_product.isLocked) {
+      _showSnack('Sản phẩm đã bị admin khóa, không thể chỉnh sửa', isError: true);
+      return;
+    }
+
     if (!_formKeyInfo.currentState!.validate()) return;
 
     FocusScope.of(context).unfocus();
@@ -214,6 +220,11 @@ class _EditProductScreenState extends State<EditProductScreen>
   }
 
   Future<void> _openVariantConfig() async {
+    if (_product.isLocked) {
+      _showSnack('Sản phẩm đã bị admin khóa, không thể chỉnh sửa biến thể', isError: true);
+      return;
+    }
+
     final changed = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -669,7 +680,7 @@ class _EditProductScreenState extends State<EditProductScreen>
                 Wrap(
                   spacing: 8,
                   children: [
-                    _miniChip(_product.status),
+                    _miniChip(_product.statusLabel),
                     _miniChip('Kho: ${_product.stock}'),
                   ],
                 ),

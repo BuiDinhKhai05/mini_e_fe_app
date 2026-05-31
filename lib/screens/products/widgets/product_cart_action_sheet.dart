@@ -65,6 +65,11 @@ class ProductCartActionSheet {
 
     if (!rootContext.mounted) return;
 
+    if (dialogProduct.isOutOfStock || dialogProduct.isLocked) {
+      _showSnack(rootContext, 'Sản phẩm hiện đã hết hàng hoặc không thể mua');
+      return;
+    }
+
     final bool hasOptionSchema = dialogProduct.optionSchema != null &&
         dialogProduct.optionSchema!.isNotEmpty;
 
@@ -752,9 +757,8 @@ class ProductCartActionSheet {
   }
 
   static int _productStock(ProductModel product) {
-    final dynamic value = product.stock;
-    if (value is num) return value.toInt();
-    return 0;
+    if (product.isOutOfStock || product.isLocked) return 0;
+    return product.stock;
   }
 
   static String _formatPrice(dynamic price) {
