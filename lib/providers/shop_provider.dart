@@ -1,4 +1,5 @@
 // lib/providers/shop_provider.dart
+
 import 'package:flutter/material.dart';
 
 import '../models/shop_model.dart';
@@ -12,12 +13,16 @@ class ShopProvider with ChangeNotifier {
   bool _isLoading = false;
   String? _error;
 
-  // Lưu lại bộ lọc hiện tại của màn danh sách shop.
-  // Việc lưu state này giúp pull-to-refresh hoặc tải lại vẫn giữ đúng từ khóa đang tìm.
   String _shopSearchKeyword = '';
   String? _shopStatusFilter;
   int _shopPage = 1;
   int _shopLimit = 20;
+
+  List<ShopOrderModel> _revenueOrders = [];
+  bool _isRevenueLoading = false;
+  String? _revenueError;
+  ShopOrderRange _revenueRange = ShopOrderRange.sevenDays;
+  int _revenueTotal = 0;
 
   ShopProvider({required this.service});
 
@@ -29,12 +34,19 @@ class ShopProvider with ChangeNotifier {
   String get shopSearchKeyword => _shopSearchKeyword;
   String? get shopStatusFilter => _shopStatusFilter;
 
+  List<ShopOrderModel> get revenueOrders => _revenueOrders;
+  bool get isRevenueLoading => _isRevenueLoading;
+  String? get revenueError => _revenueError;
+  ShopOrderRange get revenueRange => _revenueRange;
+  int get revenueTotal => _revenueTotal;
+
   bool get isSearchingShop =>
       _shopSearchKeyword.trim().isNotEmpty || _shopStatusFilter != null;
 
   // ==================== MY SHOP ====================
   Future<void> loadMyShop() async {
     _setLoading(true);
+
     try {
       final shop = await service.getMyShop();
       _shop = shop;
@@ -53,9 +65,49 @@ class ShopProvider with ChangeNotifier {
     }
   }
 
+  // ==================== SHOP REVENUE ====================
+  Future<void> loadShopRevenue({
+    ShopOrderRange range = ShopOrderRange.sevenDays,
+    int page = 1,
+    int limit = 1000,
+  }) async {
+    _isRevenueLoading = true;
+    _revenueError = null;
+    _revenueRange = range;
+    notifyListeners();
+
+    try {
+      final results = await Future.wait<dynamic>([
+        service.getMyShop(),
+        service.getMyShopOrders(
+          page: page,
+          limit: limit,
+          range: range,
+        ),
+      ]);
+
+      _shop = results[0] as ShopModel;
+
+      final orderResult = results[1] as ShopOrdersResult;
+      _revenueOrders = orderResult.items;
+      _revenueTotal = orderResult.total;
+
+      _error = null;
+      _revenueError = null;
+    } catch (e) {
+      _revenueOrders = [];
+      _revenueTotal = 0;
+      _revenueError = e.toString();
+    } finally {
+      _isRevenueLoading = false;
+      notifyListeners();
+    }
+  }
+
   // ==================== REGISTER ====================
   Future<bool> register(Map<String, dynamic> data) async {
     _setLoading(true);
+
     try {
       _shop = await service.register(data);
       _error = null;
@@ -71,6 +123,7 @@ class ShopProvider with ChangeNotifier {
   // ==================== UPDATE PROFILE ====================
   Future<bool> update(int shopId, Map<String, dynamic> data) async {
     _setLoading(true);
+
     try {
       _shop = await service.update(shopId, data);
       _error = null;
@@ -90,12 +143,14 @@ class ShopProvider with ChangeNotifier {
     String? fileName,
   }) async {
     _setLoading(true);
+
     try {
       _shop = await service.uploadLogo(
         filePath: filePath,
         fileBytes: fileBytes,
         fileName: fileName,
       );
+
       _error = null;
       return true;
     } catch (e) {
@@ -112,12 +167,14 @@ class ShopProvider with ChangeNotifier {
     String? fileName,
   }) async {
     _setLoading(true);
+
     try {
       _shop = await service.uploadCover(
         filePath: filePath,
         fileBytes: fileBytes,
         fileName: fileName,
       );
+
       _error = null;
       return true;
     } catch (e) {
@@ -131,6 +188,7 @@ class ShopProvider with ChangeNotifier {
   // ==================== DELETE ====================
   Future<bool> delete(int shopId) async {
     _setLoading(true);
+
     try {
       await service.delete(shopId);
       _shop = null;
@@ -156,10 +214,6 @@ class ShopProvider with ChangeNotifier {
   }
 
   // ==================== LIST / SEARCH SHOPS ====================
-  // Dùng chung cho:
-  // - tải danh sách shop ban đầu
-  // - tìm shop theo tên/từ khóa
-  // - lọc shop theo trạng thái
   Future<void> fetchShops({
     String? q,
     String? status,
@@ -174,6 +228,7 @@ class ShopProvider with ChangeNotifier {
     _shopLimit = limit;
 
     _setLoading(true);
+
     try {
       _shops = await service.getShops(
         q: keyword.isEmpty ? null : keyword,
@@ -181,6 +236,7 @@ class ShopProvider with ChangeNotifier {
         page: page,
         limit: limit,
       );
+
       _error = null;
     } catch (e) {
       _error = e.toString();
@@ -189,7 +245,6 @@ class ShopProvider with ChangeNotifier {
     }
   }
 
-  // Hàm riêng cho màn tìm kiếm shop để code UI dễ đọc hơn.
   Future<void> searchShops({
     required String keyword,
     String? status,
@@ -204,7 +259,6 @@ class ShopProvider with ChangeNotifier {
     );
   }
 
-  // Tải lại danh sách với đúng keyword/status hiện tại.
   Future<void> refreshShops() async {
     await fetchShops(
       q: _shopSearchKeyword,
@@ -214,7 +268,6 @@ class ShopProvider with ChangeNotifier {
     );
   }
 
-  // Xóa từ khóa tìm kiếm nhưng vẫn giữ bộ lọc trạng thái nếu đang chọn.
   Future<void> clearShopKeyword() async {
     await fetchShops(
       q: null,
@@ -224,7 +277,6 @@ class ShopProvider with ChangeNotifier {
     );
   }
 
-  // Xóa toàn bộ bộ lọc tìm kiếm shop.
   Future<void> clearShopSearch() async {
     await fetchShops(
       q: null,
@@ -248,6 +300,7 @@ class ShopProvider with ChangeNotifier {
     _error = null;
     _shopSearchKeyword = '';
     _shopStatusFilter = null;
+
     if (notify) notifyListeners();
   }
 
@@ -256,10 +309,17 @@ class ShopProvider with ChangeNotifier {
     _shops = [];
     _error = null;
     _isLoading = false;
+
     _shopSearchKeyword = '';
     _shopStatusFilter = null;
     _shopPage = 1;
     _shopLimit = 20;
+
+    _revenueOrders = [];
+    _isRevenueLoading = false;
+    _revenueError = null;
+    _revenueRange = ShopOrderRange.sevenDays;
+    _revenueTotal = 0;
 
     if (notify) notifyListeners();
   }
