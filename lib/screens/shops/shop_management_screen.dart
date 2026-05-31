@@ -11,10 +11,11 @@ import '../../providers/auth_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../utils/app_constants.dart';
 import 'seller_product_list_screen.dart';
+import 'seller_shop_reviews_screen.dart';
 import 'shop_register_screen.dart';
 import 'shop_detail_screen.dart';
 import 'seller_order_list_screen.dart';
-
+import 'shop_revenue_screen.dart';
 // Widgets cho địa chỉ và bản đồ
 import '../../widgets/vietnam_address_selector.dart';
 import '../../widgets/osm_location_picker.dart';
@@ -47,6 +48,20 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
         showLoading: true,
       );
     });
+  }
+
+  // =========================
+  // Mở màn hình seller xem đánh giá của shop mình.
+  // BE sẽ được gọi ở SellerShopReviewsScreen qua:
+  // GET /reviews/shop/me?page=1&limit=20
+  // =========================
+  void _openSellerShopReviewsScreen() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const SellerShopReviewsScreen(),
+      ),
+    );
   }
 
   // =========================
@@ -319,6 +334,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
 
   // =========================
   // Card thống kê kết quả kinh doanh
+  // Ô "Đánh giá" có thể bấm để mở màn hình xem review shop.
   // =========================
   Widget _buildBusinessStatsCard(dynamic myShop) {
     return Container(
@@ -346,14 +362,109 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
               ),
             ],
           ),
+          const SizedBox(height: 18),
+
+          // Lấy doanh thu trực tiếp từ GET /shops/me -> stats.totalRevenue.
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const ShopRevenueScreen(),
+                ),
+              );
+            },
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: _primaryPink,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: _primaryPink.withOpacity(0.18),
+                    blurRadius: 14,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.22),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_wallet_outlined,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Tổng doanh thu',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          _formatCurrency(myShop.stats.totalRevenue),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: Colors.white),
+                ],
+              ),
+            ),
+          ),
+
           const SizedBox(height: 20),
+
           Row(
             children: [
-              Expanded(child: _buildDashboardStat('Đơn hàng', '${myShop.stats.orderCount}', Icons.shopping_bag_outlined)),
+              Expanded(
+                child: _buildDashboardStat(
+                  'Đơn hàng',
+                  '${myShop.stats.orderCount}',
+                  Icons.shopping_bag_outlined,
+                ),
+              ),
               _buildVerticalLine(),
-              Expanded(child: _buildDashboardStat('Đánh giá', '${myShop.stats.ratingAvg.toStringAsFixed(1)} ⭐', Icons.star_outline_rounded)),
+              Expanded(
+                child: _buildDashboardStat(
+                  'Đánh giá',
+                  '${myShop.stats.ratingAvg.toStringAsFixed(1)} ⭐',
+                  Icons.star_outline_rounded,
+                  onTap: _openSellerShopReviewsScreen,
+                ),
+              ),
               _buildVerticalLine(),
-              Expanded(child: _buildDashboardStat('Sản phẩm', '${myShop.stats.productCount}', Icons.inventory_2_outlined)),
+              Expanded(
+                child: _buildDashboardStat(
+                  'Sản phẩm',
+                  '${myShop.stats.productCount}',
+                  Icons.inventory_2_outlined,
+                ),
+              ),
             ],
           ),
         ],
@@ -363,8 +474,13 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
 
   // =========================
   // Grid menu chức năng quản lý shop
+  // Đã bổ sung mục "Đánh giá" để seller xem review shop.
   // =========================
-  Widget _buildManagementMenu(ShopProvider shopProvider, int productCount, int orderCount) {
+  Widget _buildManagementMenu(
+      ShopProvider shopProvider,
+      int productCount,
+      int orderCount,
+      ) {
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -386,7 +502,9 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
 
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const SellerProductListScreen()),
+              MaterialPageRoute(
+                builder: (_) => const SellerProductListScreen(),
+              ),
             );
           },
           badgeCount: productCount,
@@ -404,11 +522,30 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
           },
           badgeCount: orderCount,
         ),
+        _buildMenuItem(
+          Icons.rate_review_outlined,
+          'Đánh giá',
+          _openSellerShopReviewsScreen,
+          badgeCount: shopProvider.shop?.stats.reviewCount ?? 0,
+        ),
         _buildMenuItem(Icons.campaign_outlined, 'Marketing', () {}),
-        _buildMenuItem(Icons.account_balance_wallet_outlined, 'Tài chính', () {}),
-        _buildMenuItem(Icons.bar_chart_outlined, 'Phân tích', () {}),
 
-        // Thiết lập Shop: chứa chức năng đóng/mở shop và xóa shop
+        // Mở sang trang doanh thu. Trang này dùng dữ liệu từ GET /shops/me,
+        // không gọi API /shops/me/revenue vì BE hiện tại chưa có endpoint đó.
+        _buildMenuItem(
+          Icons.account_balance_wallet_outlined,
+          'Doanh thu',
+              () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const ShopRevenueScreen(),
+              ),
+            );
+          },
+        ),
+
+        _buildMenuItem(Icons.bar_chart_outlined, 'Phân tích', () {}),
         _buildMenuItem(Icons.settings_outlined, 'Thiết lập', () {
           _showSettingsOptions(context, shopProvider);
         }),
@@ -419,7 +556,12 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
   // =========================
   // Item menu chức năng: icon tròn + label + badge số lượng
   // =========================
-  Widget _buildMenuItem(IconData icon, String label, VoidCallback onTap, {int badgeCount = 0}) {
+  Widget _buildMenuItem(
+      IconData icon,
+      String label,
+      VoidCallback onTap, {
+        int badgeCount = 0,
+      }) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -472,10 +614,16 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
   }
 
   // =========================
-  // Ô thống kê nhỏ trong dashboard
+  // Ô thống kê nhỏ trong dashboard.
+  // Có thể truyền onTap để biến ô thống kê thành nút bấm.
   // =========================
-  Widget _buildDashboardStat(String label, String value, IconData icon) {
-    return Column(
+  Widget _buildDashboardStat(
+      String label,
+      String value,
+      IconData icon, {
+        VoidCallback? onTap,
+      }) {
+    final content = Column(
       children: [
         Icon(icon, color: _primaryPink, size: 22),
         const SizedBox(height: 8),
@@ -493,6 +641,19 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
           style: const TextStyle(fontSize: 12, color: _textGrey),
         ),
       ],
+    );
+
+    if (onTap == null) {
+      return content;
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: content,
+      ),
     );
   }
 
@@ -778,7 +939,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
 
   // =========================
   // Chọn ảnh từ thư viện và upload lên BE
-  // BE: PATCH /shops/me/logo hoặc /shops/me/cover, multipart field: file
   // =========================
   Future<bool> _pickAndUploadShopImage(
       BuildContext context,
@@ -1036,10 +1196,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                           ),
                         ),
                         SizedBox(height: 3),
-                        Text(
-                          'Đồng bộ theo quyền BE hiện tại.',
-                          style: TextStyle(color: _textGrey, fontSize: 12),
-                        ),
                       ],
                     ),
                   ),
@@ -1079,9 +1235,7 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Trạng thái hiện tại: ${_statusText(shop.status)}. '
-                                'Theo BE hiện tại, chủ shop chỉ được cập nhật hồ sơ/ảnh, '
-                                'không được tự chuyển ACTIVE/SUSPENDED.',
+                            'Trạng thái hiện tại: ${_statusText(shop.status)}. ',
                             style: const TextStyle(
                               color: _textGrey,
                               fontSize: 12,
@@ -1107,9 +1261,6 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
                   title: const Text(
                     'Xóa cửa hàng',
                     style: TextStyle(color: _dangerRed, fontWeight: FontWeight.w900),
-                  ),
-                  subtitle: const Text(
-                    'BE sẽ xóa shop và xóa cứng toàn bộ sản phẩm thuộc shop.',
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -1267,6 +1418,22 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
           ? const Icon(Icons.storefront_rounded, color: _primaryPink, size: 32)
           : null,
     );
+  }
+
+  String _formatCurrency(num value) {
+    final raw = value.round().toString();
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < raw.length; i++) {
+      final reverseIndex = raw.length - i;
+      buffer.write(raw[i]);
+
+      if (reverseIndex > 1 && reverseIndex % 3 == 1) {
+        buffer.write('.');
+      }
+    }
+
+    return '${buffer.toString()}đ';
   }
 
   String _statusText(String status) {
