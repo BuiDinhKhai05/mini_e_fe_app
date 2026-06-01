@@ -98,18 +98,22 @@ class ProductService {
     String? status,
     int? categoryId,
   }) async {
-    final response = await _api.get(
-      ProductApi.myShopProducts,
-      queryParameters: {
-        'page': page,
-        'limit': limit,
-        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
-        if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
-        if (categoryId != null) 'categoryId': categoryId,
-      },
-    );
+    try {
+      final response = await _api.get(
+        ProductApi.myShopProducts,
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+          if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
+          if (categoryId != null) 'categoryId': categoryId,
+        },
+      );
 
-    return _parseProductList(response.data);
+      return _parseProductList(response.data);
+    } catch (e) {
+      throw Exception('Lỗi tải sản phẩm shop: $e');
+    }
   }
 
   Future<List<ProductModel>> getAdminProducts({
@@ -120,19 +124,23 @@ class ProductService {
     int? shopId,
     int? categoryId,
   }) async {
-    final response = await _api.get(
-      ProductApi.adminAll,
-      queryParameters: {
-        'page': page,
-        'limit': limit,
-        if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
-        if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
-        if (shopId != null) 'shopId': shopId,
-        if (categoryId != null) 'categoryId': categoryId,
-      },
-    );
+    try {
+      final response = await _api.get(
+        ProductApi.adminAll,
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          if (q != null && q.trim().isNotEmpty) 'q': q.trim(),
+          if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
+          if (shopId != null) 'shopId': shopId,
+          if (categoryId != null) 'categoryId': categoryId,
+        },
+      );
 
-    return _parseProductList(response.data);
+      return _parseProductList(response.data);
+    } catch (e) {
+      throw Exception('Lỗi tải sản phẩm admin: $e');
+    }
   }
 
   Future<ProductModel> getProductById(int productId) async {
@@ -148,6 +156,7 @@ class ProductService {
       int shopId, {
         int page = 1,
         int limit = 100,
+        String sort = ProductSortValue.latest,
       }) async {
     try {
       final response = await _api.get(
@@ -155,11 +164,13 @@ class ProductService {
         queryParameters: {
           'page': page,
           'limit': limit,
+          'sort': sort,
         },
       );
+
       return _parseProductList(response.data);
     } catch (_) {
-      return getProducts(page: page, limit: limit, shopId: shopId);
+      return getProducts(page: page, limit: limit, shopId: shopId, sort: sort);
     }
   }
 
@@ -260,6 +271,7 @@ class ProductService {
       final response = await _api.get(ProductApi.variants(productId));
       final data = _unwrapData(response.data);
       final list = data is List ? data : <dynamic>[];
+
       return list
           .whereType<Map>()
           .map((item) => VariantItem.fromJson(Map<String, dynamic>.from(item)))
@@ -278,6 +290,7 @@ class ProductService {
         ProductApi.generateVariants(productId),
         data: data,
       );
+
       final result = _unwrapData(response.data);
       return result is List ? result : <dynamic>[];
     } catch (e) {
@@ -301,14 +314,6 @@ class ProductService {
     }
   }
 
-  Future<dynamic> createVariant(int productId, Map<String, dynamic> data) {
-    throw Exception('Backend hiện tại chưa có API tạo biến thể thủ công. Hãy dùng generate variants.');
-  }
-
-  Future<bool> deleteVariant(int productId, int variantId) {
-    throw Exception('Backend hiện tại chưa có API xóa biến thể. Hãy dùng mode replace để tạo lại biến thể.');
-  }
-
   Future<void> deleteProduct(int productId) async {
     try {
       await _api.delete(ProductApi.byId(productId));
@@ -317,11 +322,31 @@ class ProductService {
     }
   }
 
-  Future<List<ProductModel>> getDeletedProducts({int limit = 50}) {
+  Future<void> lockProductByAdmin(int productId) async {
+    try {
+      await _api.patch(
+        ProductApi.byId(productId),
+        data: {'status': ProductStatusValue.locked},
+        options: Options(contentType: 'application/json'),
+      );
+    } catch (e) {
+      throw Exception('Khóa sản phẩm thất bại: $e');
+    }
+  }
+
+  Future<List<ProductModel>> getDeletedProducts({int limit = 100}) {
     return getAdminProducts(limit: limit);
   }
 
   Future<void> restoreProduct(int productId) {
     throw Exception('Backend hiện tại chưa có API khôi phục sản phẩm đã xóa.');
+  }
+
+  Future<dynamic> createVariant(int productId, Map<String, dynamic> data) {
+    throw Exception('Backend hiện tại chưa có API tạo biến thể thủ công. Hãy dùng generate variants.');
+  }
+
+  Future<bool> deleteVariant(int productId, int variantId) {
+    throw Exception('Backend hiện tại chưa có API xóa biến thể. Hãy dùng mode replace để tạo lại biến thể.');
   }
 }

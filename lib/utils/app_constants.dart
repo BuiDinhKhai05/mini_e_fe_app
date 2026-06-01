@@ -3,41 +3,26 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 // ================================================================
 // APP CONSTANTS
 // ----------------------------------------------------------------
-// File này gom baseUrl và toàn bộ endpoint API để các service dùng chung.
-// Khi đổi môi trường chạy app, ưu tiên đổi ở đây thay vì sửa từng service.
+// File này gom baseUrl và toàn bộ endpoint API để các service/provider dùng chung.
 // ================================================================
 class AppConstants {
-  // --------------------------------------------------------------
-  // BASE URL
-  // --------------------------------------------------------------
-  // Hiện tại bạn đang dev bằng Flutter Web nên dùng localhost.
-  // Mục tiêu chính là mobile app:
-  // - Android Emulator: dùng http://10.0.2.2:3000/api
-  // - Điện thoại thật: đổi thành IP LAN máy tính, ví dụ http://192.168.1.10:3000/api
-  // - iOS Simulator: thường có thể dùng http://localhost:3000/api
-  // --------------------------------------------------------------
+  // Local dev:
+  // - Flutter Web: http://localhost:3000/api
+  // - Android Emulator: http://10.0.2.2:3000/api
+  // - Điện thoại thật: đổi thành IP LAN máy tính.
   static const String baseUrl = kIsWeb
       ? 'http://localhost:3000/api'
       : 'http://10.0.2.2:3000/api';
 
-  // --------------------------------------------------------------
   // AUTH API
-  // --------------------------------------------------------------
   static const String registerEndpoint = '/auth/register';
   static const String loginEndpoint = '/auth/login';
   static const String logoutEndpoint = '/auth/logout';
-
-  // Endpoint quan trọng để sửa lỗi access_token hết hạn.
-  // FE sẽ tự gọi endpoint này khi request thường bị 401.
   static const String refreshEndpoint = '/auth/refresh';
-
   static const String forgotPasswordEndpoint = '/auth/forgot-password';
   static const String requestVerifyEndpoint = '/auth/request-verify';
   static const String verifyAccountEndpoint = '/auth/verify-account';
   static const String resetPasswordEndpoint = '/auth/reset-password';
-
-  // Hiện BE bạn gửi chưa có API này thật sự.
-  // Giữ constant để sau này nếu thêm BE /auth/change-password thì dùng lại.
   static const String changePasswordEndpoint = '/auth/change-password';
 }
 
@@ -49,9 +34,6 @@ class UsersApi {
   static const String me = '/users/me';
   static const String deletedAll = '/users/deleted/all';
 
-  // Đổi mật khẩu tài khoản đang đăng nhập.
-  // BE: POST /users/me/change-password/request-otp
-  // BE: PATCH /users/me/change-password
   static const String requestChangePasswordOtp =
       '/users/me/change-password/request-otp';
   static const String changePassword = '/users/me/change-password';
@@ -65,28 +47,22 @@ class UsersApi {
 // SHOPS API
 // ================================================================
 class ShopsApi {
-  // Public
   static const String shops = '/shops';
   static const String adminAll = '/shops/admin/all';
   static const String checkName = '/shops/check-name';
 
-  // Authenticated
   static const String register = '/shops/register';
   static const String myShop = '/shops/me';
 
-  // Upload logo / cover shop
   static const String uploadLogo = '/shops/me/logo';
   static const String uploadCover = '/shops/me/cover';
 
-  // Seller / Shop orders
   static const String myShopOrders = '/shops/me/orders';
 
   static String myShopOrderDetail(String id) => '/shops/me/orders/$id';
-
   static String myShopOrderShippingStatus(String id) =>
       '/shops/me/orders/$id/shipping-status';
 
-  // Owner / Admin
   static String byId(String id) => '/shops/$id';
 }
 
@@ -98,8 +74,10 @@ class ProductApi {
   static const String products = '/products';
   static const String search = '/products/search';
 
-  // Seller/Admin
+  // Seller
   static const String myShopProducts = '/products/my-shop';
+
+  // Admin
   static const String adminAll = '/products/admin/all';
 
   static String byId(int id) => '/products/$id';
@@ -159,37 +137,20 @@ class OrderApi {
 // ================================================================
 // PAYMENT API
 // ================================================================
-class PaymentApi {
-  // Backend hiện tại trả về URL/QR thông qua các API order/payment liên quan.
-  // Bổ sung endpoint cụ thể vào đây nếu sau này tách payment service riêng.
-}
+class PaymentApi {}
 
 // ================================================================
 // REVIEW API
 // ================================================================
 class ReviewApi {
-  // Public: lấy tất cả review của các sản phẩm thuộc một shop.
   static String shopReviews(int shopId) => '/reviews/shop/$shopId';
-
-  // Seller xem review của shop mình.
   static const String myShopReviews = '/reviews/shop/me';
 
-  // Public: lấy danh sách đánh giá của một sản phẩm.
-  static String productReviews(int productId) =>
-      '/products/$productId/reviews';
+  static String productReviews(int productId) => '/products/$productId/reviews';
+  static String createOrderReview(String orderId) => '/orders/$orderId/review';
+  static String orderReview(String orderId) => '/orders/$orderId/review';
 
-  // User tạo đánh giá theo đơn hàng.
-  static String createOrderReview(String orderId) =>
-      '/orders/$orderId/review';
-
-  // User xem đánh giá của một đơn hàng.
-  static String orderReview(String orderId) =>
-      '/orders/$orderId/review';
-
-  // API v2 tạo review.
   static const String productReviewsV2 = '/product-reviews';
-
-  // API v2 lấy review theo order.
   static String productReviewByOrder(String orderId) =>
       '/product-reviews/by-order/$orderId';
 }

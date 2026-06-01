@@ -94,6 +94,14 @@ class AdminHomeScreen extends StatelessWidget {
                         desc: 'Tạo, sửa, xóa và sắp xếp danh mục sản phẩm',
                         route: '/admin/categories',
                       ),
+                      _adminActionCard(
+                        context,
+                        icon: Icons.inventory_2_outlined,
+                        color: Colors.orange,
+                        title: 'Quản lý sản phẩm',
+                        desc: 'Xem, khóa hoặc xóa sản phẩm trong hệ thống',
+                        route: '/admin/products',
+                      ),
                     ],
                   )
                 else
@@ -124,6 +132,15 @@ class AdminHomeScreen extends StatelessWidget {
                         title: 'Quản lý danh mục',
                         desc: 'Tạo, sửa, xóa và sắp xếp danh mục sản phẩm',
                         route: '/admin/categories',
+                      ),
+                      const SizedBox(height: AppSpacing.md),
+                      _adminActionCard(
+                        context,
+                        icon: Icons.inventory_2_outlined,
+                        color: Colors.orange,
+                        title: 'Quản lý sản phẩm',
+                        desc: 'Xem, khóa hoặc xóa sản phẩm trong hệ thống',
+                        route: '/admin/products',
                       ),
                     ],
                   ),

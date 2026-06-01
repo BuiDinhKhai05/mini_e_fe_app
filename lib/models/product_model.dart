@@ -18,7 +18,7 @@ class ProductModel {
   final double price;
 
   /// URL ảnh đại diện đã xử lý ưu tiên:
-  /// images.isMain -> images[0] -> mainImageUrl -> imageUrl.
+  /// images.isMain -> images[0] -> mainImageUrl -> imageUrl -> thumbnailUrl.
   final String imageUrl;
 
   /// Danh sách tất cả ảnh từ server.
@@ -30,7 +30,8 @@ class ProductModel {
   /// BE hiện tại dùng: ACTIVE / OUT_OF_STOCK / LOCKED.
   final String status;
 
-  final int shopId;
+  /// Có thể null/0 nếu response cũ chưa trả shopId.
+  final int? shopId;
   final String? slug;
   final int? categoryId;
 
@@ -57,7 +58,7 @@ class ProductModel {
     this.images = const [],
     this.stock = 0,
     this.status = ProductStatusValue.active,
-    required this.shopId,
+    this.shopId,
     this.slug,
     this.categoryId,
     this.sold = 0,
@@ -68,6 +69,9 @@ class ProductModel {
     this.optionSchema,
     this.variants,
   });
+
+  /// Giữ getter này để các màn cũ đang dùng product.mainImageUrl không bị lỗi.
+  String? get mainImageUrl => imageUrl.trim().isEmpty ? null : imageUrl;
 
   String get normalizedStatus => status.toUpperCase().trim();
 
@@ -198,12 +202,16 @@ class ProductModel {
       finalUrl = json['imageUrl'].toString();
     } else if ((json['thumbnailUrl'] ?? '').toString().trim().isNotEmpty) {
       finalUrl = json['thumbnailUrl'].toString();
+    } else if ((json['thumbnail'] ?? '').toString().trim().isNotEmpty) {
+      finalUrl = json['thumbnail'].toString();
     }
 
     final dynamic rawShopId = json['shopId'] ??
+        json['shop_id'] ??
         (json['shop'] is Map ? (json['shop'] as Map)['id'] : null);
 
     final dynamic rawCategoryId = json['categoryId'] ??
+        json['category_id'] ??
         (json['category'] is Map ? (json['category'] as Map)['id'] : null);
 
     final optionSchema = <OptionSchema>[];
@@ -236,7 +244,7 @@ class ProductModel {
       images: parsedImages,
       stock: _parseInt(json['stock']),
       status: (json['status'] ?? ProductStatusValue.active).toString(),
-      shopId: _parseInt(rawShopId),
+      shopId: _parseNullableInt(rawShopId),
       slug: _parseNullableString(json['slug']),
       categoryId: _parseNullableInt(rawCategoryId),
       sold: _parseInt(json['sold']),
@@ -270,9 +278,12 @@ class ProductImage {
   factory ProductImage.fromJson(Map<String, dynamic> json) {
     return ProductImage(
       id: ProductModel._parseInt(json['id']),
-      productId: ProductModel._parseNullableInt(json['productId']),
-      url: (json['url'] ?? json['imageUrl'] ?? '').toString(),
-      isMain: json['isMain'] == true || json['isMain'] == 1,
+      productId: ProductModel._parseNullableInt(json['productId'] ?? json['product_id']),
+      url: (json['url'] ?? json['imageUrl'] ?? json['image_url'] ?? '').toString(),
+      isMain: json['isMain'] == true ||
+          json['isMain'] == 1 ||
+          json['is_main'] == true ||
+          json['is_main'] == 1,
       position: ProductModel._parseInt(json['position']),
       alt: ProductModel._parseNullableString(json['alt']),
     );
@@ -351,7 +362,7 @@ class VariantItem {
       sku: (json['sku'] ?? '').toString(),
       price: ProductModel._parseDouble(json['price']),
       stock: ProductModel._parseInt(json['stock']),
-      imageId: ProductModel._parseNullableInt(json['imageId']),
+      imageId: ProductModel._parseNullableInt(json['imageId'] ?? json['image_id']),
       options: parsedOptions,
     );
   }

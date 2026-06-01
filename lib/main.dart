@@ -54,7 +54,7 @@ import 'screens/orders_payments/my_orders_screen.dart';
 import 'screens/orders_payments/payment_qr_screen.dart';
 import 'screens/orders_payments/payment_result_screen.dart';
 import 'screens/auths/change_password_screen.dart';
-
+import 'screens/admins/admin_products_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiClient().init();
@@ -154,7 +154,7 @@ class MyApp extends StatelessWidget {
         '/admin/users': (context) => AdminUsersScreen(),
         '/admin/categories': (context) => const AdminCategoriesScreen(),
         '/admin-shop-approval': (context) => AdminShopApprovalScreen(),
-
+        '/admin/products': (context) => const AdminProductsScreen(),
         // === SHOP DETAIL ===
         '/shop-detail': (context) {
           final args = ModalRoute.of(context)!.settings.arguments;
