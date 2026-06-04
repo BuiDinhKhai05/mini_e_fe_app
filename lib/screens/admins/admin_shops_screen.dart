@@ -1,7 +1,7 @@
 // lib/screens/admin/admin_shops_screen.dart
 import 'package:flutter/material.dart';
 import 'package:mini_e_fe_app/theme/app_theme.dart';
-
+import 'admin_shop_detail_screen.dart';
 import '../../models/shop_model.dart';
 import '../../service/shop_service.dart';
 
@@ -20,6 +20,17 @@ class _AdminShopsScreenState extends State<AdminShopsScreen> {
   void initState() {
     super.initState();
     _loadShops();
+  }
+
+  void _goToDetail(ShopModel shop) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AdminShopDetailScreen(shop: shop),
+      ),
+    ).then((_) {
+      setState(() => _loadShops());
+    });
   }
 
   void _loadShops() {
@@ -146,13 +157,12 @@ class _AdminShopsScreenState extends State<AdminShopsScreen> {
                       margin: const EdgeInsets.only(bottom: AppSpacing.md),
                       decoration: AppDecorations.card,
                       child: ListTile(
+                        onTap: () => _goToDetail(shop),
                         contentPadding: const EdgeInsets.all(AppSpacing.md),
                         leading: CircleAvatar(
                           backgroundColor: AppColors.lightPink,
                           child: Text(
-                            shop.name.isNotEmpty
-                                ? shop.name[0].toUpperCase()
-                                : '?',
+                            shop.name.isNotEmpty ? shop.name[0].toUpperCase() : '?',
                             style: const TextStyle(
                               color: AppColors.primaryPink,
                               fontWeight: FontWeight.bold,
