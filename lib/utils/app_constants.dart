@@ -12,7 +12,7 @@ class AppConstants {
   // - Điện thoại thật: đổi thành IP LAN máy tính.
   static const String baseUrl = kIsWeb
       ? 'http://localhost:3000/api'
-      : 'http://10.0.2.2:3000/api';
+      : 'http://192.168.110.223:3000/api';
 
   // AUTH API
   static const String registerEndpoint = '/auth/register';
