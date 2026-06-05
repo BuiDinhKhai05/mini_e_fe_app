@@ -11,6 +11,7 @@ import '../../models/shop_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../utils/app_constants.dart';
+import '../../service/api_client.dart';
 import 'seller_product_list_screen.dart';
 import 'seller_shop_reviews_screen.dart';
 import 'shop_register_screen.dart';
@@ -1089,11 +1090,8 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
         return false;
       }
 
-      final token = context.read<AuthProvider>().accessToken;
-      if (token == null || token.isEmpty) {
-        throw Exception('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-      }
-
+      // Không tự lấy token rồi tạo Dio riêng ở đây.
+      // ApiClient sẽ tự gắn access token mới nhất và tự refresh nếu token hết hạn.
       MultipartFile multipartFile;
       if (kIsWeb) {
         multipartFile = MultipartFile.fromBytes(
@@ -1107,18 +1105,10 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
         );
       }
 
-      final dio = Dio(
-        BaseOptions(
-          baseUrl: AppConstants.baseUrl,
-          connectTimeout: const Duration(seconds: 15),
-          receiveTimeout: const Duration(seconds: 15),
-        ),
-      );
-
-      await dio.patch(
+      await ApiClient().patch(
         isLogo ? ShopsApi.uploadLogo : ShopsApi.uploadCover,
         data: FormData.fromMap({'file': multipartFile}),
-        options: Options(headers: {'Authorization': 'Bearer $token'}),
+        options: Options(contentType: 'multipart/form-data'),
       );
 
       // Load lại shop để cập nhật logoUrl/coverUrl mới từ BE vào provider.

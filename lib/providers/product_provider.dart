@@ -7,20 +7,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/product_model.dart';
 import '../utils/app_constants.dart';
+import '../service/api_client.dart';
 import 'auth_provider.dart';
 import 'shop_provider.dart';
 
 class ProductProvider with ChangeNotifier {
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.baseUrl,
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 15),
-    ),
-  );
+  // Dùng ApiClient singleton thay vì tự tạo Dio riêng.
+  // ApiClient đã có interceptor tự gọi /auth/refresh khi access token hết hạn.
+  // Nếu dùng Dio() riêng ở đây, request seller/admin product sẽ không được refresh token.
+  final ApiClient _api = ApiClient();
 
   List<ProductModel> _products = [];
   bool _isLoading = false;
@@ -54,6 +53,15 @@ class ProductProvider with ChangeNotifier {
   // TOKEN HELPERS
   // ========================================================================
   Future<String?> _getOptionalToken() async {
+    // Ưu tiên đọc token mới nhất trong SharedPreferences.
+    // Sau khi refresh thành công, ApiClient lưu access_token mới ở đây.
+    // AuthProvider.accessToken có thể vẫn là token cũ nếu app chưa reload provider.
+    final prefs = await SharedPreferences.getInstance();
+    final savedToken = prefs.getString('access_token');
+    if (savedToken != null && savedToken.isNotEmpty) {
+      return savedToken;
+    }
+
     final context = AuthProvider.navigatorKey.currentContext;
     if (context == null) return null;
 
@@ -67,25 +75,21 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<String> _getToken() async {
+  Future<void> _requireLogin() async {
     final token = await _getOptionalToken();
     if (token == null || token.isEmpty) {
       throw Exception('Chưa đăng nhập');
     }
-    return token;
   }
 
-  Options _authOptions(String token) {
-    return Options(headers: {'Authorization': 'Bearer $token'});
+  Options _jsonOptions() {
+    // Không tự gắn Authorization ở ProductProvider.
+    // ApiClient.onRequest sẽ tự gắn access token mới nhất cho request cần đăng nhập.
+    return Options(contentType: 'application/json');
   }
 
-  Options _jsonAuthOptions(String token) {
-    return Options(
-      headers: {
-        'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
-      },
-    );
+  Options _multipartOptions() {
+    return Options(contentType: 'multipart/form-data');
   }
 
   // ========================================================================
@@ -180,7 +184,7 @@ class ProductProvider with ChangeNotifier {
     }
 
     try {
-      final response = await _dio.get(
+      final response = await _api.get(
         ProductApi.products,
         queryParameters: {
           'page': page,
@@ -209,7 +213,7 @@ class ProductProvider with ChangeNotifier {
     int limit = 6,
   }) async {
     try {
-      final response = await _dio.get(
+      final response = await _api.get(
         ProductApi.products,
         queryParameters: {
           'page': page,
@@ -235,7 +239,7 @@ class ProductProvider with ChangeNotifier {
       Response response;
 
       try {
-        response = await _dio.get(
+        response = await _api.get(
           ProductApi.byShop(shopId),
           queryParameters: {
             'page': page,
@@ -246,7 +250,7 @@ class ProductProvider with ChangeNotifier {
       } on DioException catch (e) {
         if (e.response?.statusCode != 404) rethrow;
 
-        response = await _dio.get(
+        response = await _api.get(
           ProductApi.products,
           queryParameters: {
             'page': page,
@@ -283,9 +287,9 @@ class ProductProvider with ChangeNotifier {
     }
 
     try {
-      final token = await _getToken();
+      await _requireLogin();
 
-      final response = await _dio.get(
+      final response = await _api.get(
         ProductApi.myShopProducts,
         queryParameters: {
           'page': 1,
@@ -294,7 +298,7 @@ class ProductProvider with ChangeNotifier {
           if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
           if (categoryId != null) 'categoryId': categoryId,
         },
-        options: _jsonAuthOptions(token),
+        options: _jsonOptions(),
       );
 
       _products = _parseProductsFromResponse(response.data);
@@ -334,7 +338,7 @@ class ProductProvider with ChangeNotifier {
       return;
     }
 
-    final response = await _dio.get(
+    final response = await _api.get(
       ProductApi.products,
       queryParameters: {
         'page': 1,
@@ -362,9 +366,9 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _getToken();
+      await _requireLogin();
 
-      final response = await _dio.get(
+      final response = await _api.get(
         ProductApi.adminAll,
         queryParameters: {
           'page': page,
@@ -374,7 +378,7 @@ class ProductProvider with ChangeNotifier {
           if (shopId != null) 'shopId': shopId,
           if (categoryId != null) 'categoryId': categoryId,
         },
-        options: _jsonAuthOptions(token),
+        options: _jsonOptions(),
       );
 
       _adminProducts = _parseProductsFromResponse(response.data);
@@ -391,12 +395,12 @@ class ProductProvider with ChangeNotifier {
 
   Future<bool> lockProductByAdmin(int productId) async {
     try {
-      final token = await _getToken();
+      await _requireLogin();
 
-      final response = await _dio.patch(
+      final response = await _api.patch(
         ProductApi.byId(productId),
         data: {'status': ProductStatusValue.locked},
-        options: _jsonAuthOptions(token),
+        options: _jsonOptions(),
       );
 
       final updated = _parseProductDetail(response.data);
@@ -424,11 +428,10 @@ class ProductProvider with ChangeNotifier {
 
   Future<bool> deleteProductByAdmin(int productId) async {
     try {
-      final token = await _getToken();
+      await _requireLogin();
 
-      await _dio.delete(
+      await _api.delete(
         ProductApi.byId(productId),
-        options: _authOptions(token),
       );
 
       final old = getProductFromCache(productId);
@@ -468,7 +471,7 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _getToken();
+      await _requireLogin();
 
       final formData = FormData.fromMap({
         'title': title.trim(),
@@ -503,10 +506,10 @@ class ProductProvider with ChangeNotifier {
         }
       }
 
-      final response = await _dio.post(
+      final response = await _api.post(
         ProductApi.products,
         data: formData,
-        options: _authOptions(token),
+        options: _multipartOptions(),
       );
 
       final newProduct = _parseProductDetail(response.data);
@@ -545,7 +548,7 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _getToken();
+      await _requireLogin();
       final jsonBody = <String, dynamic>{};
 
       if (title != null) jsonBody['title'] = title.trim();
@@ -561,10 +564,10 @@ class ProductProvider with ChangeNotifier {
         return true;
       }
 
-      final response = await _dio.patch(
+      final response = await _api.patch(
         ProductApi.byId(productId),
         data: jsonBody,
-        options: _jsonAuthOptions(token),
+        options: _jsonOptions(),
       );
 
       final updated = _parseProductDetail(response.data);
@@ -589,11 +592,10 @@ class ProductProvider with ChangeNotifier {
 
   Future<bool> deleteProduct(int productId) async {
     try {
-      final token = await _getToken();
+      await _requireLogin();
 
-      await _dio.delete(
+      await _api.delete(
         ProductApi.byId(productId),
-        options: _authOptions(token),
       );
 
       _products.removeWhere((p) => p.id == productId);
@@ -616,9 +618,9 @@ class ProductProvider with ChangeNotifier {
 
       if (token != null) {
         try {
-          final manageResponse = await _dio.get(
+          final manageResponse = await _api.get(
             ProductApi.manageDetail(id),
-            options: _jsonAuthOptions(token),
+            options: _jsonOptions(),
           );
           final manageProduct = _parseProductDetail(manageResponse.data);
           if (manageProduct != null) return manageProduct;
@@ -629,7 +631,7 @@ class ProductProvider with ChangeNotifier {
         }
       }
 
-      final response = await _dio.get(ProductApi.byId(id));
+      final response = await _api.get(ProductApi.byId(id));
       return _parseProductDetail(response.data);
     } on DioException catch (e) {
       _error = _handleDioError(e, autoLogoutOn401: false);
@@ -653,15 +655,15 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      final token = await _getToken();
+      await _requireLogin();
 
-      final response = await _dio.post(
+      final response = await _api.post(
         ProductApi.generateVariants(productId),
         data: {
           'options': options,
           'mode': mode,
         },
-        options: _jsonAuthOptions(token),
+        options: _jsonOptions(),
       );
 
       _isLoading = false;
@@ -679,7 +681,7 @@ class ProductProvider with ChangeNotifier {
 
   Future<List<VariantItem>> getVariants(int productId) async {
     try {
-      final response = await _dio.get(ProductApi.variants(productId));
+      final response = await _api.get(ProductApi.variants(productId));
       final data = _unwrapData(response.data);
       final list = data is List ? data : <dynamic>[];
 
@@ -704,12 +706,12 @@ class ProductProvider with ChangeNotifier {
       Map<String, dynamic> dto,
       ) async {
     try {
-      final token = await _getToken();
+      await _requireLogin();
 
-      await _dio.patch(
+      await _api.patch(
         ProductApi.variant(productId, variantId),
         data: dto,
-        options: _jsonAuthOptions(token),
+        options: _jsonOptions(),
       );
 
       return true;
