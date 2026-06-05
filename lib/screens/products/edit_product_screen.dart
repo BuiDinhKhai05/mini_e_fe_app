@@ -545,16 +545,12 @@ class _EditProductScreenState extends State<EditProductScreen>
                           icon: Icons.warehouse_outlined,
                           keyboardType: TextInputType.number,
                           enabled: false,
-                          helperText: 'Tự tính từ biến thể',
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Tồn kho sản phẩm được BE đồng bộ từ tổng tồn kho các biến thể. Hãy chỉnh kho trong tab Biến thể.',
-                    style: TextStyle(color: _textGrey, fontSize: 12, height: 1.35),
-                  ),
+
                 ],
               ),
               const SizedBox(height: 14),

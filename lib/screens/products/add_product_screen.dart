@@ -50,8 +50,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
   bool _isSubmitting = false;
 
-  // categoryId được BE dùng để gắn sản phẩm vào danh mục.
-  // Seller bắt buộc chọn danh mục khi tạo sản phẩm mới.
   int? _selectedCategoryId;
 
   bool get _isEditMode => widget.editProduct != null;
@@ -73,8 +71,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
     );
     _slugController = TextEditingController(text: product?.slug ?? '');
 
-    // Load danh mục sau frame đầu tiên để tránh gọi Provider khi widget chưa gắn xong vào tree.
-    // Lưu ý: main.dart cần đăng ký CategoryProvider bằng MultiProvider.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadSelectableCategories();
@@ -211,7 +207,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
 
     final provider = context.read<ProductProvider>();
     final price = _parsePrice(_priceController.text);
-    // BE hiện tại không nhận stock ở product. Tồn kho sẽ được tính từ variants.
     final slug = _slugController.text.trim();
     final description = _descriptionController.text.trim();
 
@@ -447,16 +442,12 @@ class _AddProductScreenState extends State<AddProductScreen> {
                           icon: Icons.warehouse_outlined,
                           keyboardType: TextInputType.number,
                           enabled: false,
-                          helperText: 'Tự tính từ biến thể',
+
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-                  const Text(
-                    'Lưu ý: BE hiện tại tính tồn kho từ các biến thể. Sau khi tạo sản phẩm, hãy thêm Size/Màu và cập nhật kho từng biến thể.',
-                    style: TextStyle(color: _textGrey, fontSize: 12, height: 1.35),
-                  ),
                 ],
               ),
               const SizedBox(height: 14),
@@ -468,7 +459,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                     _buildCurrentImages(),
                   if (_isEditMode)
                     const Text(
-                      'BE hiện tại chưa hỗ trợ cập nhật ảnh bằng PATCH, nên phần chỉnh sửa chỉ giữ ảnh hiện có.',
+                      'Hiện tại chưa hỗ trợ cập nhật ảnh, nên phần chỉnh sửa chỉ giữ ảnh hiện có.',
                       style: TextStyle(color: _textGrey, fontSize: 12, height: 1.35),
                     )
                   else ...[
