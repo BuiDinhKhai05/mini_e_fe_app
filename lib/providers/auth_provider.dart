@@ -23,7 +23,7 @@ class AuthProvider with ChangeNotifier {
   bool get isVerified => _isVerified;
   String? get resetEmail => _resetEmail;
   String? get accessToken => _accessToken;
-
+  bool get isAuthenticated => _user != null && (_accessToken?.isNotEmpty ?? false);
   final AuthService _authService = AuthService();
   static final GlobalKey<NavigatorState> navigatorKey =
   GlobalKey<NavigatorState>();
@@ -107,8 +107,7 @@ class AuthProvider with ChangeNotifier {
         return;
       }
 
-      // nạp dữ liệu đúng theo account mới
-      await _bootstrapSessionData();
+      await _bootstrapSessionData(fetchUser: false);
 
       final isAdmin = _user?.role?.toUpperCase() == 'ADMIN';
       _navigateTo(isAdmin ? '/admin-home' : '/home');
@@ -130,7 +129,7 @@ class AuthProvider with ChangeNotifier {
       _user = await _authService.verifyAccount(otp);
       _isVerified = true;
 
-      await _bootstrapSessionData();
+      await _bootstrapSessionData(fetchUser: false);
 
       _showSnackBar('Xác thực tài khoản thành công!', Colors.blue);
       _navigateToHomeAndWelcome(delay: 500);
@@ -301,6 +300,8 @@ class AuthProvider with ChangeNotifier {
   }
 
   Future<void> init() async {
+    _startLoading();
+
     final prefs = await SharedPreferences.getInstance();
     _accessToken = prefs.getString('access_token');
 
@@ -308,16 +309,25 @@ class AuthProvider with ChangeNotifier {
       await _resetSessionProviders(notify: false);
       _clearUserData(notify: false);
       _navigateTo('/login');
+      _stopLoading();
       return;
     }
 
     try {
+      _authService.useAccessToken(_accessToken!);
+
       await _resetSessionProviders(notify: false);
-      await _bootstrapSessionData();
+
+      // Quan trọng: init chỉ kiểm tra đăng nhập bằng /users/me.
+      // Không để cart/shop/product làm app logout.
+      _user = await _authService.getMe();
+      _isVerified = _user?.isVerified ?? false;
 
       if (_user == null) {
         throw Exception('Không lấy được user');
       }
+
+      notifyListeners();
 
       final isAdmin = _user!.role?.toUpperCase() == 'ADMIN';
       final targetRoute = isAdmin ? '/admin-home' : '/home';
@@ -328,12 +338,22 @@ class AuthProvider with ChangeNotifier {
               (route) => false,
         );
       });
+
+      // Load dữ liệu phụ sau khi đã vào app.
+      // Lỗi cart/shop/product không được làm logout.
+      await _bootstrapSessionData(fetchUser: false);
     } catch (e) {
+      debugPrint('DEBUG: Auth init failed → $e');
+
       await prefs.remove('access_token');
       _accessToken = null;
+
       await _resetSessionProviders(notify: false);
       _clearUserData(notify: false);
+
       _navigateTo('/login');
+    } finally {
+      _stopLoading();
     }
   }
 
@@ -347,48 +367,46 @@ class AuthProvider with ChangeNotifier {
     Provider.of<CartProvider>(context, listen: false).clearCartLocal(notify: notify);
   }
 
-  Future<void> _bootstrapSessionData() async {
+  Future<void> _bootstrapSessionData({bool fetchUser = true}) async {
     final context = navigatorKey.currentContext;
     if (context == null) return;
 
     final userProvider = Provider.of<UserProvider>(context, listen: false);
     final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-    final productProvider = Provider.of<ProductProvider>(context, listen: false);
     final cartProvider = Provider.of<CartProvider>(context, listen: false);
 
-    await userProvider.fetchMe(force: true);
-    _user = userProvider.me;
-    _isVerified = _user?.isVerified ?? false;
+    if (fetchUser) {
+      await userProvider.fetchMe(force: true);
+      _user = userProvider.me;
+      _isVerified = _user?.isVerified ?? false;
 
-    if (_user == null) {
-      throw Exception('Không lấy được thông tin user');
+      if (_user == null) {
+        throw Exception('Không lấy được thông tin user');
+      }
     }
 
-    final role = _user!.role?.toUpperCase() ?? '';
+    final role = _user?.role?.toUpperCase() ?? '';
 
-    // ADMIN vẫn được dùng app như USER bình thường:
-    // - đăng nhập xong vào AdminHome trước
-    // - khi bấm icon Home ở AdminHome thì vẫn có dữ liệu app/public products/cart
-    // Nếu backend chưa cho ADMIN dùng cart, không chặn admin vào trang quản trị.
-    if (role == 'ADMIN') {
-      try {
-        await cartProvider.fetchCart(notifyOnStart: false);
-      } catch (e) {
-        debugPrint('DEBUG: ADMIN fetchCart skipped → $e');
-        cartProvider.clearCartLocal(notify: false);
-      }
-    } else {
+    try {
       await cartProvider.fetchCart(notifyOnStart: false);
+    } catch (e) {
+      debugPrint('DEBUG: fetchCart skipped → $e');
+      cartProvider.clearCartLocal(notify: false);
     }
 
     if (role == 'SELLER') {
-      await shopProvider.loadMyShop();
-      await productProvider.fetchAllProductsForSeller(showLoading: false);
+      try {
+        await shopProvider.loadMyShop();
+      } catch (e) {
+        debugPrint('DEBUG: loadMyShop skipped → $e');
+        shopProvider.clearShopData(notify: false);
+      }
     } else {
       shopProvider.clearShopData(notify: false);
-      await productProvider.fetchPublicProducts(showLoading: false);
     }
 
+    // Không fetch product trong AuthProvider.
+    // HomeScreen tự fetch public products.
     notifyListeners();
   }
 

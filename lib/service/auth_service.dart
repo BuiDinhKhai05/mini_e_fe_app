@@ -89,11 +89,34 @@ class AuthService {
     throw Exception(response.data['message'] ?? 'Đăng nhập thất bại');
   }
 
+  void useAccessToken(String accessToken) {
+    ApiClient().setAccessToken(accessToken);
+  }
+
+  Future<UserModel> getMe() async {
+    final response = await _dio.get(UsersApi.me);
+
+    final statusCode = response.statusCode ?? 0;
+
+    if (statusCode >= 200 && statusCode < 300) {
+      final body = response.data;
+
+      final dynamic rawUser = body is Map<String, dynamic>
+          ? (body['data'] ?? body['user'] ?? body)
+          : null;
+
+      if (rawUser is Map<String, dynamic>) {
+        return UserModel.fromJson(rawUser);
+      }
+
+      throw Exception('Dữ liệu /users/me không hợp lệ');
+    }
+
+    throw Exception(response.data?['message'] ?? 'Không lấy được thông tin user');
+  }
+
   // ==============================================================
   // 5. GỬI LẠI OTP XÁC THỰC TÀI KHOẢN
-  // --------------------------------------------------------------
-  // API này cần Bearer token, kể cả khi user chưa verify.
-  // ApiClient sẽ tự gắn access_token cho endpoint này.
   // ==============================================================
   Future<void> requestVerify() async {
     final response = await _dio.post(AppConstants.requestVerifyEndpoint);

@@ -538,20 +538,28 @@ class _GiftFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.68),
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white.withOpacity(0.8)),
       ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: const Wrap(
+        alignment: WrapAlignment.center,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: 10,
+        runSpacing: 6,
         children: [
-          Text('🐥', style: TextStyle(fontSize: 30)),
-          SizedBox(width: 12),
-          Text('Một ngày thật xinh cùng Mochi', style: TextStyle(color: _kMochiMuted, fontWeight: FontWeight.w800)),
-          SizedBox(width: 12),
-          Text('🎁', style: TextStyle(fontSize: 30)),
+          Text('🐥', style: TextStyle(fontSize: 28)),
+          Text(
+            'Một ngày thật xinh cùng Mochi',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _kMochiMuted,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text('🎁', style: TextStyle(fontSize: 28)),
         ],
       ),
     );
