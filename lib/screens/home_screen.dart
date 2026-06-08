@@ -1,16 +1,5 @@
 // lib/screens/home_screen.dart
-// ================================================================
-// GHI CHÚ TỔNG QUAN
-// File này là màn hình Trang chủ của app Flutter.
-// Chức năng chính được giữ nguyên:
-// - Load sản phẩm, giỏ hàng, danh mục từ Provider.
-// - Tìm kiếm sản phẩm theo tên.
-// - Lọc sản phẩm theo danh mục cha/con.
-// - Hiển thị sản phẩm dạng grid.
-// - Mở chi tiết sản phẩm.
-// - Thêm sản phẩm vào giỏ hàng thông qua popup chọn biến thể.
-// Phần được chỉnh chủ yếu là giao diện mobile theo phong cách cute/pink.
-// ================================================================
+
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -680,129 +669,191 @@ class _HomeScreenState extends State<HomeScreen> {
   // nhưng đã chuyển sang kích thước phù hợp với mobile.
   // ================================================================
   Widget _heroBanner() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-      child: Container(
-        height: 184,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.extraLarge),
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFFF0F5), Color(0xFFFFF8E8)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-          border: Border.all(color: AppColors.borderPink),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.darkPink.withOpacity(0.08),
-              blurRadius: 22,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              right: -18,
-              bottom: -18,
-              child: Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.52),
-                  shape: BoxShape.circle,
-                ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final compact = screenWidth < 390;
+
+        // Màn hình nhỏ như máy ảo/điện thoại thật thường chỉ còn khoảng 140px
+        // chiều cao cho phần text sau padding. Vì vậy cần giảm vùng ảnh bên phải,
+        // giới hạn số dòng text và bỏ Spacer để Column không bị overflow.
+        final bannerHeight = compact ? 176.0 : 184.0;
+        final imageSize = compact ? 88.0 : 104.0;
+        final imageRight = compact ? 18.0 : 26.0;
+        final imageBottom = compact ? 22.0 : 24.0;
+        final textRightPadding = compact ? 118.0 : 150.0;
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Container(
+            height: bannerHeight,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(AppRadius.extraLarge),
+              gradient: const LinearGradient(
+                colors: [Color(0xFFFFF0F5), Color(0xFFFFF8E8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-            ),
-            Positioned(
-              right: 26,
-              bottom: 24,
-              child: Container(
-                width: 104,
-                height: 104,
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.82),
-                  borderRadius: BorderRadius.circular(34),
-                  border: Border.all(color: AppColors.borderPink, width: 2),
+              border: Border.all(color: AppColors.borderPink),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.darkPink.withOpacity(0.08),
+                  blurRadius: 22,
+                  offset: const Offset(0, 12),
                 ),
-                clipBehavior: Clip.antiAlias,
-                child: Padding(
-                  padding: const EdgeInsets.all(3),
-                  child: Image.asset(
-                    _kHomeHeroAsset,
-                    fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.shopping_basket_outlined, size: 50, color: AppColors.darkPink),
+              ],
+            ),
+            child: Stack(
+              children: [
+                Positioned(
+                  right: -18,
+                  bottom: -18,
+                  child: Container(
+                    width: 150,
+                    height: 150,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.52),
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const Positioned(
-              right: 92,
-              top: 24,
-              child: Icon(Icons.star_rounded, color: Color(0xFFFFC55A), size: 24),
-            ),
-            const Positioned(
-              right: 20,
-              top: 38,
-              child: Icon(Icons.favorite_rounded, color: AppColors.darkPink, size: 20),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 22, 150, 18),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Sưu tập đồ cute',
-                    style: TextStyle(fontSize: 25, fontWeight: FontWeight.w900, color: AppColors.darkPink, height: 1.08),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Cho ngày thêm vui! ✨',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: AppColors.textDark, height: 1.15),
-                  ),
-                  const SizedBox(height: 10),
-                  const Text(
-                    'Thế giới đồ dễ thương dành riêng cho bạn',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: AppColors.textGrey, fontSize: 12.5, fontWeight: FontWeight.w600),
-                  ),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                        decoration: BoxDecoration(
+                Positioned(
+                  right: imageRight,
+                  bottom: imageBottom,
+                  child: Container(
+                    width: imageSize,
+                    height: imageSize,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.82),
+                      borderRadius: BorderRadius.circular(34),
+                      border: Border.all(color: AppColors.borderPink, width: 2),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Padding(
+                      padding: const EdgeInsets.all(3),
+                      child: Image.asset(
+                        _kHomeHeroAsset,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.shopping_basket_outlined,
+                          size: 50,
                           color: AppColors.darkPink,
-                          borderRadius: BorderRadius.circular(AppRadius.medium),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text('Mua ngay', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12)),
-                            SizedBox(width: 6),
-                            Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
-                          ],
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(AppRadius.medium),
-                          border: Border.all(color: AppColors.borderPink),
+                    ),
+                  ),
+                ),
+                Positioned(
+                  right: compact ? 82 : 92,
+                  top: 24,
+                  child: const Icon(Icons.star_rounded, color: Color(0xFFFFC55A), size: 24),
+                ),
+                const Positioned(
+                  right: 20,
+                  top: 38,
+                  child: Icon(Icons.favorite_rounded, color: AppColors.darkPink, size: 20),
+                ),
+                Padding(
+                  padding: EdgeInsets.fromLTRB(20, 18, textRightPadding, 16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Sưu tập đồ cute',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: compact ? 21 : 25,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.darkPink,
+                          height: 1.06,
                         ),
-                        child: const Text('Collection', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.w900, fontSize: 12)),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Cho ngày thêm vui! ✨',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: compact ? 16 : 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDark,
+                          height: 1.12,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Thế giới đồ dễ thương dành riêng cho bạn',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: AppColors.textGrey,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          height: 1.15,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FittedBox(
+                          alignment: Alignment.centerLeft,
+                          fit: BoxFit.scaleDown,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: AppColors.darkPink,
+                                  borderRadius: BorderRadius.circular(AppRadius.medium),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      'Mua ngay',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w900,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(AppRadius.medium),
+                                  border: Border.all(color: AppColors.borderPink),
+                                ),
+                                child: const Text(
+                                  'Collection',
+                                  style: TextStyle(
+                                    color: AppColors.textDark,
+                                    fontWeight: FontWeight.w900,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -829,7 +880,8 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisCount: 2,
           crossAxisSpacing: 10,
           mainAxisSpacing: 10,
-          childAspectRatio: 2.7,
+          // Tăng chiều cao item để icon + 2 dòng chữ không bị tràn trên máy nhỏ.
+          childAspectRatio: 2.25,
         ),
         itemBuilder: (_, index) {
           final item = items[index];
@@ -843,17 +895,18 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Row(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 34,
+                  height: 34,
                   decoration: BoxDecoration(
                     color: item.color.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(AppRadius.medium),
                   ),
-                  child: Icon(item.icon, color: item.color, size: 21),
+                  child: Icon(item.icon, color: item.color, size: 20),
                 ),
                 const SizedBox(width: 9),
                 Expanded(
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -861,14 +914,14 @@ class _HomeScreenState extends State<HomeScreen> {
                         item.title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12.2, color: AppColors.textDark),
+                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, height: 1.05, color: AppColors.textDark),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         item.subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10.8, color: AppColors.textGrey),
+                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10.5, height: 1.05, color: AppColors.textGrey),
                       ),
                     ],
                   ),
@@ -1085,6 +1138,19 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  Widget _productImageFallback() {
+    return Container(
+      color: AppColors.softPink,
+      child: const Center(
+        child: Icon(
+          Icons.image_not_supported_outlined,
+          size: 38,
+          color: AppColors.textLight,
+        ),
+      ),
+    );
+  }
+
   // ================================================================
   // CARD SẢN PHẨM
   // Hiển thị ảnh, nhãn Hot, icon yêu thích, tên, giá, tồn kho,
@@ -1095,6 +1161,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ProductModel product, {
         String source = 'home_product_card',
       }) {
+    final imageUrl = product.imageUrl.trim();
+
     return InkWell(
       onTap: () => _openProductDetail(product, source: source),
       borderRadius: BorderRadius.circular(AppRadius.extraLarge),
@@ -1115,24 +1183,30 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              flex: 6,
+              // Ảnh giảm còn 1/2 chiều cao card để phần thông tin bên dưới
+              // có đủ chỗ, tránh lỗi Column overflow trên màn hình nhỏ.
+              flex: 5,
               child: Stack(
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.extraLarge)),
-                    child: CachedNetworkImage(
-                      imageUrl: product.imageUrl.isNotEmpty ? product.imageUrl : 'https://via.placeholder.com/300',
+                    child: imageUrl.isEmpty
+                        ? _productImageFallback()
+                        : CachedNetworkImage(
+                      imageUrl: imageUrl,
                       fit: BoxFit.cover,
                       width: double.infinity,
                       height: double.infinity,
                       placeholder: (_, __) => Container(
                         color: AppColors.softPink,
-                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.darkPink)),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: AppColors.darkPink,
+                          ),
+                        ),
                       ),
-                      errorWidget: (_, __, ___) => Container(
-                        color: AppColors.softPink,
-                        child: const Center(child: Icon(Icons.image_not_supported_outlined, size: 38, color: AppColors.textLight)),
-                      ),
+                      errorWidget: (_, __, ___) => _productImageFallback(),
                     ),
                   ),
                   Positioned(
@@ -1190,22 +1264,39 @@ class _HomeScreenState extends State<HomeScreen> {
             Expanded(
               flex: 5,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+                // Giảm padding để phần thông tin card không bị thiếu chiều cao.
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      product.title,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w900, color: AppColors.textDark, height: 1.15),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      '${_formatPrice(product.price)} VNĐ',
-                      style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w900, color: AppColors.darkPink),
+                    // Đặt tên sản phẩm trong Flexible để khi tên dài Flutter tự co/ellipsis,
+                    // không làm tràn Column theo chiều dọc.
+                    Flexible(
+                      child: Text(
+                        product.title,
+                        style: const TextStyle(
+                          fontSize: 12.8,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textDark,
+                          height: 1.12,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     const SizedBox(height: 4),
+                    Text(
+                      '${_formatPrice(product.price)} VNĐ',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13.6,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.darkPink,
+                        height: 1.05,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
                     FutureBuilder<int>(
                       future: _getRealStock(product),
                       builder: (_, snapshot) {
@@ -1215,19 +1306,20 @@ class _HomeScreenState extends State<HomeScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 11,
+                            height: 1.05,
                             color: stock > 0 ? AppColors.textGrey : AppColors.error,
                             fontWeight: FontWeight.w700,
                           ),
                         );
                       },
                     ),
-                    const Spacer(),
+                    const SizedBox(height: 6),
                     Row(
                       children: [
                         Expanded(
                           child: Container(
-                            height: 34,
+                            height: 30,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: AppColors.softPink,
@@ -1235,26 +1327,36 @@ class _HomeScreenState extends State<HomeScreen> {
                             ),
                             child: const Text(
                               'Chi tiết',
-                              style: TextStyle(color: AppColors.textGrey, fontWeight: FontWeight.w900, fontSize: 12),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: AppColors.textGrey,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11.5,
+                              ),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 6),
                         InkWell(
                           onTap: () => _showProductCartDialog(product),
                           borderRadius: BorderRadius.circular(AppRadius.medium),
                           child: Container(
-                            width: 38,
-                            height: 34,
+                            width: 34,
+                            height: 30,
                             decoration: BoxDecoration(
                               color: AppColors.darkPink,
                               borderRadius: BorderRadius.circular(AppRadius.medium),
                             ),
-                            child: const Icon(Icons.shopping_cart_outlined, color: Colors.white, size: 19),
+                            child: const Icon(
+                              Icons.shopping_cart_outlined,
+                              color: Colors.white,
+                              size: 17,
+                            ),
                           ),
                         ),
                       ],
-                    )
+                    ),
                   ],
                 ),
               ),
@@ -1287,7 +1389,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 14,
-                childAspectRatio: 0.66,
+                childAspectRatio: 0.60,
               ),
               itemBuilder: (context, index) {
                 return _productCard(
@@ -1385,7 +1487,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   crossAxisCount: 2,
                                   crossAxisSpacing: 12,
                                   mainAxisSpacing: 14,
-                                  childAspectRatio: 0.66,
+                                  childAspectRatio: 0.60,
                                 ),
                               ),
                             ),
@@ -1424,9 +1526,19 @@ class _HomeScreenState extends State<HomeScreen> {
             unselectedItemColor: AppColors.textLight,
             selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
             unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
-            onTap: (index) {
-              if (index == 3) Navigator.pushNamed(context, '/personal-info');
-              if (index == 2) Navigator.pushNamed(context, '/cart');
+            onTap: (index) async {
+              if (index == 3) {
+                await Navigator.pushNamed(context, '/personal-info');
+                if (!mounted) return;
+                context.read<ProductProvider>().fetchPublicProducts(showLoading: false);
+              }
+
+              if (index == 2) {
+                await Navigator.pushNamed(context, '/cart');
+                if (!mounted) return;
+                context.read<ProductProvider>().fetchPublicProducts(showLoading: false);
+              }
+
               if (index == 1) {
                 _openCategoryProducts();
               }

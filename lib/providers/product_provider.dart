@@ -16,9 +16,9 @@ import 'auth_provider.dart';
 import 'shop_provider.dart';
 
 class ProductProvider with ChangeNotifier {
-  // Dùng ApiClient singleton thay vì tự tạo Dio riêng.
-  // ApiClient đã có interceptor tự gọi /auth/refresh khi access token hết hạn.
-  // Nếu dùng Dio() riêng ở đây, request seller/admin product sẽ không được refresh token.
+  // Dùng ApiClient chung của app để mọi request sản phẩm đều đi qua
+  // interceptor refresh token. Không tạo Dio riêng ở provider nữa,
+  // vì Dio riêng sẽ không tự gọi /auth/refresh khi access token hết hạn.
   final ApiClient _api = ApiClient();
 
   List<ProductModel> _products = [];
@@ -53,43 +53,16 @@ class ProductProvider with ChangeNotifier {
   // TOKEN HELPERS
   // ========================================================================
   Future<String?> _getOptionalToken() async {
-    // Ưu tiên đọc token mới nhất trong SharedPreferences.
-    // Sau khi refresh thành công, ApiClient lưu access_token mới ở đây.
-    // AuthProvider.accessToken có thể vẫn là token cũ nếu app chưa reload provider.
-    final prefs = await SharedPreferences.getInstance();
-    final savedToken = prefs.getString('access_token');
-    if (savedToken != null && savedToken.isNotEmpty) {
-      return savedToken;
-    }
-
-    final context = AuthProvider.navigatorKey.currentContext;
-    if (context == null) return null;
-
+    // Chỉ dùng để biết người dùng đang có token hay không.
+    // Token thật sẽ được ApiClient tự gắn vào header và tự refresh khi 401.
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final token = authProvider.accessToken;
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('access_token');
       if (token == null || token.isEmpty) return null;
       return token;
     } catch (_) {
       return null;
     }
-  }
-
-  Future<void> _requireLogin() async {
-    final token = await _getOptionalToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('Chưa đăng nhập');
-    }
-  }
-
-  Options _jsonOptions() {
-    // Không tự gắn Authorization ở ProductProvider.
-    // ApiClient.onRequest sẽ tự gắn access token mới nhất cho request cần đăng nhập.
-    return Options(contentType: 'application/json');
-  }
-
-  Options _multipartOptions() {
-    return Options(contentType: 'multipart/form-data');
   }
 
   // ========================================================================
@@ -287,8 +260,6 @@ class ProductProvider with ChangeNotifier {
     }
 
     try {
-      await _requireLogin();
-
       final response = await _api.get(
         ProductApi.myShopProducts,
         queryParameters: {
@@ -298,7 +269,6 @@ class ProductProvider with ChangeNotifier {
           if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
           if (categoryId != null) 'categoryId': categoryId,
         },
-        options: _jsonOptions(),
       );
 
       _products = _parseProductsFromResponse(response.data);
@@ -366,8 +336,6 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _requireLogin();
-
       final response = await _api.get(
         ProductApi.adminAll,
         queryParameters: {
@@ -378,7 +346,6 @@ class ProductProvider with ChangeNotifier {
           if (shopId != null) 'shopId': shopId,
           if (categoryId != null) 'categoryId': categoryId,
         },
-        options: _jsonOptions(),
       );
 
       _adminProducts = _parseProductsFromResponse(response.data);
@@ -395,12 +362,9 @@ class ProductProvider with ChangeNotifier {
 
   Future<bool> lockProductByAdmin(int productId) async {
     try {
-      await _requireLogin();
-
       final response = await _api.patch(
         ProductApi.byId(productId),
         data: {'status': ProductStatusValue.locked},
-        options: _jsonOptions(),
       );
 
       final updated = _parseProductDetail(response.data);
@@ -426,20 +390,48 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
+  // Admin mở khóa sản phẩm.
+  // BE hiện tại cho ADMIN chuyển trạng thái sang ACTIVE hoặc LOCKED.
+  Future<bool> activateProductByAdmin(int productId) async {
+    try {
+      final response = await _api.patch(
+        ProductApi.byId(productId),
+        data: {'status': ProductStatusValue.active},
+      );
+
+      final updated = _parseProductDetail(response.data);
+      if (updated != null) {
+        _updateLocalProduct(updated);
+      } else {
+        final old = getProductFromCache(productId);
+        if (old != null) {
+          _updateLocalProduct(old.copyWith(status: ProductStatusValue.active));
+        }
+      }
+
+      notifyListeners();
+      return true;
+    } on DioException catch (e) {
+      _adminProductError = _handleDioError(e);
+      notifyListeners();
+      return false;
+    } catch (e) {
+      _adminProductError = 'Không thể mở khóa sản phẩm: $e';
+      notifyListeners();
+      return false;
+    }
+  }
+
   Future<bool> deleteProductByAdmin(int productId) async {
     try {
-      await _requireLogin();
-
       await _api.delete(
         ProductApi.byId(productId),
       );
 
-      final old = getProductFromCache(productId);
-      if (old != null) {
-        _updateLocalProduct(
-          old.copyWith(deletedAt: DateTime.now().toIso8601String()),
-        );
-      }
+      // BE product hiện tại dùng delete() = xóa cứng.
+      // Vì vậy FE không tự gán deletedAt giả, mà xóa item khỏi cache local.
+      _products.removeWhere((p) => p.id == productId);
+      _adminProducts.removeWhere((p) => p.id == productId);
 
       notifyListeners();
       return true;
@@ -471,8 +463,6 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _requireLogin();
-
       final formData = FormData.fromMap({
         'title': title.trim(),
         'price': price,
@@ -509,7 +499,6 @@ class ProductProvider with ChangeNotifier {
       final response = await _api.post(
         ProductApi.products,
         data: formData,
-        options: _multipartOptions(),
       );
 
       final newProduct = _parseProductDetail(response.data);
@@ -548,7 +537,6 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _requireLogin();
       final jsonBody = <String, dynamic>{};
 
       if (title != null) jsonBody['title'] = title.trim();
@@ -567,7 +555,6 @@ class ProductProvider with ChangeNotifier {
       final response = await _api.patch(
         ProductApi.byId(productId),
         data: jsonBody,
-        options: _jsonOptions(),
       );
 
       final updated = _parseProductDetail(response.data);
@@ -592,8 +579,6 @@ class ProductProvider with ChangeNotifier {
 
   Future<bool> deleteProduct(int productId) async {
     try {
-      await _requireLogin();
-
       await _api.delete(
         ProductApi.byId(productId),
       );
@@ -612,33 +597,78 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  Future<ProductModel?> fetchProductDetail(int id) async {
-    try {
-      final token = await _getOptionalToken();
+  ProductModel _mergeProductDetail(ProductModel? old, ProductModel fresh) {
+    if (old == null) return fresh;
 
-      if (token != null) {
+    final freshTitle = fresh.title.trim();
+    final isBadTitle = freshTitle.isEmpty || freshTitle == 'Không tên';
+
+    return fresh.copyWith(
+      title: isBadTitle ? old.title : fresh.title,
+      description: fresh.description ?? old.description,
+      imageUrl: fresh.imageUrl.trim().isNotEmpty ? fresh.imageUrl : old.imageUrl,
+      images: fresh.images.isNotEmpty ? fresh.images : old.images,
+      shopId: fresh.shopId ?? old.shopId,
+      categoryId: fresh.categoryId ?? old.categoryId,
+      optionSchema: fresh.optionSchema ?? old.optionSchema,
+      variants: fresh.variants ?? old.variants,
+    );
+  }
+
+  Future<ProductModel?> fetchProductDetail(
+      int id, {
+        bool preferManage = false,
+      }) async {
+    final cached = getProductFromCache(id);
+
+    Future<ProductModel?> fetchPublicDetail() async {
+      final response = await _api.get(ProductApi.byId(id));
+      final parsed = _parseProductDetail(response.data);
+      if (parsed == null) return null;
+
+      final merged = _mergeProductDetail(cached, parsed);
+      _updateLocalProduct(merged);
+      notifyListeners();
+      return merged;
+    }
+
+    try {
+      if (preferManage) {
         try {
-          final manageResponse = await _api.get(
-            ProductApi.manageDetail(id),
-            options: _jsonOptions(),
-          );
-          final manageProduct = _parseProductDetail(manageResponse.data);
-          if (manageProduct != null) return manageProduct;
+          final manageResponse = await _api.get(ProductApi.manageDetail(id));
+          final parsed = _parseProductDetail(manageResponse.data);
+          if (parsed != null) {
+            final merged = _mergeProductDetail(cached, parsed);
+            _updateLocalProduct(merged);
+            notifyListeners();
+            return merged;
+          }
         } on DioException catch (e) {
-          if (e.response?.statusCode != 404) {
-            rethrow;
+          final code = e.response?.statusCode;
+
+          // Nếu không có quyền xem manage thì fallback về public detail.
+          if (code != 401 && code != 403 && code != 404) {
+            debugPrint(
+              'Manage detail failed, fallback public: '
+                  '${e.response?.statusCode} | ${e.response?.data}',
+            );
           }
         }
       }
 
-      final response = await _api.get(ProductApi.byId(id));
-      return _parseProductDetail(response.data);
+      return await fetchPublicDetail();
     } on DioException catch (e) {
       _error = _handleDioError(e, autoLogoutOn401: false);
+      debugPrint(
+        'Fetch product detail error: '
+            '${e.response?.statusCode} | ${e.response?.data}',
+      );
       notifyListeners();
-      return getProductFromCache(id);
-    } catch (_) {
-      return getProductFromCache(id);
+
+      return cached;
+    } catch (e) {
+      debugPrint('Fetch product detail unknown error: $e');
+      return cached;
     }
   }
 
@@ -655,15 +685,12 @@ class ProductProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      await _requireLogin();
-
       final response = await _api.post(
         ProductApi.generateVariants(productId),
         data: {
           'options': options,
           'mode': mode,
         },
-        options: _jsonOptions(),
       );
 
       _isLoading = false;
@@ -706,12 +733,9 @@ class ProductProvider with ChangeNotifier {
       Map<String, dynamic> dto,
       ) async {
     try {
-      await _requireLogin();
-
       await _api.patch(
         ProductApi.variant(productId, variantId),
         data: dto,
-        options: _jsonOptions(),
       );
 
       return true;

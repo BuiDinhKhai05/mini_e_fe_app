@@ -67,11 +67,12 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     _currentProduct = widget.product;
     _pageController = PageController(initialPage: 0);
 
-    _loadProductDetail();
-    _fetchVariants();
-
-    // Tải thông tin shop để hiển thị bên dưới phần đánh giá sản phẩm.
+    // Không gọi API trực tiếp trong initState.
+    // Đợi frame đầu tiên render xong để tránh lỗi build scope / animation trên điện thoại.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _loadProductDetail();
+      _fetchVariants();
       _fetchProductShop();
       _trackViewDetail();
     });
@@ -108,7 +109,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
     try {
       final provider = Provider.of<ProductProvider>(context, listen: false);
-      final fresh = await provider.fetchProductDetail(widget.product.id);
+      final fresh = await provider.fetchProductDetail(
+        widget.product.id,
+        preferManage: widget.isFromShopManagement,);
+
       if (!mounted) return;
       if (fresh != null) {
         setState(() {

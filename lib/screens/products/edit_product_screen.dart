@@ -18,8 +18,7 @@ class EditProductScreen extends StatefulWidget {
   State<EditProductScreen> createState() => _EditProductScreenState();
 }
 
-class _EditProductScreenState extends State<EditProductScreen>
-    with SingleTickerProviderStateMixin {
+class _EditProductScreenState extends State<EditProductScreen> {
   // =========================
   // Màu dùng chung theo format Soft Pink Card UI
   // =========================
@@ -31,7 +30,6 @@ class _EditProductScreenState extends State<EditProductScreen>
   static const Color _textGrey = AppColors.textGrey;
   static const Color _dangerRed = AppColors.error;
 
-  late final TabController _tabController;
   final _formKeyInfo = GlobalKey<FormState>();
 
   late ProductModel _product;
@@ -49,30 +47,52 @@ class _EditProductScreenState extends State<EditProductScreen>
   // categoryId hiện tại của sản phẩm. Field này cần ProductModel có categoryId.
   int? _selectedCategoryId;
 
+  // Ghi chú:
+  // Không dùng TabController/TabBarView ở màn này nữa.
+  // Trên một số máy thật, khi Provider notifyListeners trong lúc TabController/route
+  // đang chạy animation có thể gây lỗi Flutter scheduler:
+  // "Tried to build dirty widget in the wrong build scope".
+  // Vì vậy dùng tab thủ công bằng int + Indexed UI để ổn định hơn.
+  int _selectedTabIndex = 0;
+
+  // Lưu danh mục vào state local, không dùng Consumer<CategoryProvider> trực tiếp trong dropdown.
+  // Điều này tránh dropdown bị rebuild đúng lúc Provider notifyListeners trong animation frame.
+  bool _isLoadingCategories = false;
+  String? _categoryLoadError;
+  List<dynamic> _selectableCategories = [];
+
   @override
   void initState() {
     super.initState();
     _product = widget.product;
     _selectedCategoryId = _product.categoryId;
-    _tabController = TabController(length: 2, vsync: this);
     _titleController = TextEditingController(text: _product.title);
     _slugController = TextEditingController(text: _product.slug ?? '');
     _descController = TextEditingController(text: _product.description ?? '');
     _priceController = TextEditingController(text: _product.price.toStringAsFixed(0));
     _stockController = TextEditingController(text: _product.stock.toString());
-    _loadProductDetail();
-    _fetchVariants();
 
-    // Load danh mục sau frame đầu tiên để dropdown trong tab Thông tin có dữ liệu.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Ghi chú:
+    // Không gọi API trực tiếp trong initState().
+    // Trên điện thoại thật, nếu màn hình bị pop/dispose trong lúc API trả về,
+    // việc rebuild Provider/Form/Dropdown quá sớm có thể gây lỗi:
+    // Failed assertion '_dependents.isEmpty'.
+    // Vì vậy toàn bộ load async được đưa về sau frame đầu tiên và luôn check mounted.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      _loadSelectableCategories();
+
+      await _loadSelectableCategories();
+
+      if (!mounted) return;
+      await _loadProductDetail();
+
+      if (!mounted) return;
+      await _fetchVariants();
     });
   }
 
   @override
   void dispose() {
-    _tabController.dispose();
     _titleController.dispose();
     _slugController.dispose();
     _descController.dispose();
@@ -86,14 +106,42 @@ class _EditProductScreenState extends State<EditProductScreen>
   // Load danh mục cho dropdown chỉnh sửa sản phẩm
   // =========================
   Future<void> _loadSelectableCategories() async {
-    // API list gọi isActive=true. Nếu list rỗng do service parse format chưa đúng,
-    // fallback sang tree để dropdown vẫn có dữ liệu hiển thị.
-    final categoryProvider = context.read<CategoryProvider>();
-    await categoryProvider.fetchCategories(isActive: true);
+    if (!mounted || _isLoadingCategories) return;
 
-    if (!mounted) return;
-    if (categoryProvider.categories.isEmpty) {
-      await categoryProvider.fetchTree();
+    setState(() {
+      _isLoadingCategories = true;
+      _categoryLoadError = null;
+    });
+
+    final categoryProvider = context.read<CategoryProvider>();
+
+    try {
+      await categoryProvider.fetchCategories(isActive: true);
+      if (!mounted) return;
+
+      var categories = List<dynamic>.from(categoryProvider.categories);
+
+      // Nếu list API rỗng hoặc service parse chưa đúng, fallback sang cây danh mục.
+      if (categories.isEmpty) {
+        await categoryProvider.fetchTree();
+        if (!mounted) return;
+        categories = List<dynamic>.from(categoryProvider.flattenTree());
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _selectableCategories = categories;
+        _categoryLoadError = categoryProvider.error;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _categoryLoadError = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingCategories = false);
+      }
     }
   }
 
@@ -139,68 +187,104 @@ class _EditProductScreenState extends State<EditProductScreen>
   // Load lại chi tiết để có ảnh/optionSchema mới nhất.
   // =========================
   Future<void> _loadProductDetail() async {
-    if (_isLoadingDetail) return;
+    if (!mounted || _isLoadingDetail) return;
+
     setState(() => _isLoadingDetail = true);
 
-    final provider = context.read<ProductProvider>();
-    final fresh = await provider.fetchProductDetail(_product.id);
+    try {
+      final provider = context.read<ProductProvider>();
+      final fresh = await provider.fetchProductDetail(_product.id);
 
-    if (!mounted) return;
-    if (fresh != null) {
-      setState(() {
-        _product = fresh;
-        _selectedCategoryId = fresh.categoryId;
-        _titleController.text = fresh.title;
-        _slugController.text = fresh.slug ?? '';
-        _descController.text = fresh.description ?? '';
-        _priceController.text = fresh.price.toStringAsFixed(0);
-        _stockController.text = fresh.stock.toString();
-      });
+      if (!mounted) return;
+
+      if (fresh != null) {
+        setState(() {
+          _product = fresh;
+          _selectedCategoryId = fresh.categoryId;
+          _titleController.text = fresh.title;
+          _slugController.text = fresh.slug ?? '';
+          _descController.text = fresh.description ?? '';
+          _priceController.text = fresh.price.toStringAsFixed(0);
+          _stockController.text = fresh.stock.toString();
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingDetail = false);
+      }
     }
-    setState(() => _isLoadingDetail = false);
   }
 
   Future<void> _fetchVariants() async {
+    if (!mounted || _isLoadingVariants) return;
+
+    // BE hiện tại chỉ có public route GET /products/:id/variants.
+    // Route này không trả variants cho product LOCKED.
+    // Vì vậy seller không gọi API variants khi sản phẩm đã bị admin khóa,
+    // tránh lỗi 404/notifyListeners trong lúc màn chỉnh sửa đang rebuild.
+    if (_product.isLocked) {
+      setState(() {
+        _variants = [];
+        _isLoadingVariants = false;
+      });
+      return;
+    }
+
     setState(() => _isLoadingVariants = true);
-    final provider = context.read<ProductProvider>();
-    final results = await provider.getVariants(_product.id);
-    if (!mounted) return;
-    setState(() {
-      _variants = results;
-      _isLoadingVariants = false;
-    });
+
+    try {
+      final provider = context.read<ProductProvider>();
+      final results = await provider.getVariants(_product.id);
+
+      if (!mounted) return;
+
+      setState(() {
+        _variants = results;
+      });
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingVariants = false);
+      }
+    }
   }
 
   // =========================
   // Lưu thông tin chung của sản phẩm.
   // =========================
   Future<void> _saveProductInfo() async {
-    if (_isSavingProduct) return;
+    if (!mounted || _isSavingProduct) return;
 
     if (_product.isLocked) {
       _showSnack('Sản phẩm đã bị admin khóa, không thể chỉnh sửa', isError: true);
       return;
     }
 
-    if (!_formKeyInfo.currentState!.validate()) return;
+    if (_formKeyInfo.currentState?.validate() != true) return;
 
     FocusScope.of(context).unfocus();
     setState(() => _isSavingProduct = true);
 
     final provider = context.read<ProductProvider>();
-    final success = await provider.updateProduct(
-      productId: _product.id,
-      title: _titleController.text.trim(),
-      slug: _slugController.text.trim().isEmpty ? null : _slugController.text.trim(),
-      description: _descController.text.trim(),
-      price: _parsePrice(_priceController.text),
-      // Gửi categoryId để BE cập nhật danh mục sản phẩm.
-      categoryId: _selectedCategoryId,
-      // BE hiện tại không nhận stock ở product. Tồn kho được sync từ variants.
-    );
+    bool success = false;
+
+    try {
+      success = await provider.updateProduct(
+        productId: _product.id,
+        title: _titleController.text.trim(),
+        slug: _slugController.text.trim().isEmpty ? null : _slugController.text.trim(),
+        description: _descController.text.trim(),
+        price: _parsePrice(_priceController.text),
+        // Gửi categoryId để BE cập nhật danh mục sản phẩm.
+        categoryId: _selectedCategoryId,
+        // BE hiện tại không nhận stock ở product. Tồn kho được sync từ variants.
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingProduct = false);
+      }
+    }
 
     if (!mounted) return;
-    setState(() => _isSavingProduct = false);
 
     if (success) {
       setState(() {
@@ -212,7 +296,10 @@ class _EditProductScreenState extends State<EditProductScreen>
           categoryId: _selectedCategoryId,
         );
       });
+
       await _loadProductDetail();
+
+      if (!mounted) return;
       _showSnack('Đã lưu thông tin sản phẩm');
     } else {
       _showSnack(provider.error ?? 'Lưu sản phẩm thất bại', isError: true);
@@ -246,6 +333,8 @@ class _EditProductScreenState extends State<EditProductScreen>
   // Dialog sửa nhanh biến thể: tên, SKU, giá, tồn kho, ảnh đại diện.
   // =========================
   Future<void> _showEditVariantDialog(VariantItem variant) async {
+    if (!mounted) return;
+
     final formKey = GlobalKey<FormState>();
     final nameCtrl = TextEditingController(text: variant.name);
     final skuCtrl = TextEditingController(text: variant.sku);
@@ -253,172 +342,199 @@ class _EditProductScreenState extends State<EditProductScreen>
     final stockCtrl = TextEditingController(text: variant.stock.toString());
     int? selectedImageId = variant.imageId;
     bool isSaving = false;
+    bool variantUpdated = false;
+    String? errorMessage;
 
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-              titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
-              contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              title: const Row(
-                children: [
-                  Icon(Icons.edit_note_rounded, color: _primaryPink),
-                  SizedBox(width: 8),
-                  Text('Sửa biến thể', style: TextStyle(fontWeight: FontWeight.w800)),
-                ],
-              ),
-              content: Form(
-                key: formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildTextField(
-                        controller: nameCtrl,
-                        label: 'Tên biến thể',
-                        icon: Icons.label_outline_rounded,
-                        validator: (v) => (v ?? '').trim().isEmpty ? 'Nhập tên biến thể' : null,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildTextField(
-                              controller: skuCtrl,
-                              label: 'SKU',
-                              icon: Icons.qr_code_rounded,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _buildTextField(
-                              controller: stockCtrl,
-                              label: 'Tồn kho',
-                              icon: Icons.warehouse_outlined,
-                              keyboardType: TextInputType.number,
-                              validator: (v) {
-                                final value = int.tryParse((v ?? '').trim());
-                                if (value == null || value < 0) return 'Không hợp lệ';
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      _buildTextField(
-                        controller: priceCtrl,
-                        label: 'Giá bán',
-                        icon: Icons.payments_outlined,
-                        suffixText: 'VND',
-                        keyboardType: TextInputType.number,
-                        validator: (v) {
-                          if (_parsePrice(v ?? '') <= 0) return 'Giá phải lớn hơn 0';
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<int?>(
-                        value: _product.images.any((img) => img.id == selectedImageId) ? selectedImageId : null,
-                        decoration: _inputDecoration(
-                          label: 'Ảnh đại diện biến thể',
-                          icon: Icons.image_outlined,
+    try {
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: !isSaving,
+        builder: (dialogContext) {
+          return StatefulBuilder(
+            builder: (dialogContext, setDialogState) {
+              return AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                titlePadding: const EdgeInsets.fromLTRB(20, 18, 20, 6),
+                contentPadding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                title: const Row(
+                  children: [
+                    Icon(Icons.edit_note_rounded, color: _primaryPink),
+                    SizedBox(width: 8),
+                    Text('Sửa biến thể', style: TextStyle(fontWeight: FontWeight.w800)),
+                  ],
+                ),
+                content: Form(
+                  key: formKey,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildTextField(
+                          controller: nameCtrl,
+                          label: 'Tên biến thể',
+                          icon: Icons.label_outline_rounded,
+                          validator: (v) => (v ?? '').trim().isEmpty ? 'Nhập tên biến thể' : null,
                         ),
-                        items: <DropdownMenuItem<int?>>[
-                          const DropdownMenuItem<int?>(
-                            value: null,
-                            child: Text('Không chọn ảnh riêng'),
-                          ),
-                          ..._product.images.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final image = entry.value;
-                            return DropdownMenuItem<int?>(
-                              value: image.id,
-                              child: Row(
-                                children: [
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: CachedNetworkImage(
-                                      imageUrl: image.url,
-                                      width: 34,
-                                      height: 34,
-                                      fit: BoxFit.cover,
-                                      errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 20),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text('Ảnh ${index + 1}'),
-                                ],
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildTextField(
+                                controller: skuCtrl,
+                                label: 'SKU',
+                                icon: Icons.qr_code_rounded,
                               ),
-                            );
-                          }),
-                        ],
-                        onChanged: (value) => selectedImageId = value,
-                      ),
-                    ],
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _buildTextField(
+                                controller: stockCtrl,
+                                label: 'Tồn kho',
+                                icon: Icons.warehouse_outlined,
+                                keyboardType: TextInputType.number,
+                                validator: (v) {
+                                  final value = int.tryParse((v ?? '').trim());
+                                  if (value == null || value < 0) return 'Không hợp lệ';
+                                  return null;
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _buildTextField(
+                          controller: priceCtrl,
+                          label: 'Giá bán',
+                          icon: Icons.payments_outlined,
+                          suffixText: 'VND',
+                          keyboardType: TextInputType.number,
+                          validator: (v) {
+                            if (_parsePrice(v ?? '') <= 0) return 'Giá phải lớn hơn 0';
+                            return null;
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<int?>(
+                          value: _product.images.any((img) => img.id == selectedImageId)
+                              ? selectedImageId
+                              : null,
+                          decoration: _inputDecoration(
+                            label: 'Ảnh đại diện biến thể',
+                            icon: Icons.image_outlined,
+                          ),
+                          items: <DropdownMenuItem<int?>>[
+                            const DropdownMenuItem<int?>(
+                              value: null,
+                              child: Text('Không chọn ảnh riêng'),
+                            ),
+                            ..._product.images.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final image = entry.value;
+                              return DropdownMenuItem<int?>(
+                                value: image.id,
+                                child: Row(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: CachedNetworkImage(
+                                        imageUrl: image.url,
+                                        width: 34,
+                                        height: 34,
+                                        fit: BoxFit.cover,
+                                        fadeInDuration: Duration.zero,
+                                        fadeOutDuration: Duration.zero,
+                                        errorWidget: (_, __, ___) => const Icon(Icons.broken_image, size: 20),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text('Ảnh ${index + 1}'),
+                                  ],
+                                ),
+                              );
+                            }),
+                          ],
+                          onChanged: isSaving
+                              ? null
+                              : (value) {
+                            selectedImageId = value;
+                          },
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: isSaving ? null : () => Navigator.pop(ctx),
-                  child: const Text('Hủy', style: TextStyle(color: _textGrey)),
-                ),
-                ElevatedButton(
-                  onPressed: isSaving
-                      ? null
-                      : () async {
-                    if (!formKey.currentState!.validate()) return;
-                    setDialogState(() => isSaving = true);
+                actions: [
+                  TextButton(
+                    onPressed: isSaving ? null : () => Navigator.of(dialogContext).pop(),
+                    child: const Text('Hủy', style: TextStyle(color: _textGrey)),
+                  ),
+                  ElevatedButton(
+                    onPressed: isSaving
+                        ? null
+                        : () async {
+                      if (formKey.currentState?.validate() != true) return;
 
-                    final provider = context.read<ProductProvider>();
-                    final success = await provider.updateVariant(
-                      _product.id,
-                      variant.id,
-                      {
-                        'name': nameCtrl.text.trim(),
-                        'sku': skuCtrl.text.trim(),
-                        'price': _parsePrice(priceCtrl.text),
-                        'stock': _parseStock(stockCtrl.text),
-                        'imageId': selectedImageId,
-                      },
-                    );
+                      setDialogState(() => isSaving = true);
 
-                    if (!mounted) return;
-                    if (success) {
-                      Navigator.pop(ctx);
-                      await _fetchVariants();
-                      _showSnack('Đã cập nhật biến thể');
-                    } else {
-                      setDialogState(() => isSaving = false);
-                      _showSnack(provider.error ?? 'Cập nhật biến thể thất bại', isError: true);
-                    }
-                  },
-                  style: _primaryButtonStyle(compact: true),
-                  child: isSaving
-                      ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                  )
-                      : const Text('Lưu'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
+                      final provider = context.read<ProductProvider>();
+                      final success = await provider.updateVariant(
+                        _product.id,
+                        variant.id,
+                        {
+                          'name': nameCtrl.text.trim(),
+                          'sku': skuCtrl.text.trim(),
+                          'price': _parsePrice(priceCtrl.text),
+                          'stock': _parseStock(stockCtrl.text),
+                          'imageId': selectedImageId,
+                        },
+                      );
 
-    nameCtrl.dispose();
-    skuCtrl.dispose();
-    priceCtrl.dispose();
-    stockCtrl.dispose();
+                      if (!mounted || !dialogContext.mounted) return;
+
+                      if (success) {
+                        // Không gọi _fetchVariants() hoặc setState màn cha tại đây.
+                        // Để dialog đóng xong hoàn toàn rồi màn cha mới reload dữ liệu.
+                        // Cách này tránh lỗi scheduler/build scope do route animation của Dialog.
+                        variantUpdated = true;
+                        Navigator.of(dialogContext).pop();
+                      } else {
+                        errorMessage = provider.error ?? 'Cập nhật biến thể thất bại';
+                        setDialogState(() => isSaving = false);
+                      }
+                    },
+                    style: _primaryButtonStyle(compact: true),
+                    child: isSaving
+                        ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                        : const Text('Lưu'),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+    } finally {
+      nameCtrl.dispose();
+      skuCtrl.dispose();
+      priceCtrl.dispose();
+      stockCtrl.dispose();
+    }
+
+    if (!mounted) return;
+
+    if (variantUpdated) {
+      await _fetchVariants();
+      if (!mounted) return;
+      _showSnack('Đã cập nhật biến thể');
+    } else if (errorMessage != null) {
+      _showSnack(errorMessage!, isError: true);
+    }
   }
 
   @override
@@ -435,46 +551,66 @@ class _EditProductScreenState extends State<EditProductScreen>
           style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
         ),
         bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(52),
-          child: Container(
-            margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: _softPink,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              dividerColor: Colors.transparent,
-              indicatorSize: TabBarIndicatorSize.tab,
-              indicator: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(13),
-                boxShadow: [
-                  BoxShadow(
-                    color: _primaryPink.withOpacity(0.12),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+          preferredSize: const Size.fromHeight(62),
+          child: _buildManualTabSelector(),
+        ),
+      ),
+      body: _selectedTabIndex == 0 ? _buildInfoTab() : _buildVariantTab(),
+    );
+  }
+
+  Widget _buildManualTabSelector() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: _softPink,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          _manualTabButton(index: 0, label: 'Thông tin'),
+          _manualTabButton(index: 1, label: 'Biến thể'),
+        ],
+      ),
+    );
+  }
+
+  Widget _manualTabButton({required int index, required String label}) {
+    final selected = _selectedTabIndex == index;
+
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(13),
+        onTap: () {
+          if (!mounted || _selectedTabIndex == index) return;
+          setState(() => _selectedTabIndex = index);
+        },
+        child: Container(
+          height: 42,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? Colors.white : Colors.transparent,
+            borderRadius: BorderRadius.circular(13),
+            boxShadow: selected
+                ? [
+              BoxShadow(
+                color: _primaryPink.withOpacity(0.12),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              labelColor: _primaryPink,
-              unselectedLabelColor: _textGrey,
-              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-              tabs: const [
-                Tab(text: 'Thông tin'),
-                Tab(text: 'Biến thể'),
-              ],
+            ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? _primaryPink : _textGrey,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
             ),
           ),
         ),
-      ),
-      body: TabBarView(
-        controller: _tabController,
-        children: [
-          _buildInfoTab(),
-          _buildVariantTab(),
-        ],
       ),
     );
   }
@@ -545,12 +681,16 @@ class _EditProductScreenState extends State<EditProductScreen>
                           icon: Icons.warehouse_outlined,
                           keyboardType: TextInputType.number,
                           enabled: false,
+                          helperText: 'Tự tính từ biến thể',
                         ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 8),
-
+                  const Text(
+                    'Tồn kho sản phẩm được BE đồng bộ từ tổng tồn kho các biến thể. Hãy chỉnh kho trong tab Biến thể.',
+                    style: TextStyle(color: _textGrey, fontSize: 12, height: 1.35),
+                  ),
                 ],
               ),
               const SizedBox(height: 14),
@@ -640,6 +780,8 @@ class _EditProductScreenState extends State<EditProductScreen>
               width: 76,
               height: 76,
               fit: BoxFit.cover,
+              fadeInDuration: Duration.zero,
+              fadeOutDuration: Duration.zero,
               errorWidget: (_, __, ___) => Container(
                 width: 76,
                 height: 76,
@@ -752,6 +894,8 @@ class _EditProductScreenState extends State<EditProductScreen>
                         width: 88,
                         height: 88,
                         fit: BoxFit.cover,
+                        fadeInDuration: Duration.zero,
+                        fadeOutDuration: Duration.zero,
                         errorWidget: (_, __, ___) => Container(
                           width: 88,
                           height: 88,
@@ -897,6 +1041,8 @@ class _EditProductScreenState extends State<EditProductScreen>
               width: 62,
               height: 62,
               fit: BoxFit.cover,
+              fadeInDuration: Duration.zero,
+              fadeOutDuration: Duration.zero,
               errorWidget: (_, __, ___) => Container(
                 width: 62,
                 height: 62,
@@ -997,124 +1143,117 @@ class _EditProductScreenState extends State<EditProductScreen>
   // Dropdown chọn danh mục trong màn chỉnh sửa sản phẩm
   // =========================
   Widget _buildCategoryDropdown() {
-    return Consumer<CategoryProvider>(
-      builder: (context, categoryProvider, _) {
-        final categories = List<dynamic>.from(
-          categoryProvider.categories.isNotEmpty
-              ? categoryProvider.categories
-              : categoryProvider.flattenTree(),
-        );
+    if (_isLoadingCategories) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _lighterPink,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _borderPink),
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 18,
+              height: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Đang tải danh mục...',
+                style: TextStyle(color: _textGrey),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
-        if (categoryProvider.loadingList || categoryProvider.loadingTree) {
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _lighterPink,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _borderPink),
-            ),
-            child: const Row(
-              children: [
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Đang tải danh mục...',
-                    style: TextStyle(color: _textGrey),
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
+    final items = _selectableCategories.map((category) {
+      final id = _readCategoryId(category);
+      if (id == null) return null;
 
-        final items = categories.map((category) {
-          final id = _readCategoryId(category);
-          if (id == null) return null;
+      return DropdownMenuItem<int>(
+        value: id,
+        child: Text(
+          _readCategoryName(category),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      );
+    }).whereType<DropdownMenuItem<int>>().toList();
 
-          return DropdownMenuItem<int>(
-            value: id,
-            child: Text(
-              _readCategoryName(category),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          );
-        }).whereType<DropdownMenuItem<int>>().toList();
+    final hasSelectedValue = items.any((item) => item.value == _selectedCategoryId);
 
-        final hasSelectedValue = items.any((item) => item.value == _selectedCategoryId);
+    if (items.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: _lighterPink,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _borderPink),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.category_outlined, color: _primaryPink),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _categoryLoadError == null
+                    ? 'Chưa có danh mục để chọn'
+                    : 'Không tải được danh mục',
+                style: const TextStyle(color: _textGrey),
+              ),
+            ),
+            TextButton(
+              onPressed: _isSavingProduct ? null : _loadSelectableCategories,
+              child: const Text('Tải lại'),
+            ),
+          ],
+        ),
+      );
+    }
 
-        if (items.isEmpty) {
-          return Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: _lighterPink,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: _borderPink),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.category_outlined, color: _primaryPink),
-                const SizedBox(width: 10),
-                const Expanded(
-                  child: Text(
-                    'Chưa có danh mục để chọn',
-                    style: TextStyle(color: _textGrey),
-                  ),
-                ),
-                TextButton(
-                  onPressed: _isSavingProduct ? null : _loadSelectableCategories,
-                  child: const Text('Tải lại'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return DropdownButtonFormField<int>(
-          value: hasSelectedValue ? _selectedCategoryId : null,
-          isExpanded: true,
-          decoration: InputDecoration(
-            labelText: 'Danh mục',
-            hintText: 'Chọn danh mục sản phẩm',
-            prefixIcon: const Icon(Icons.category_outlined, color: _primaryPink),
-            filled: true,
-            fillColor: _lighterPink,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: _borderPink),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: _borderPink),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: _primaryPink, width: 1.4),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: _dangerRed),
-            ),
-          ),
-          items: items,
-          onChanged: _isSavingProduct
-              ? null
-              : (value) {
-            setState(() => _selectedCategoryId = value);
-          },
-          validator: (value) {
-            if (value == null) return 'Vui lòng chọn danh mục';
-            return null;
-          },
-        );
+    return DropdownButtonFormField<int>(
+      value: hasSelectedValue ? _selectedCategoryId : null,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Danh mục',
+        hintText: 'Chọn danh mục sản phẩm',
+        prefixIcon: const Icon(Icons.category_outlined, color: _primaryPink),
+        filled: true,
+        fillColor: _lighterPink,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _borderPink),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _borderPink),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _primaryPink, width: 1.4),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: _dangerRed),
+        ),
+      ),
+      items: items,
+      onChanged: _isSavingProduct
+          ? null
+          : (value) {
+        if (!mounted) return;
+        setState(() => _selectedCategoryId = value);
+      },
+      validator: (value) {
+        if (value == null) return 'Vui lòng chọn danh mục';
+        return null;
       },
     );
   }

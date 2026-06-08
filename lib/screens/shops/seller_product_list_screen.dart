@@ -189,7 +189,12 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
     );
 
     if (!mounted) return;
-    await _reloadSellerProducts(showLoading: false);
+
+    // Ép gọi lại server để lấy sản phẩm mới nhất sau khi tạo sản phẩm
+    await _reloadSellerProducts(
+      showLoading: false,
+      forceServer: true,
+    );
   }
 
   // =========================
@@ -204,7 +209,12 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
     );
 
     if (!mounted) return;
-    await _reloadSellerProducts(showLoading: false);
+
+    // Ép gọi lại server để lấy thông tin mới nhất sau khi chỉnh sửa sản phẩm
+    await _reloadSellerProducts(
+      showLoading: true,
+      forceServer: true,
+    );
   }
 
   @override
@@ -279,7 +289,10 @@ class _SellerProductListScreenState extends State<SellerProductListScreen> {
                   : RefreshIndicator(
                 color: _primaryPink,
                 onRefresh: () async {
-                  await _reloadSellerProducts(showLoading: false);
+                  await _reloadSellerProducts(
+                    showLoading: false,
+                    forceServer: true,
+                  );
                 },
                 child: ListView.separated(
                   physics: const AlwaysScrollableScrollPhysics(),

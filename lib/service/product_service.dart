@@ -334,8 +334,23 @@ class ProductService {
     }
   }
 
+  Future<void> activateProductByAdmin(int productId) async {
+    try {
+      await _api.patch(
+        ProductApi.byId(productId),
+        data: {'status': ProductStatusValue.active},
+        options: Options(contentType: 'application/json'),
+      );
+    } catch (e) {
+      throw Exception('Mở khóa sản phẩm thất bại: $e');
+    }
+  }
+
   Future<List<ProductModel>> getDeletedProducts({int limit = 100}) {
-    return getAdminProducts(limit: limit);
+    throw Exception(
+      'BE product hiện tại đang xóa cứng bằng DELETE /products/:id, '
+          'nên FE không có danh sách sản phẩm đã xóa để khôi phục.',
+    );
   }
 
   Future<void> restoreProduct(int productId) {
