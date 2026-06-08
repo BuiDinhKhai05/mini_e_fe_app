@@ -1,4 +1,10 @@
 // lib/screens/admins/admin_products_screen.dart
+// Màn Admin quản lý sản phẩm.
+// Đồng bộ với BE product hiện tại:
+// - GET    /products/admin/all
+// - PATCH  /products/:id với status ACTIVE hoặc LOCKED dành cho Admin
+// - DELETE /products/:id hiện BE đang xóa cứng, không phải xóa mềm
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -16,13 +22,14 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   final TextEditingController _searchController = TextEditingController();
 
   String? _selectedStatus;
-  bool _showDeletedOnly = false;
 
   @override
   void initState() {
     super.initState();
 
+    // Không gọi Provider ngay trong initState để tránh rebuild sai frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
       context.read<ProductProvider>().fetchAdminProducts();
     });
   }
@@ -34,34 +41,31 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   Future<void> _reload() async {
+    if (!mounted) return;
+
     await context.read<ProductProvider>().fetchAdminProducts(
       q: _searchController.text.trim(),
       status: _selectedStatus,
     );
   }
 
-  List<ProductModel> _applyLocalFilter(List<ProductModel> products) {
-    if (!_showDeletedOnly) return products;
-    return products.where((p) => p.isDeleted).toList();
-  }
-
   Future<void> _confirmLock(ProductModel product) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Khóa sản phẩm'),
           content: Text(
             'Bạn có chắc muốn khóa sản phẩm "${product.title}" không?\n\n'
-                'Sau khi khóa, sản phẩm sẽ không hiển thị public và seller không thể chỉnh sửa.',
+                'Sản phẩm bị khóa sẽ không hiển thị public và seller không thể chỉnh sửa.',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Hủy'),
             ),
             FilledButton(
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text('Khóa'),
             ),
           ],
@@ -87,24 +91,67 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     await _reload();
   }
 
-  Future<void> _confirmDelete(ProductModel product) async {
+  Future<void> _confirmActivate(ProductModel product) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Xóa sản phẩm'),
+          title: const Text('Mở khóa sản phẩm'),
           content: Text(
-            'Bạn có chắc muốn xóa mềm sản phẩm "${product.title}" không?\n\n'
-                'Sản phẩm sẽ không còn hiển thị với người mua, nhưng dữ liệu ảnh/biến thể vẫn được giữ trong DB.',
+            'Bạn có chắc muốn mở khóa sản phẩm "${product.title}" không?\n\n'
+                'BE hiện tại cho Admin chuyển sản phẩm từ LOCKED về ACTIVE.',
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context, false),
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Mở khóa'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (ok != true || !mounted) return;
+
+    final provider = context.read<ProductProvider>();
+    final success = await provider.activateProductByAdmin(product.id);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success ? 'Đã mở khóa sản phẩm' : provider.adminProductError ?? 'Không thể mở khóa sản phẩm',
+        ),
+      ),
+    );
+
+    await _reload();
+  }
+
+  Future<void> _confirmDelete(ProductModel product) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Xóa sản phẩm'),
+          content: Text(
+            'Bạn có chắc muốn xóa sản phẩm "${product.title}" không?\n\n'
+                'Lưu ý: BE product hiện tại đang dùng delete() nên đây là xóa cứng. '
+                'Sản phẩm sẽ biến mất khỏi danh sách sau khi xóa thành công.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
               child: const Text('Hủy'),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () => Navigator.pop(context, true),
+              onPressed: () => Navigator.pop(dialogContext, true),
               child: const Text('Xóa'),
             ),
           ],
@@ -135,7 +182,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       context: context,
       showDragHandle: true,
       isScrollControlled: true,
-      builder: (context) {
+      builder: (sheetContext) {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -159,7 +206,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                 ),
                 const SizedBox(height: 16),
                 _infoRow('ID', product.id.toString()),
-                _infoRow('Giá', '${product.price.toStringAsFixed(0)}đ'),
+                _infoRow('Giá', _money(product.price)),
                 _infoRow('Tồn kho', product.stock.toString()),
                 _infoRow('Đã bán', product.sold.toString()),
                 _infoRow('Trạng thái', _statusText(product)),
@@ -168,7 +215,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                 _infoRow('Slug', product.slug ?? 'Không có'),
                 _infoRow('Ngày tạo', product.createdAt ?? 'Không có'),
                 _infoRow('Ngày cập nhật', product.updatedAt ?? 'Không có'),
-                if (product.deletedAt != null) _infoRow('Đã xóa lúc', product.deletedAt!),
+                if (product.deletedAt != null) _infoRow('DeletedAt', product.deletedAt!),
                 const SizedBox(height: 16),
                 Text(
                   'Mô tả',
@@ -218,7 +265,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 104,
+            width: 108,
             child: Text(
               label,
               style: const TextStyle(fontWeight: FontWeight.w700),
@@ -276,7 +323,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                   );
                 }
 
-                final products = _applyLocalFilter(provider.adminProducts);
+                final products = provider.adminProducts;
 
                 if (products.isEmpty) {
                   return const Center(
@@ -339,12 +386,9 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                 children: [
                   _filterChip(
                     label: 'Tất cả',
-                    selected: _selectedStatus == null && !_showDeletedOnly,
+                    selected: _selectedStatus == null,
                     onTap: () {
-                      setState(() {
-                        _selectedStatus = null;
-                        _showDeletedOnly = false;
-                      });
+                      setState(() => _selectedStatus = null);
                       _reload();
                     },
                   ),
@@ -352,10 +396,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                     label: 'Đang bán',
                     selected: _selectedStatus == ProductStatusValue.active,
                     onTap: () {
-                      setState(() {
-                        _selectedStatus = ProductStatusValue.active;
-                        _showDeletedOnly = false;
-                      });
+                      setState(() => _selectedStatus = ProductStatusValue.active);
                       _reload();
                     },
                   ),
@@ -363,10 +404,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                     label: 'Hết hàng',
                     selected: _selectedStatus == ProductStatusValue.outOfStock,
                     onTap: () {
-                      setState(() {
-                        _selectedStatus = ProductStatusValue.outOfStock;
-                        _showDeletedOnly = false;
-                      });
+                      setState(() => _selectedStatus = ProductStatusValue.outOfStock);
                       _reload();
                     },
                   ),
@@ -374,21 +412,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                     label: 'Đã khóa',
                     selected: _selectedStatus == ProductStatusValue.locked,
                     onTap: () {
-                      setState(() {
-                        _selectedStatus = ProductStatusValue.locked;
-                        _showDeletedOnly = false;
-                      });
-                      _reload();
-                    },
-                  ),
-                  _filterChip(
-                    label: 'Đã xóa',
-                    selected: _showDeletedOnly,
-                    onTap: () {
-                      setState(() {
-                        _selectedStatus = null;
-                        _showDeletedOnly = true;
-                      });
+                      setState(() => _selectedStatus = ProductStatusValue.locked);
                       _reload();
                     },
                   ),
@@ -417,8 +441,8 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
   }
 
   Widget _buildProductCard(ProductModel product) {
-    final imageUrl = product.imageUrl;
     final canLock = !product.isDeleted && !product.isLocked;
+    final canActivate = !product.isDeleted && product.isLocked;
     final canDelete = !product.isDeleted;
 
     return Card(
@@ -430,7 +454,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildImage(imageUrl),
+              _buildImage(product.imageUrl),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -472,6 +496,12 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             onPressed: () => _confirmLock(product),
                             icon: const Icon(Icons.lock_outline, size: 18),
                             label: const Text('Khóa'),
+                          ),
+                        if (canActivate)
+                          OutlinedButton.icon(
+                            onPressed: () => _confirmActivate(product),
+                            icon: const Icon(Icons.lock_open_outlined, size: 18),
+                            label: const Text('Mở khóa'),
                           ),
                         if (canDelete)
                           OutlinedButton.icon(

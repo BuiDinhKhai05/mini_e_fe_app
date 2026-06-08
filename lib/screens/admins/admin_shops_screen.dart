@@ -35,9 +35,12 @@ class _AdminShopsScreenState extends State<AdminShopsScreen> {
 
   void _loadShops() {
     if (_filterStatus == 'ALL') {
-      _shopsFuture = ShopService().getShops(); // lấy tất cả
+      // Admin phải dùng endpoint /shops/admin/all để lấy đủ shop
+      // và để request đi qua ApiClient refresh token.
+      _shopsFuture = ShopService().getAdminShops();
     } else {
-      _shopsFuture = ShopService().getShops(status: _filterStatus);
+      // Lọc theo trạng thái trên endpoint admin, không dùng public /shops.
+      _shopsFuture = ShopService().getAdminShops(status: _filterStatus);
     }
   }
 

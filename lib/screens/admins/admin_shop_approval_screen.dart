@@ -23,7 +23,9 @@ class _AdminShopApprovalScreenState extends State<AdminShopApprovalScreen> {
   }
 
   void _loadPendingShops() {
-    _pendingShops = ShopService().getShops(status: 'PENDING');
+    // Admin duyệt shop phải lấy từ endpoint admin /shops/admin/all.
+    // Endpoint public /shops thường chỉ trả shop ACTIVE nên không phù hợp.
+    _pendingShops = ShopService().getAdminShops(status: 'PENDING');
   }
 
   Future<void> _approveShop(int shopId) async {

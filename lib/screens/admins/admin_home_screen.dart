@@ -99,7 +99,7 @@ class AdminHomeScreen extends StatelessWidget {
                         icon: Icons.inventory_2_outlined,
                         color: Colors.orange,
                         title: 'Quản lý sản phẩm',
-                        desc: 'Xem, khóa hoặc xóa sản phẩm trong hệ thống',
+                        desc: 'Xem, khóa, mở khóa hoặc xóa sản phẩm',
                         route: '/admin/products',
                       ),
                     ],
@@ -139,7 +139,7 @@ class AdminHomeScreen extends StatelessWidget {
                         icon: Icons.inventory_2_outlined,
                         color: Colors.orange,
                         title: 'Quản lý sản phẩm',
-                        desc: 'Xem, khóa hoặc xóa sản phẩm trong hệ thống',
+                        desc: 'Xem, khóa, mở khóa hoặc xóa sản phẩm',
                         route: '/admin/products',
                       ),
                     ],
@@ -189,7 +189,7 @@ class AdminHomeScreen extends StatelessWidget {
                 ),
                 SizedBox(height: AppSpacing.xs),
                 Text(
-                  'Quản lý shop, người dùng, danh mục và các chức năng hệ thống.',
+                  'Quản lý shop, người dùng, danh mục, sản phẩm và các chức năng hệ thống.',
                   style: AppTextStyles.bodyGrey,
                 ),
               ],
@@ -282,3 +282,4 @@ class AdminHomeScreen extends StatelessWidget {
     );
   }
 }
+ 
