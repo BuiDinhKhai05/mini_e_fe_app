@@ -244,18 +244,6 @@ class _EditPersonalInfoScreenState extends State<EditPersonalInfoScreen> {
             ),
           ),
 
-          const SizedBox(height: 6),
-
-          const Text(
-            'BE hiện nhận avatarUrl, không nhận File ảnh trực tiếp.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textGrey,
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              height: 1.35,
-            ),
-          ),
         ],
       ),
     );
