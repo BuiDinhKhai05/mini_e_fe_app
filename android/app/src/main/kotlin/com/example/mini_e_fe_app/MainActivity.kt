@@ -1,4 +1,4 @@
-package com.example.mini_e_fe_app
+package com.vuongdinhquochiep.minie
 
 import io.flutter.embedding.android.FlutterActivity
 
