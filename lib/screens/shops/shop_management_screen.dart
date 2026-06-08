@@ -595,25 +595,26 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
         _buildMenuItem(
           Icons.inventory_2_outlined,
           'Sản phẩm',
-              () async {
-            await _reloadManagementData(
-              clearProductsFirst: true,
-              showLoading: true,
-            );
-
-            if (!mounted) return;
-
+              () {
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => const SellerProductListScreen(),
               ),
-            );
+            ).then((_) {
+              if (!mounted) return;
+
+              // Khi quay lại trang quản lý shop thì cập nhật lại thống kê mới nhất
+              _reloadManagementData(
+                clearProductsFirst: false,
+                showLoading: false,
+              );
+            });
           },
           badgeCount: productCount,
         ),
         _buildMenuItem(
-          Icons.shopping_bag_outlined,
+          Icons.receipt_long_outlined,
           'Đơn hàng',
               () {
             Navigator.push(
@@ -621,22 +622,41 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
               MaterialPageRoute(
                 builder: (_) => const SellerOrderListScreen(),
               ),
-            );
+            ).then((_) {
+              if (!mounted) return;
+
+              _reloadManagementData(
+                clearProductsFirst: false,
+                showLoading: false,
+              );
+            });
           },
           badgeCount: orderCount,
         ),
         _buildMenuItem(
-          Icons.rate_review_outlined,
+          Icons.star_border_rounded,
           'Đánh giá',
-          _openSellerShopReviewsScreen,
+              () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const SellerShopReviewsScreen(),
+              ),
+            ).then((_) {
+              if (!mounted) return;
+
+              _reloadManagementData(
+                clearProductsFirst: false,
+                showLoading: false,
+              );
+            });
+          },
           badgeCount: reviewCount,
         ),
         _buildMenuItem(Icons.campaign_outlined, 'Marketing', () {}),
 
-        // Mở sang trang doanh thu. Trang này dùng dữ liệu từ GET /shops/me,
-        // không gọi API /shops/me/revenue vì BE hiện tại chưa có endpoint đó.
         _buildMenuItem(
-          Icons.account_balance_wallet_outlined,
+          Icons.payments_outlined,
           'Doanh thu',
               () {
             Navigator.push(
@@ -644,12 +664,19 @@ class _ShopManagementScreenState extends State<ShopManagementScreen> {
               MaterialPageRoute(
                 builder: (_) => const ShopRevenueScreen(),
               ),
-            );
+            ).then((_) {
+              if (!mounted) return;
+
+              _reloadManagementData(
+                clearProductsFirst: false,
+                showLoading: false,
+              );
+            });
           },
         ),
 
         _buildMenuItem(Icons.bar_chart_outlined, 'Phân tích', () {}),
-        _buildMenuItem(Icons.settings_outlined, 'Thiết lập', () {
+        _buildMenuItem(Icons.settings_outlined, 'Cài đặt', () {
           _showSettingsOptions(context, shopProvider);
         }),
       ],

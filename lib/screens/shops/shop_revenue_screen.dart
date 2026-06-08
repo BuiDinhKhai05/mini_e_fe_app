@@ -186,17 +186,7 @@ class _ShopRevenueScreenState extends State<ShopRevenueScreen> {
               }
             },
           ),
-          const SizedBox(height: 8),
-          Text(
-            _selectedRange == ShopOrderRange.today
-                ? 'Hôm nay lấy đơn theo query range=1 từ BE.'
-                : 'Dữ liệu được lọc trực tiếp từ BE bằng query range=${_selectedRange.queryValue}.',
-            style: const TextStyle(
-              color: _textGrey,
-              fontSize: 12,
-              height: 1.4,
-            ),
-          ),
+
         ],
       ),
     );
@@ -449,15 +439,8 @@ class _ShopRevenueScreenState extends State<ShopRevenueScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Màn này không xem chi tiết đơn, chỉ hiển thị trạng thái giao hàng để biết đơn có bị hoàn trả hay không.',
-            style: TextStyle(
-              color: _textGrey,
-              height: 1.4,
-              fontSize: 12,
-            ),
-          ),
-          const SizedBox(height: 14),
+
+
           if (loading)
             const Padding(
               padding: EdgeInsets.symmetric(vertical: 24),
