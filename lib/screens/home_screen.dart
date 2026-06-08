@@ -12,6 +12,7 @@ import '../providers/recommendation_provider.dart';
 import '../models/product_model.dart';
 import '../models/category_model.dart';
 import '../theme/app_theme.dart';
+import '../widgets/horizontal_section.dart';
 import 'categories/category_screen.dart';
 import 'package:mini_e_fe_app/screens/products/widgets/product_cart_action_sheet.dart';
 
@@ -1153,8 +1154,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ================================================================
   // CARD SẢN PHẨM
-  // Hiển thị ảnh, nhãn Hot, icon yêu thích, tên, giá, tồn kho,
+  // Hiển thị ảnh, icon yêu thích, tên, giá, tồn kho,
   // nút chi tiết và nút thêm vào giỏ.
+  // Lưu ý: đã bỏ nhãn "Hot" tĩnh vì BE hiện chưa có API/field xác định product trending thật.
   // Chức năng bấm card vẫn đi đến trang chi tiết sản phẩm.
   // ================================================================
   Widget _productCard(
@@ -1207,25 +1209,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       errorWidget: (_, __, ___) => _productImageFallback(),
-                    ),
-                  ),
-                  Positioned(
-                    left: 10,
-                    top: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.darkPink,
-                        borderRadius: BorderRadius.circular(AppRadius.circle),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.darkPink.withOpacity(0.22),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Text('Hot', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
                     ),
                   ),
                   Positioned(
@@ -1372,33 +1355,44 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, recommendationProvider, child) {
         final products = recommendationProvider.recommendedProducts;
 
-        if (products.isEmpty) {
-          return const SizedBox.shrink();
-        }
+        return HorizontalSection<ProductModel>(
+          title: 'Gợi ý cho bạn ✨',
+          items: products,
+          height: 290,
+          itemWidth: 170,
+          onViewAll: () {
+            Navigator.pushNamed(context, '/recommendations');
+          },
+          itemBuilder: (context, product, index) {
+            return _productCard(
+              product,
+              source: 'home_recommendation',
+            );
+          },
+        );
+      },
+    );
+  }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _sectionHeader('Gợi ý cho bạn ✨'),
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
-              itemCount: products.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 14,
-                childAspectRatio: 0.60,
-              ),
-              itemBuilder: (context, index) {
-                return _productCard(
-                  products[index],
-                  source: 'home_recommendation',
-                );
-              },
-            ),
-          ],
+  Widget _favoriteProductsSection() {
+    return Consumer<RecommendationProvider>(
+      builder: (context, recommendationProvider, child) {
+        final products = recommendationProvider.favoriteProducts;
+
+        return HorizontalSection<ProductModel>(
+          title: 'Yêu thích 💖',
+          items: products,
+          height: 290,
+          itemWidth: 170,
+          onViewAll: () {
+            Navigator.pushNamed(context, '/favorites');
+          },
+          itemBuilder: (context, product, index) {
+            return _productCard(
+              product,
+              source: 'home_favorite_products',
+            );
+          },
         );
       },
     );
@@ -1472,8 +1466,16 @@ class _HomeScreenState extends State<HomeScreen> {
                             SliverToBoxAdapter(
                               child: _recommendedProductsSection(),
                             ),
+
                             SliverToBoxAdapter(
-                              child: _sectionHeader('Sản phẩm bán chạy 🧸', onViewAll: () => _openCategoryProducts()),
+                              child: _favoriteProductsSection(),
+                            ),
+
+                            SliverToBoxAdapter(
+                              child: _sectionHeader(
+                                'Sản phẩm bán chạy 🧸',
+                                onViewAll: () => _openCategoryProducts(),
+                              ),
                             ),
                             // Grid sản phẩm 2 cột phù hợp với màn hình mobile.
                             SliverPadding(
