@@ -20,6 +20,12 @@ class AddAddressScreen extends StatefulWidget {
 }
 
 class _AddAddressScreenState extends State<AddAddressScreen> {
+  static const Map<String, String> _nominatimHeaders = {
+    'User-Agent': 'mini-e-fe-app/1.0 (contact: quochiep1610@gmail.com)',
+    'Accept': 'application/json',
+    'Accept-Language': 'vi',
+  };
+
   final _formKey = GlobalKey<FormState>();
 
   late TextEditingController _nameController;
@@ -64,35 +70,64 @@ class _AddAddressScreenState extends State<AddAddressScreen> {
   // Map -> Address: lấy địa chỉ từ tọa độ bằng OpenStreetMap Nominatim
   // =========================
   Future<void> _updateAddressFromCoordinates(double lat, double lng) async {
-    // Cập nhật tọa độ để lưu lên server.
     setState(() {
       _lat = lat;
       _lng = lng;
     });
 
-    final url =
-        'https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json';
+    final uri = Uri.https(
+      'nominatim.openstreetmap.org',
+      '/reverse',
+      {
+        'lat': lat.toString(),
+        'lon': lng.toString(),
+        'format': 'jsonv2',
+        'addressdetails': '1',
+        'zoom': '18',
+        'email': 'quochiep1610@gmail.com',
+      },
+    );
 
     try {
       final response = await http.get(
-        Uri.parse(url),
-        headers: {'User-Agent': 'FlutterApp/1.0'},
+        uri,
+        headers: _nominatimHeaders,
       );
+      if (response.statusCode == 403 || response.statusCode == 429) {
+        if (!mounted) return;
+
+        _showSnackBar(
+          'Dịch vụ bản đồ đang bị giới hạn. Vị trí đã được ghim, bạn hãy nhập địa chỉ thủ công.',
+          isError: true,
+        );
+
+        return;
+      }
+
+      debugPrint('Nominatim reverse status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         final displayName = data['display_name'];
 
-        if (displayName != null) {
+        if (displayName != null && displayName.toString().trim().isNotEmpty) {
           setState(() {
-            // Điền địa chỉ lấy được vào ô nhập.
-            _detailAddressController.text = displayName;
-            _finalFormattedAddress = displayName;
+            _detailAddressController.text = displayName.toString();
+            _finalFormattedAddress = displayName.toString();
           });
         }
+        return;
       }
+
+      debugPrint('Nominatim reverse lỗi: ${response.statusCode}');
     } catch (e) {
       debugPrint('Lỗi reverse geocode: $e');
+
+      if (!mounted) return;
+      _showSnackBar(
+        'Đã chọn vị trí. Không tự lấy được địa chỉ, bạn hãy nhập địa chỉ thủ công.',
+        isError: true,
+      );
     }
   }
 

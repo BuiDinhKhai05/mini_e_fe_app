@@ -75,7 +75,24 @@ class AddressService {
   // 1. Lấy danh sách địa chỉ
   // ================================================================
   Future<List<AddressModel>> fetchAddresses(String _token) async {
-    final response = await _apiClient.get(AddressApi.list);
+    late final Response response;
+
+    try {
+      response = await _apiClient
+          .get(AddressApi.list)
+          .timeout(const Duration(seconds: 15));
+    } on DioException catch (e) {
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+
+      throw Exception(
+        'Không thể tải danh sách địa chỉ'
+            '${statusCode != null ? ' - HTTP $statusCode' : ''}'
+            '${data != null ? ' - $data' : ''}',
+      );
+    } catch (e) {
+      throw Exception('Không thể tải danh sách địa chỉ: $e');
+    }
 
     _ensureSuccess(
       response,
@@ -93,13 +110,11 @@ class AddressService {
         return data.map((e) => AddressModel.fromJson(e)).toList();
       }
 
-      // Dự phòng nếu BE trả { data: [...] } nhưng không có success.
       if (data is List) {
         return data.map((e) => AddressModel.fromJson(e)).toList();
       }
     }
 
-    // Dự phòng nếu BE trả thẳng list địa chỉ.
     if (body is List) {
       return body.map((e) => AddressModel.fromJson(e)).toList();
     }

@@ -7,66 +7,107 @@ class AddressProvider with ChangeNotifier {
 
   List<AddressModel> _addresses = [];
   bool _isLoading = false;
+  String? _errorMessage;
+
+  Future<void>? _runningFetch;
 
   List<AddressModel> get addresses => _addresses;
   bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
 
-  Future<void> fetchAddresses(String token) async {
+  Future<void> fetchAddresses(String token, {bool force = false}) async {
+    if (_runningFetch != null && !force) {
+      return _runningFetch!;
+    }
+
+    _runningFetch = _fetchAddressesInternal(token);
+    return _runningFetch!;
+  }
+
+  Future<void> _fetchAddressesInternal(String token) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
     try {
-      _addresses = await _service.fetchAddresses(token);
+      _addresses = await _service
+          .fetchAddresses(token)
+          .timeout(const Duration(seconds: 15));
     } catch (e) {
-      print(e);
-      _addresses = [];
+      debugPrint('ADDRESS FETCH ERROR: $e');
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+
+      // Không xóa dữ liệu cũ nếu trước đó đã có địa chỉ
+      if (_addresses.isEmpty) {
+        _addresses = [];
+      }
     } finally {
       _isLoading = false;
+      _runningFetch = null;
       notifyListeners();
     }
   }
 
   Future<void> addAddress(String token, Map<String, dynamic> data) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
     try {
       await _service.createAddress(token, data);
-      await fetchAddresses(token); // Tải lại danh sách sau khi thêm
+      await fetchAddresses(token, force: true);
     } catch (e) {
+      debugPrint('ADDRESS ADD ERROR: $e');
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      rethrow;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      rethrow;
     }
   }
-  Future<void> updateAddress(String token, int id, Map<String, dynamic> data) async {
+
+  Future<void> updateAddress(
+      String token,
+      int id,
+      Map<String, dynamic> data,
+      ) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
     try {
-      // Gọi service update (đã viết ở bước trước)
       await _service.updateAddress(token, id, data);
 
-      // Nếu người dùng có tick chọn "Mặc định" lúc sửa, gọi thêm API set default
       if (data['isDefault'] == true) {
         await _service.setDefault(token, id);
       }
 
-      await fetchAddresses(token); // Tải lại danh sách mới
+      await fetchAddresses(token, force: true);
     } catch (e) {
+      debugPrint('ADDRESS UPDATE ERROR: $e');
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      rethrow;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      rethrow;
     }
   }
+
   Future<void> deleteAddress(String token, int id) async {
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
     try {
       await _service.deleteAddress(token, id);
-      // Sau khi xóa xong, tải lại danh sách để UI cập nhật
-      await fetchAddresses(token);
+      await fetchAddresses(token, force: true);
     } catch (e) {
+      debugPrint('ADDRESS DELETE ERROR: $e');
+      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      rethrow;
+    } finally {
       _isLoading = false;
       notifyListeners();
-      rethrow;
     }
   }
 }

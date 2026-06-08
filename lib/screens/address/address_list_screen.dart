@@ -24,6 +24,48 @@ class AddressListScreen extends StatefulWidget {
 class _AddressListScreenState extends State<AddressListScreen> {
   int? _selectedId;
 
+  Widget _buildErrorState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.error_outline_rounded,
+              color: AppColors.error,
+              size: 52,
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Không thể tải danh sách địa chỉ',
+              style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textDark,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.textGrey,
+                fontSize: 13,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton.icon(
+              onPressed: _refreshList,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Thử lại'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
   @override
   void initState() {
     super.initState();
@@ -39,11 +81,20 @@ class _AddressListScreenState extends State<AddressListScreen> {
   // Load lại danh sách địa chỉ
   // =========================
   Future<void> _refreshList() async {
+    if (!mounted) return;
+
     final auth = Provider.of<AuthProvider>(context, listen: false);
-    if (auth.accessToken != null) {
-      await Provider.of<AddressProvider>(context, listen: false)
-          .fetchAddresses(auth.accessToken!);
+    final token = auth.accessToken;
+
+    if (token == null || token.isEmpty) {
+      debugPrint('ADDRESS LIST: accessToken is null or empty');
+      return;
     }
+
+    await Provider.of<AddressProvider>(
+      context,
+      listen: false,
+    ).fetchAddresses(token);
   }
 
   // =========================
@@ -767,6 +818,10 @@ class _AddressListScreenState extends State<AddressListScreen> {
                 builder: (context, provider, child) {
                   if (provider.isLoading && provider.addresses.isEmpty) {
                     return _buildLoadingState();
+                  }
+
+                  if (provider.errorMessage != null && provider.addresses.isEmpty) {
+                    return _buildErrorState(provider.errorMessage!);
                   }
 
                   if (provider.addresses.isEmpty) {

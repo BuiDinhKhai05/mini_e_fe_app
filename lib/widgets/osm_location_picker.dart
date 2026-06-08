@@ -8,94 +8,129 @@ class OsmLocationPicker extends StatefulWidget {
   final Function(double lat, double lng) onPicked;
 
   const OsmLocationPicker({
-    Key? key,
+    super.key,
     this.initLat,
     this.initLng,
     required this.onPicked,
-  }) : super(key: key);
+  });
 
   @override
   State<OsmLocationPicker> createState() => _OsmLocationPickerState();
 }
 
 class _OsmLocationPickerState extends State<OsmLocationPicker> {
-  late MapController _mapController;
+  late final MapController _mapController;
   LatLng? _pickedPosition;
+
+  static const LatLng _defaultDaNang = LatLng(16.047079, 108.20623);
 
   @override
   void initState() {
     super.initState();
     _mapController = MapController();
+
     if (widget.initLat != null && widget.initLng != null) {
       _pickedPosition = LatLng(widget.initLat!, widget.initLng!);
     } else {
-      _pickedPosition = const LatLng(16.047079, 108.20623); // Đà Nẵng
+      _pickedPosition = _defaultDaNang;
     }
   }
 
-  // --- LOGIC MỚI: Lắng nghe thay đổi từ cha để cập nhật Map ---
   @override
   void didUpdateWidget(covariant OsmLocationPicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Nếu cha truyền vào tọa độ mới khác với tọa độ cũ
-    if (widget.initLat != oldWidget.initLat || widget.initLng != oldWidget.initLng) {
-      if (widget.initLat != null && widget.initLng != null) {
-        final newPos = LatLng(widget.initLat!, widget.initLng!);
-        setState(() {
-          _pickedPosition = newPos;
-        });
-        // Di chuyển camera map đến vị trí mới
+
+    final hasChanged =
+        widget.initLat != oldWidget.initLat || widget.initLng != oldWidget.initLng;
+
+    if (!hasChanged) return;
+
+    if (widget.initLat != null && widget.initLng != null) {
+      final newPos = LatLng(widget.initLat!, widget.initLng!);
+
+      setState(() {
+        _pickedPosition = newPos;
+      });
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
         _mapController.move(newPos, 15.0);
-      }
+      });
     }
   }
-  // -----------------------------------------------------------
+
+  void _pickPosition(LatLng point) {
+    setState(() {
+      _pickedPosition = point;
+    });
+
+    widget.onPicked(point.latitude, point.longitude);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final currentPosition = _pickedPosition ?? _defaultDaNang;
+
     return Column(
       children: [
-        if (_pickedPosition != null)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Text(
-              'Tọa độ: ${_pickedPosition!.latitude.toStringAsFixed(5)}, ${_pickedPosition!.longitude.toStringAsFixed(5)}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Text(
+            'Tọa độ: ${currentPosition.latitude.toStringAsFixed(5)}, '
+                '${currentPosition.longitude.toStringAsFixed(5)}',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.grey,
             ),
           ),
+        ),
 
         Container(
           height: 300,
-          decoration: BoxDecoration(border: Border.all(color: Colors.grey)),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade300),
+          ),
           child: FlutterMap(
             mapController: _mapController,
             options: MapOptions(
-              initialCenter: _pickedPosition ?? const LatLng(16.047079, 108.20623),
+              initialCenter: currentPosition,
               initialZoom: 13.0,
               onTap: (tapPosition, point) {
-                setState(() {
-                  _pickedPosition = point;
-                });
-                // Gọi callback để báo cho cha biết
-                widget.onPicked(point.latitude, point.longitude);
+                _pickPosition(point);
               },
             ),
             children: [
               TileLayer(
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.app',
+
+
+                userAgentPackageName: 'com.vuongdinhquochiep.minie',
+
+                maxNativeZoom: 19,
               ),
-              if (_pickedPosition != null)
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      point: _pickedPosition!,
-                      width: 40,
-                      height: 40,
-                      child: const Icon(Icons.location_on, color: Colors.red, size: 40),
+
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: currentPosition,
+                    width: 42,
+                    height: 42,
+                    child: const Icon(
+                      Icons.location_on,
+                      color: Colors.red,
+                      size: 42,
                     ),
-                  ],
-                ),
+                  ),
+                ],
+              ),
+
+              RichAttributionWidget(
+                attributions: [
+                  TextSourceAttribution(
+                    'OpenStreetMap contributors',
+                  ),
+                ],
+              ),
             ],
           ),
         ),

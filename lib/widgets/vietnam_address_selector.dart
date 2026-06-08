@@ -50,21 +50,45 @@ class _VietnamAddressSelectorState extends State<VietnamAddressSelector> {
 
   // --- LOGIC MỚI: TÌM TỌA ĐỘ KHI CHỌN ĐỊA GIỚI HÀNH CHÍNH ---
   Future<void> _searchCoordinateByAddress(String query) async {
-    // API Nominatim tìm kiếm tọa độ
-    final url = "https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1";
+    final uri = Uri.https(
+      'nominatim.openstreetmap.org',
+      '/search',
+      {
+        'q': query,
+        'format': 'jsonv2',
+        'limit': '1',
+        'countrycodes': 'vn',
+        'email': 'quochiep1610@gmail.com',
+      },
+    );
+
     try {
-      final response = await http.get(Uri.parse(url), headers: {'User-Agent': 'FlutterApp/1.0'});
+      final response = await http.get(
+        uri,
+        headers: const {
+          'User-Agent': 'mini-e-fe-app/1.0 (contact: quochiep1610@gmail.com)',
+          'Accept': 'application/json',
+          'Accept-Language': 'vi',
+        },
+      );
+
+      debugPrint('Nominatim search status: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
+
         if (data is List && data.isNotEmpty) {
-          final lat = double.tryParse(data[0]['lat']);
-          final lng = double.tryParse(data[0]['lon']);
-          // Bắn tọa độ ra ngoài để Map tự update
+          final lat = double.tryParse(data[0]['lat']?.toString() ?? '');
+          final lng = double.tryParse(data[0]['lon']?.toString() ?? '');
+
           widget.onCoordinatesChanged(lat, lng);
         }
+      } else {
+        debugPrint('Nominatim search bị chặn/lỗi: ${response.statusCode}');
+        debugPrint(response.body);
       }
     } catch (e) {
-      print('Lỗi tìm tọa độ: $e');
+      debugPrint('Lỗi tìm tọa độ: $e');
     }
   }
   // ------------------------------------------------------------
@@ -95,28 +119,15 @@ class _VietnamAddressSelectorState extends State<VietnamAddressSelector> {
   }
 
   void _onDetailChanged(String query) {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 800), () async {
-      if (query.length < 3) {
-        setState(() => _showSuggestions = false);
-        return;
-      }
-      final fullQuery = "$query, $wardName, $districtName, $provinceName";
-      // Logic gợi ý giữ nguyên...
-      final url = "https://nominatim.openstreetmap.org/search?q=$fullQuery&format=json&addressdetails=1&limit=5";
+    if (_debounce?.isActive ?? false) {
+      _debounce!.cancel();
+    }
 
-      try {
-        final response = await http.get(Uri.parse(url), headers: {'User-Agent': 'FlutterApp/1.0'});
-        if (response.statusCode == 200) {
-          setState(() {
-            _suggestions = jsonDecode(response.body);
-            _showSuggestions = true;
-          });
-        }
-      } catch (e) {
-        print(e);
-      }
+    setState(() {
+      _suggestions = [];
+      _showSuggestions = false;
     });
+
     _updateFullAddress();
   }
 
