@@ -5,7 +5,7 @@
 // - Hiển thị và lọc sản phẩm theo danh mục cha/con.
 // - Tìm kiếm sản phẩm theo tên.
 // - Tìm kiếm cửa hàng thật bằng ShopProvider/ShopService.
-// - Chuyển tab giữa Sản phẩm và Cửa hàng.
+// - Hiển thị đồng thời kết quả sản phẩm và cửa hàng khi tìm kiếm.
 // - Mở chi tiết sản phẩm/shop.
 // - Thêm sản phẩm vào giỏ hàng sau khi chọn biến thể.
 // ================================================================
@@ -34,12 +34,6 @@ enum _ProductSortType {
   priceHighToLow,
 }
 
-// Tab kết quả trong màn category.
-enum _CategoryResultTab {
-  products,
-  shops,
-}
-
 class CategoryScreen extends StatefulWidget {
   final int? initialCategoryId;
   final String? initialCategoryName;
@@ -65,7 +59,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
   int? _selectedRootId;
   String _keyword = '';
   _ProductSortType _sortType = _ProductSortType.relevant;
-  _CategoryResultTab _activeTab = _CategoryResultTab.products;
 
   @override
   void initState() {
@@ -87,7 +80,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
         await categoryProvider.fetchTree();
       }
 
-      // Tải danh sách shop riêng để tab Cửa hàng tìm được shop thật,
+      // Tải danh sách shop riêng để tìm kiếm cửa hàng thật,
       // không phụ thuộc vào dữ liệu shop nằm trong product.
       shopProvider.fetchShops(
         q: _keyword.isEmpty ? null : _keyword,
@@ -144,18 +137,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
     _searchCtrl.clear();
     setState(() => _keyword = '');
     _runShopSearch();
-  }
-
-  void _selectResultTab(_CategoryResultTab tab) {
-    setState(() => _activeTab = tab);
-
-    // Khi chuyển sang tab shop mà chưa có dữ liệu, gọi lại API shop.
-    if (tab == _CategoryResultTab.shops) {
-      final shopProvider = Provider.of<ShopProvider>(context, listen: false);
-      if (!shopProvider.isLoading && shopProvider.shops.isEmpty) {
-        _runShopSearch();
-      }
-    }
   }
 
   // ================================================================
@@ -1330,72 +1311,26 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
 
   // ================================================================
-  // TAB SẢN PHẨM / CỬA HÀNG
+  // KẾT QUẢ TỔNG HỢP: SẢN PHẨM + CỬA HÀNG
+  // Không còn tab chọn riêng. Khi nhập từ khóa, màn hình hiển thị
+  // đồng thời sản phẩm phù hợp và cửa hàng phù hợp.
   // ================================================================
-  Widget _resultTabBar(int productCount, int shopCount) {
-    return Container(
-      color: AppColors.background,
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: _ResultTabButton(
-              label: 'Sản phẩm',
-              count: productCount,
-              icon: Icons.shopping_bag_outlined,
-              selected: _activeTab == _CategoryResultTab.products,
-              onTap: () => _selectResultTab(_CategoryResultTab.products),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: _ResultTabButton(
-              label: 'Cửa hàng',
-              count: shopCount,
-              icon: Icons.storefront_rounded,
-              selected: _activeTab == _CategoryResultTab.shops,
-              onTap: () => _selectResultTab(_CategoryResultTab.shops),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProductResults({
+  Widget _buildCombinedResults({
     required ProductProvider productProvider,
     required CategoryProvider categoryProvider,
+    required ShopProvider shopProvider,
     required List<ProductModel> filteredProducts,
     required CategoryModel? selectedCategory,
   }) {
-    if (productProvider.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.darkPink),
-      );
-    }
-
-    if (productProvider.products.isEmpty) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(20),
-          child: Text(
-            'Không tải được sản phẩm.\nVui lòng kiểm tra kết nối mạng.',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AppColors.textGrey,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-      );
-    }
-
     return RefreshIndicator(
       color: AppColors.darkPink,
       onRefresh: () async {
         _stockCache.clear();
-        await Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
-        await Provider.of<CategoryProvider>(context, listen: false).fetchTree();
+        await Future.wait([
+          Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts(),
+          Provider.of<CategoryProvider>(context, listen: false).fetchTree(),
+          _runShopSearch(),
+        ]);
       },
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -1404,79 +1339,153 @@ class _CategoryScreenState extends State<CategoryScreen> {
           SliverToBoxAdapter(
             child: _sortAndInfoBar(selectedCategory, filteredProducts.length),
           ),
-          if (filteredProducts.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: _buildEmptyResult(
-                icon: Icons.search_off_rounded,
-                title: 'Không có sản phẩm phù hợp',
-                message: 'Thử đổi từ khóa hoặc chọn danh mục khác nhé.',
-                actionText: 'Xóa bộ lọc',
-                onAction: _clearFilters,
+
+          if (productProvider.isLoading && productProvider.products.isEmpty)
+            const SliverToBoxAdapter(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 42),
+                child: Center(
+                  child: CircularProgressIndicator(color: AppColors.darkPink),
+                ),
               ),
             )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 22),
-              sliver: SliverGrid(
-                delegate: SliverChildBuilderDelegate(
-                      (context, index) => _productCard(filteredProducts[index]),
-                  childCount: filteredProducts.length,
+          else if (productProvider.products.isEmpty)
+            SliverToBoxAdapter(
+              child: _buildEmptyResult(
+                icon: Icons.inventory_2_outlined,
+                title: 'Không tải được sản phẩm',
+                message: 'Vui lòng kiểm tra kết nối mạng rồi thử lại.',
+                actionText: 'Thử lại',
+                onAction: () async {
+                  _stockCache.clear();
+                  await Provider.of<ProductProvider>(context, listen: false)
+                      .fetchPublicProducts();
+                },
+              ),
+            )
+          else if (filteredProducts.isEmpty)
+              SliverToBoxAdapter(
+                child: _buildEmptyResult(
+                  icon: Icons.search_off_rounded,
+                  title: 'Không có sản phẩm phù hợp',
+                  message: 'Thử đổi từ khóa hoặc chọn danh mục khác nhé.',
+                  actionText: 'Xóa bộ lọc',
+                  onAction: _clearFilters,
                 ),
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 14,
-                  childAspectRatio: 0.66,
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+                sliver: SliverGrid(
+                  delegate: SliverChildBuilderDelegate(
+                        (context, index) => _productCard(filteredProducts[index]),
+                    childCount: filteredProducts.length,
+                  ),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 14,
+                    // Dùng chiều cao cố định để tránh RenderFlex overflow
+                    // trên emulator/màn hình nhỏ.
+                    mainAxisExtent: 286,
+                  ),
                 ),
               ),
+
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Cửa hàng phù hợp',
+                      style: TextStyle(
+                        color: AppColors.textDark,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${shopProvider.shops.length} cửa hàng',
+                    style: const TextStyle(
+                      color: AppColors.textGrey,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
             ),
+          ),
+          ..._shopResultSlivers(shopProvider),
+          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );
   }
 
-  Widget _buildShopResults(ShopProvider shopProvider) {
+  List<Widget> _shopResultSlivers(ShopProvider shopProvider) {
     if (shopProvider.isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: AppColors.darkPink),
-      );
+      return const [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 30),
+            child: Center(
+              child: CircularProgressIndicator(color: AppColors.darkPink),
+            ),
+          ),
+        ),
+      ];
     }
 
     if (shopProvider.error != null) {
-      return _buildEmptyResult(
-        icon: Icons.storefront_outlined,
-        title: 'Chưa tải được cửa hàng',
-        message: 'Nếu gặp lỗi 403, backend cần mở API GET /shops cho user hoặc tạo API public search shop.',
-        actionText: 'Thử lại',
-        onAction: _runShopSearch,
-      );
+      return [
+        SliverToBoxAdapter(
+          child: _buildEmptyResult(
+            icon: Icons.storefront_outlined,
+            title: 'Chưa tải được cửa hàng',
+            message: 'Nếu gặp lỗi 403, backend cần mở API GET /shops cho user hoặc tạo API public search shop.',
+            actionText: 'Thử lại',
+            onAction: _runShopSearch,
+          ),
+        ),
+      ];
     }
 
     final shops = shopProvider.shops;
     if (shops.isEmpty) {
-      return _buildEmptyResult(
-        icon: Icons.storefront_outlined,
-        title: 'Không tìm thấy cửa hàng',
-        message: _keyword.isEmpty
-            ? 'Hiện chưa có cửa hàng nào để hiển thị.'
-            : 'Không có cửa hàng phù hợp với từ khóa "$_keyword".',
-        actionText: _keyword.isEmpty ? null : 'Xóa tìm kiếm',
-        onAction: _keyword.isEmpty ? null : _clearSearchKeyword,
-      );
+      return [
+        SliverToBoxAdapter(
+          child: _buildEmptyResult(
+            icon: Icons.storefront_outlined,
+            title: 'Không tìm thấy cửa hàng',
+            message: _keyword.isEmpty
+                ? 'Hiện chưa có cửa hàng nào để hiển thị.'
+                : 'Không có cửa hàng phù hợp với từ khóa "$_keyword".',
+            actionText: _keyword.isEmpty ? null : 'Xóa tìm kiếm',
+            onAction: _keyword.isEmpty ? null : _clearSearchKeyword,
+          ),
+        ),
+      ];
     }
 
-    return RefreshIndicator(
-      color: AppColors.darkPink,
-      onRefresh: _runShopSearch,
-      child: ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        itemCount: shops.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 14),
-        itemBuilder: (context, index) => _shopCard(shops[index]),
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+                (context, index) {
+              final shopIndex = index ~/ 2;
+              if (index.isOdd) return const SizedBox(height: 14);
+              return _shopCard(shops[shopIndex]);
+            },
+            childCount: shops.length * 2 - 1,
+          ),
+        ),
       ),
-    );
+    ];
   }
 
   Widget _shopCard(ShopModel shop) {
@@ -1715,77 +1724,18 @@ class _CategoryScreenState extends State<CategoryScreen> {
           return Column(
             children: [
               _header(selectedCategory, filteredProducts.length, shopProvider.shops.length),
-              _resultTabBar(filteredProducts.length, shopProvider.shops.length),
               Expanded(
-                child: _activeTab == _CategoryResultTab.products
-                    ? _buildProductResults(
+                child: _buildCombinedResults(
                   productProvider: productProvider,
                   categoryProvider: categoryProvider,
+                  shopProvider: shopProvider,
                   filteredProducts: filteredProducts,
                   selectedCategory: selectedCategory,
-                )
-                    : _buildShopResults(shopProvider),
+                ),
               ),
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-// ================================================================
-// NÚT TAB KẾT QUẢ
-// ================================================================
-class _ResultTabButton extends StatelessWidget {
-  final String label;
-  final int count;
-  final IconData icon;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _ResultTabButton({
-    required this.label,
-    required this.count,
-    required this.icon,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          color: selected ? AppColors.darkPink : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? AppColors.darkPink : AppColors.borderPink,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 18, color: selected ? Colors.white : AppColors.darkPink),
-            const SizedBox(width: 7),
-            Flexible(
-              child: Text(
-                '$label ($count)',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected ? Colors.white : AppColors.textDark,
-                  fontWeight: FontWeight.w900,
-                  fontSize: 12.5,
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
