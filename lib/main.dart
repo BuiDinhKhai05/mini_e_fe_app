@@ -33,6 +33,7 @@ import 'screens/admins/admin_users_screen.dart';
 import 'screens/admins/admin_shop_approval_screen.dart';
 import 'screens/admins/admin_home_screen.dart';
 import 'screens/admins/admin_categories_screen.dart';
+import 'screens/admins/admin_products_screen.dart';
 import 'screens/auths/login_screen.dart';
 import 'screens/auths/register_screen.dart';
 import 'screens/home_screen.dart';
@@ -54,7 +55,7 @@ import 'screens/orders_payments/my_orders_screen.dart';
 import 'screens/orders_payments/payment_qr_screen.dart';
 import 'screens/orders_payments/payment_result_screen.dart';
 import 'screens/auths/change_password_screen.dart';
-import 'screens/admins/admin_products_screen.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await ApiClient().init();
@@ -86,7 +87,7 @@ void main() async {
 
     final context = AuthProvider.navigatorKey.currentContext;
     if (context != null) {
-      Provider.of<CategoryProvider>(context, listen: false).fetchTree();
+      Provider.of<ProductProvider>(context, listen: false).fetchPublicProducts();
     }
   });
 }
@@ -109,31 +110,7 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(),
 
-        '/home': (context) {
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            final auth = Provider.of<AuthProvider>(context, listen: false);
-            final role = auth.user?.role?.toUpperCase();
-
-            await Provider.of<CategoryProvider>(
-              context,
-              listen: false,
-            ).fetchTree();
-
-            if (role == 'SELLER') {
-              await Provider.of<ProductProvider>(
-                context,
-                listen: false,
-              ).fetchAllProductsForSeller(showLoading: false);
-            } else {
-              await Provider.of<ProductProvider>(
-                context,
-                listen: false,
-              ).fetchPublicProducts(showLoading: false);
-            }
-          });
-
-          return const HomeScreen();
-        },
+        '/home': (context) => const HomeScreen(),
 
         '/forgot-password': (context) => ForgotPasswordScreen(),
         '/verify-account': (context) => const VerifyAccountScreen(),
@@ -153,8 +130,9 @@ class MyApp extends StatelessWidget {
         '/admin/shops': (context) => AdminShopsScreen(),
         '/admin/users': (context) => AdminUsersScreen(),
         '/admin/categories': (context) => const AdminCategoriesScreen(),
-        '/admin-shop-approval': (context) => AdminShopApprovalScreen(),
         '/admin/products': (context) => const AdminProductsScreen(),
+        '/admin-shop-approval': (context) => AdminShopApprovalScreen(),
+
         // === SHOP DETAIL ===
         '/shop-detail': (context) {
           final args = ModalRoute.of(context)!.settings.arguments;
