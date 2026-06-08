@@ -6,13 +6,8 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 // File này gom baseUrl và toàn bộ endpoint API để các service/provider dùng chung.
 // ================================================================
 class AppConstants {
-  // Local dev:
-  // - Flutter Web: http://localhost:3000/api
-  // - Android Emulator: http://10.0.2.2:3000/api
-  // - Điện thoại thật: đổi thành IP LAN máy tính.
-  static const String baseUrl = kIsWeb
-      ? 'http://localhost:3000/api'
-      : 'http://192.168.110.223:3000/api';
+  static const String baseUrl =
+      'http://alb-production-1993415173.us-east-1.elb.amazonaws.com/api';
 
   // AUTH API
   static const String registerEndpoint = '/auth/register';
@@ -72,7 +67,9 @@ class ShopsApi {
 class ProductApi {
   // Public
   static const String products = '/products';
-  static const String search = '/products/search';
+
+  // BE products.controller.ts hiện cấu hình MAX_PRODUCT_IMAGES = 10.
+  static const int maxProductImages = 10;
 
   // Seller
   static const String myShopProducts = '/products/my-shop';
