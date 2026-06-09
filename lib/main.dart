@@ -55,6 +55,8 @@ import 'screens/orders_payments/my_orders_screen.dart';
 import 'screens/orders_payments/payment_qr_screen.dart';
 import 'screens/orders_payments/payment_result_screen.dart';
 import 'screens/auths/change_password_screen.dart';
+import 'screens/recommendations/favorite_product_screen.dart';
+import 'screens/recommendations/recommended_products_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -175,6 +177,10 @@ class MyApp extends StatelessWidget {
 
           return const HomeScreen();
         },
+
+        // === RECOMMENDATIONS / FAVORITES ===
+        '/favorites': (context) => const FavoriteProductScreen(),
+        '/recommendations': (context) => const RecommendedProductsScreen(),
 
         // === CART ===
         '/cart': (context) => const CartScreen(),
