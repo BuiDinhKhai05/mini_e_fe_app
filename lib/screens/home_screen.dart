@@ -865,72 +865,109 @@ class _HomeScreenState extends State<HomeScreen> {
   // ================================================================
   Widget _serviceHighlights() {
     final items = [
-      _SupportItem(Icons.local_shipping_outlined, 'Miễn phí ship', 'Đơn từ 300k', AppColors.darkPink),
-      _SupportItem(Icons.replay_rounded, 'Đổi trả dễ dàng', 'Trong 7 ngày', AppColors.success),
-      _SupportItem(Icons.lock_outline_rounded, 'Thanh toán an toàn', 'Bảo mật tuyệt đối', AppColors.info),
-      _SupportItem(Icons.support_agent_rounded, 'Hỗ trợ 24/7', 'Luôn sẵn sàng', const Color(0xFF8E5BE8)),
+      _SupportItem(
+        Icons.local_shipping_outlined,
+        'Miễn phí ship',
+        'Đơn từ 300k',
+        AppColors.darkPink,
+      ),
+      _SupportItem(
+        Icons.replay_rounded,
+        'Đổi trả dễ dàng',
+        'Trong 7 ngày',
+        AppColors.success,
+      ),
+      _SupportItem(
+        Icons.lock_outline_rounded,
+        'Thanh toán an toàn',
+        'Bảo mật tuyệt đối',
+        AppColors.info,
+      ),
+      _SupportItem(
+        Icons.support_agent_rounded,
+        'Hỗ trợ 24/7',
+        'Luôn sẵn sàng',
+        const Color(0xFF8E5BE8),
+      ),
     ];
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: items.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 10,
-          mainAxisSpacing: 10,
-          // Tăng chiều cao item để icon + 2 dòng chữ không bị tràn trên máy nhỏ.
-          childAspectRatio: 2.25,
-        ),
-        itemBuilder: (_, index) {
-          final item = items[index];
-          return Container(
-            padding: const EdgeInsets.all(12),
+    return HorizontalSection<_SupportItem>(
+      title: 'Ưu đãi & cam kết dịch vụ 🎁',
+      items: items,
+      height: 96,
+      itemWidth: 210,
+      spacing: 12,
+      listPadding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+      headerPadding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      itemBuilder: (context, item, index) {
+        return _serviceHighlightCard(item);
+      },
+    );
+  }
+  Widget _serviceHighlightCard(_SupportItem item) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.large),
+        border: Border.all(color: AppColors.lightPink),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.darkPink.withOpacity(0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(AppRadius.large),
-              border: Border.all(color: AppColors.lightPink),
+              color: item.color.withOpacity(0.10),
+              borderRadius: BorderRadius.circular(AppRadius.medium),
             ),
-            child: Row(
+            child: Icon(
+              item.icon,
+              color: item.color,
+              size: 21,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: item.color.withOpacity(0.10),
-                    borderRadius: BorderRadius.circular(AppRadius.medium),
+                Text(
+                  item.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 12.5,
+                    height: 1.05,
+                    color: AppColors.textDark,
                   ),
-                  child: Icon(item.icon, color: item.color, size: 20),
                 ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12, height: 1.05, color: AppColors.textDark),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 10.5, height: 1.05, color: AppColors.textGrey),
-                      ),
-                    ],
+                const SizedBox(height: 3),
+                Text(
+                  item.subtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    height: 1.05,
+                    color: AppColors.textGrey,
                   ),
                 ),
               ],
             ),
-          );
-        },
+          ),
+        ],
       ),
     );
   }
