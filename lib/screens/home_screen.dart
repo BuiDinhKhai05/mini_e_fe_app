@@ -502,36 +502,41 @@ class _HomeScreenState extends State<HomeScreen> {
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
+          // Header được làm thấp hơn và gọn hơn để phần đầu trang không chiếm quá nhiều chiều cao.
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
           child: Column(
             children: [
               Row(
                 children: [
                   Container(
-                    width: 48,
-                    height: 48,
+                    width: 42,
+                    height: 42,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(AppRadius.large),
                       border: Border.all(color: AppColors.borderPink),
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.darkPink.withOpacity(0.10),
-                          blurRadius: 16,
-                          offset: const Offset(0, 8),
+                          color: AppColors.darkPink.withOpacity(0.08),
+                          blurRadius: 12,
+                          offset: const Offset(0, 6),
                         ),
                       ],
                     ),
                     child: Padding(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(3),
                       child: Image.asset(
                         _kMochiLogoAsset,
                         fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.favorite_rounded, color: AppColors.darkPink, size: 24),
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.favorite_rounded,
+                          color: AppColors.darkPink,
+                          size: 22,
+                        ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   const Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -540,15 +545,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           'Mochi Shop',
                           style: TextStyle(
                             color: AppColors.darkPink,
-                            fontSize: 22,
+                            fontSize: 18,
                             fontWeight: FontWeight.w900,
-                            letterSpacing: 0.2,
+                            letterSpacing: 0.1,
+                            height: 1.05,
                           ),
                         ),
                         SizedBox(height: 2),
                         Text(
                           'Cute things for you ♡',
-                          style: TextStyle(color: AppColors.textGrey, fontSize: 12, fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: AppColors.textGrey,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            height: 1.05,
+                          ),
                         ),
                       ],
                     ),
@@ -563,14 +576,22 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                         if ((provider.cartData?.itemsCount ?? 0) > 0)
                           Positioned(
-                            right: -3,
-                            top: -5,
+                            right: -2,
+                            top: -4,
                             child: Container(
-                              padding: const EdgeInsets.all(5),
-                              decoration: const BoxDecoration(color: AppColors.darkPink, shape: BoxShape.circle),
+                              padding: const EdgeInsets.all(4),
+                              decoration: const BoxDecoration(
+                                color: AppColors.darkPink,
+                                shape: BoxShape.circle,
+                              ),
                               child: Text(
                                 '${provider.cartData!.itemsCount}',
-                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1,
+                                ),
                               ),
                             ),
                           ),
@@ -584,7 +605,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -592,9 +613,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   border: Border.all(color: AppColors.borderPink),
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.darkPink.withOpacity(0.08),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
+                      color: AppColors.darkPink.withOpacity(0.06),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
                     ),
                   ],
                 ),
@@ -610,22 +631,60 @@ class _HomeScreenState extends State<HomeScreen> {
                   },
                   decoration: InputDecoration(
                     hintText: 'Bạn tìm gì hôm nay?',
-                    hintStyle: AppTextStyles.bodyGrey.copyWith(color: AppColors.textLight, fontWeight: FontWeight.w600),
-                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.darkPink),
+                    hintStyle: AppTextStyles.bodyGrey.copyWith(
+                      color: AppColors.textLight,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
+                    ),
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppColors.darkPink,
+                      size: 21,
+                    ),
+                    prefixIconConstraints: const BoxConstraints(
+                      minWidth: 42,
+                      minHeight: 42,
+                    ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                    suffixIconConstraints: const BoxConstraints(
+                      minWidth: 42,
+                      minHeight: 42,
+                    ),
                     suffixIcon: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           tooltip: 'Chọn danh mục',
-                          icon: const Icon(Icons.tune_rounded, color: AppColors.darkPink),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                          icon: const Icon(
+                            Icons.tune_rounded,
+                            color: AppColors.darkPink,
+                            size: 20,
+                          ),
                           onPressed: () => _openCategoryPicker(cp),
                         ),
                         if (_searchCtrl.text.isNotEmpty)
                           IconButton(
                             tooltip: 'Xoá tìm kiếm',
-                            icon: const Icon(Icons.clear_rounded, color: AppColors.textGrey),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                            icon: const Icon(
+                              Icons.clear_rounded,
+                              color: AppColors.textGrey,
+                              size: 20,
+                            ),
                             onPressed: () {
                               _searchCtrl.clear();
                               setState(() {});
@@ -652,14 +711,14 @@ class _HomeScreenState extends State<HomeScreen> {
       onTap: onTap,
       borderRadius: BorderRadius.circular(AppRadius.circle),
       child: Container(
-        width: 42,
-        height: 42,
+        width: 38,
+        height: 38,
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
           border: Border.all(color: AppColors.borderPink),
         ),
-        child: Icon(icon, color: AppColors.textDark, size: 22),
+        child: Icon(icon, color: AppColors.textDark, size: 20),
       ),
     );
   }
@@ -675,17 +734,15 @@ class _HomeScreenState extends State<HomeScreen> {
         final screenWidth = MediaQuery.of(context).size.width;
         final compact = screenWidth < 390;
 
-        // Màn hình nhỏ như máy ảo/điện thoại thật thường chỉ còn khoảng 140px
-        // chiều cao cho phần text sau padding. Vì vậy cần giảm vùng ảnh bên phải,
-        // giới hạn số dòng text và bỏ Spacer để Column không bị overflow.
-        final bannerHeight = compact ? 176.0 : 184.0;
-        final imageSize = compact ? 88.0 : 104.0;
-        final imageRight = compact ? 18.0 : 26.0;
-        final imageBottom = compact ? 22.0 : 24.0;
-        final textRightPadding = compact ? 118.0 : 150.0;
+        // Banner được giảm chiều cao, padding, ảnh và chữ để nhìn gọn hơn trên Home.
+        final bannerHeight = compact ? 146.0 : 156.0;
+        final imageSize = compact ? 74.0 : 86.0;
+        final imageRight = compact ? 16.0 : 22.0;
+        final imageBottom = compact ? 18.0 : 20.0;
+        final textRightPadding = compact ? 102.0 : 128.0;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Container(
             height: bannerHeight,
             decoration: BoxDecoration(
@@ -698,22 +755,22 @@ class _HomeScreenState extends State<HomeScreen> {
               border: Border.all(color: AppColors.borderPink),
               boxShadow: [
                 BoxShadow(
-                  color: AppColors.darkPink.withOpacity(0.08),
-                  blurRadius: 22,
-                  offset: const Offset(0, 12),
+                  color: AppColors.darkPink.withOpacity(0.06),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
                 ),
               ],
             ),
             child: Stack(
               children: [
                 Positioned(
-                  right: -18,
-                  bottom: -18,
+                  right: -20,
+                  bottom: -20,
                   child: Container(
-                    width: 150,
-                    height: 150,
+                    width: compact ? 118 : 130,
+                    height: compact ? 118 : 130,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.52),
+                      color: Colors.white.withOpacity(0.50),
                       shape: BoxShape.circle,
                     ),
                   ),
@@ -725,9 +782,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     width: imageSize,
                     height: imageSize,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.82),
-                      borderRadius: BorderRadius.circular(34),
-                      border: Border.all(color: AppColors.borderPink, width: 2),
+                      color: Colors.white.withOpacity(0.84),
+                      borderRadius: BorderRadius.circular(28),
+                      border: Border.all(color: AppColors.borderPink, width: 1.6),
                     ),
                     clipBehavior: Clip.antiAlias,
                     child: Padding(
@@ -737,7 +794,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         fit: BoxFit.contain,
                         errorBuilder: (_, __, ___) => const Icon(
                           Icons.shopping_basket_outlined,
-                          size: 50,
+                          size: 42,
                           color: AppColors.darkPink,
                         ),
                       ),
@@ -745,17 +802,25 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 Positioned(
-                  right: compact ? 82 : 92,
-                  top: 24,
-                  child: const Icon(Icons.star_rounded, color: Color(0xFFFFC55A), size: 24),
+                  right: compact ? 72 : 84,
+                  top: 22,
+                  child: const Icon(
+                    Icons.star_rounded,
+                    color: Color(0xFFFFC55A),
+                    size: 20,
+                  ),
                 ),
                 const Positioned(
-                  right: 20,
-                  top: 38,
-                  child: Icon(Icons.favorite_rounded, color: AppColors.darkPink, size: 20),
+                  right: 18,
+                  top: 34,
+                  child: Icon(
+                    Icons.favorite_rounded,
+                    color: AppColors.darkPink,
+                    size: 18,
+                  ),
                 ),
                 Padding(
-                  padding: EdgeInsets.fromLTRB(20, 18, textRightPadding, 16),
+                  padding: EdgeInsets.fromLTRB(18, 14, textRightPadding, 14),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -765,37 +830,37 @@ class _HomeScreenState extends State<HomeScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: compact ? 21 : 25,
+                          fontSize: compact ? 18 : 21,
                           fontWeight: FontWeight.w900,
                           color: AppColors.darkPink,
                           height: 1.06,
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       Text(
                         'Cho ngày thêm vui! ✨',
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: compact ? 16 : 18,
+                          fontSize: compact ? 14 : 16,
                           fontWeight: FontWeight.w900,
                           color: AppColors.textDark,
-                          height: 1.12,
+                          height: 1.10,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6),
                       const Text(
                         'Thế giới đồ dễ thương dành riêng cho bạn',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: AppColors.textGrey,
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          height: 1.15,
+                          height: 1.10,
                         ),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 9),
                       SizedBox(
                         width: double.infinity,
                         child: FittedBox(
@@ -805,7 +870,10 @@ class _HomeScreenState extends State<HomeScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: AppColors.darkPink,
                                   borderRadius: BorderRadius.circular(AppRadius.medium),
@@ -818,17 +886,24 @@ class _HomeScreenState extends State<HomeScreen> {
                                       style: TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w900,
-                                        fontSize: 12,
+                                        fontSize: 11,
                                       ),
                                     ),
-                                    SizedBox(width: 6),
-                                    Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 16),
+                                    SizedBox(width: 5),
+                                    Icon(
+                                      Icons.arrow_forward_rounded,
+                                      color: Colors.white,
+                                      size: 14,
+                                    ),
                                   ],
                                 ),
                               ),
-                              const SizedBox(width: 8),
+                              const SizedBox(width: 7),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 11,
+                                  vertical: 8,
+                                ),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(AppRadius.medium),
@@ -839,7 +914,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   style: TextStyle(
                                     color: AppColors.textDark,
                                     fontWeight: FontWeight.w900,
-                                    fontSize: 12,
+                                    fontSize: 11,
                                   ),
                                 ),
                               ),
@@ -865,76 +940,51 @@ class _HomeScreenState extends State<HomeScreen> {
   // ================================================================
   Widget _serviceHighlights() {
     final items = [
-      _SupportItem(
-        Icons.local_shipping_outlined,
-        'Miễn phí ship',
-        'Đơn từ 300k',
-        AppColors.darkPink,
-      ),
-      _SupportItem(
-        Icons.replay_rounded,
-        'Đổi trả dễ dàng',
-        'Trong 7 ngày',
-        AppColors.success,
-      ),
-      _SupportItem(
-        Icons.lock_outline_rounded,
-        'Thanh toán an toàn',
-        'Bảo mật tuyệt đối',
-        AppColors.info,
-      ),
-      _SupportItem(
-        Icons.support_agent_rounded,
-        'Hỗ trợ 24/7',
-        'Luôn sẵn sàng',
-        const Color(0xFF8E5BE8),
-      ),
+      _SupportItem(Icons.local_shipping_outlined, 'Miễn phí ship', 'Đơn từ 300k', AppColors.darkPink),
+      _SupportItem(Icons.replay_rounded, 'Đổi trả dễ dàng', 'Trong 7 ngày', AppColors.success),
+      _SupportItem(Icons.lock_outline_rounded, 'Thanh toán an toàn', 'Bảo mật tuyệt đối', AppColors.info),
+      _SupportItem(Icons.support_agent_rounded, 'Hỗ trợ 24/7', 'Luôn sẵn sàng', const Color(0xFF8E5BE8)),
     ];
 
     return HorizontalSection<_SupportItem>(
       title: 'Ưu đãi & cam kết dịch vụ 🎁',
       items: items,
-      height: 96,
-      itemWidth: 210,
-      spacing: 12,
-      listPadding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
-      headerPadding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      itemBuilder: (context, item, index) {
-        return _serviceHighlightCard(item);
-      },
+      height: 88,
+      itemWidth: 198,
+      spacing: 10,
+      headerPadding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+      listPadding: const EdgeInsets.fromLTRB(16, 2, 16, 12),
+      itemBuilder: (context, item, index) => _serviceHighlightCard(item),
     );
   }
+
   Widget _serviceHighlightCard(_SupportItem item) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(AppRadius.large),
         border: Border.all(color: AppColors.lightPink),
         boxShadow: [
           BoxShadow(
-            color: AppColors.darkPink.withOpacity(0.06),
-            blurRadius: 14,
-            offset: const Offset(0, 8),
+            color: AppColors.darkPink.withOpacity(0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               color: item.color.withOpacity(0.10),
               borderRadius: BorderRadius.circular(AppRadius.medium),
             ),
-            child: Icon(
-              item.icon,
-              color: item.color,
-              size: 21,
-            ),
+            child: Icon(item.icon, color: item.color, size: 20),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 9),
           Expanded(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -947,19 +997,19 @@ class _HomeScreenState extends State<HomeScreen> {
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w900,
-                    fontSize: 12.5,
+                    fontSize: 12,
                     height: 1.05,
                     color: AppColors.textDark,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(
                   item.subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontSize: 11,
+                    fontSize: 10.5,
                     height: 1.05,
                     color: AppColors.textGrey,
                   ),
@@ -988,7 +1038,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (cp.loadingTree) {
       return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 18),
+        padding: EdgeInsets.symmetric(vertical: 16),
         child: Center(child: CircularProgressIndicator(color: AppColors.darkPink)),
       );
     }
@@ -998,12 +1048,12 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         _sectionHeader('Danh mục nổi bật 💗', onViewAll: () => _openCategoryProducts()),
         SizedBox(
-          height: 104,
+          height: 88,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
             itemCount: roots.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
             itemBuilder: (_, index) {
               if (index == 0) {
                 return _categoryCard(
@@ -1026,7 +1076,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         if (children.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1059,21 +1109,24 @@ class _HomeScreenState extends State<HomeScreen> {
   }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.extraLarge),
+      borderRadius: BorderRadius.circular(AppRadius.large),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 118,
-        padding: const EdgeInsets.all(12),
+        width: 92,
+        padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(AppRadius.extraLarge),
-          border: Border.all(color: selected ? AppColors.darkPink : Colors.white, width: selected ? 1.6 : 1),
+          borderRadius: BorderRadius.circular(AppRadius.large),
+          border: Border.all(
+            color: selected ? AppColors.darkPink : Colors.white,
+            width: selected ? 1.5 : 1,
+          ),
           boxShadow: selected
               ? [
             BoxShadow(
-              color: AppColors.darkPink.withOpacity(0.14),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
+              color: AppColors.darkPink.withOpacity(0.12),
+              blurRadius: 14,
+              offset: const Offset(0, 7),
             ),
           ]
               : null,
@@ -1082,22 +1135,26 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.80),
+                color: Colors.white.withOpacity(0.82),
                 shape: BoxShape.circle,
               ),
-              child: Icon(icon, color: selected ? AppColors.darkPink : AppColors.textDark),
+              child: Icon(
+                icon,
+                color: selected ? AppColors.darkPink : AppColors.textDark,
+                size: 18,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             Text(
               label,
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: selected ? AppColors.darkPink : AppColors.textDark,
                 fontWeight: FontWeight.w900,
               ),
@@ -1191,9 +1248,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ================================================================
   // CARD SẢN PHẨM
-  // Hiển thị ảnh, icon yêu thích, tên, giá, tồn kho,
+  // Hiển thị ảnh, nhãn Hot, icon yêu thích, tên, giá, tồn kho,
   // nút chi tiết và nút thêm vào giỏ.
-  // Lưu ý: đã bỏ nhãn "Hot" tĩnh vì BE hiện chưa có API/field xác định product trending thật.
   // Chức năng bấm card vẫn đi đến trang chi tiết sản phẩm.
   // ================================================================
   Widget _productCard(
@@ -1246,6 +1302,25 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       errorWidget: (_, __, ___) => _productImageFallback(),
+                    ),
+                  ),
+                  Positioned(
+                    left: 10,
+                    top: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: AppColors.darkPink,
+                        borderRadius: BorderRadius.circular(AppRadius.circle),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.darkPink.withOpacity(0.22),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: const Text('Hot', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
                     ),
                   ),
                   Positioned(
@@ -1411,13 +1486,14 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+
   Widget _favoriteProductsSection() {
     return Consumer<RecommendationProvider>(
       builder: (context, recommendationProvider, child) {
         final products = recommendationProvider.favoriteProducts;
 
         return HorizontalSection<ProductModel>(
-          title: 'Yêu thích 💖',
+          title: 'Yêu thích của bạn 💖',
           items: products,
           height: 290,
           itemWidth: 170,
@@ -1434,6 +1510,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
+
 
   // ================================================================
   // BUILD GIAO DIỆN CHÍNH
@@ -1503,16 +1580,11 @@ class _HomeScreenState extends State<HomeScreen> {
                             SliverToBoxAdapter(
                               child: _recommendedProductsSection(),
                             ),
-
                             SliverToBoxAdapter(
                               child: _favoriteProductsSection(),
                             ),
-
                             SliverToBoxAdapter(
-                              child: _sectionHeader(
-                                'Sản phẩm bán chạy 🧸',
-                                onViewAll: () => _openCategoryProducts(),
-                              ),
+                              child: _sectionHeader('Sản phẩm bán chạy 🧸', onViewAll: () => _openCategoryProducts()),
                             ),
                             // Grid sản phẩm 2 cột phù hợp với màn hình mobile.
                             SliverPadding(
