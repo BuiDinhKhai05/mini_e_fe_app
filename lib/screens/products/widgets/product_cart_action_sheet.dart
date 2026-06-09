@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:mini_e_fe_app/theme/app_theme.dart';
 import 'package:provider/provider.dart';
 
@@ -75,6 +76,37 @@ class ProductCartActionSheet {
 
     bool didInitDefault = false;
     bool isOptionsExpanded = false;
+
+    // Cho phép người dùng vừa bấm +/- vừa nhập trực tiếp số lượng.
+    // Controller được đồng bộ lại mỗi khi quantity thay đổi bằng nút hoặc đổi biến thể.
+    final quantityController = TextEditingController(text: quantity.toString());
+    final quantityFocusNode = FocusNode();
+
+    void syncQuantityController() {
+      final text = quantity.toString();
+      if (quantityController.text == text) return;
+
+      quantityController.value = TextEditingValue(
+        text: text,
+        selection: TextSelection.collapsed(offset: text.length),
+      );
+    }
+
+    void applyQuantityInput(int maxStock) {
+      final raw = quantityController.text.trim();
+      final parsed = int.tryParse(raw);
+
+      int nextQuantity = parsed ?? 1;
+
+      if (maxStock > 0) {
+        nextQuantity = nextQuantity.clamp(1, maxStock).toInt();
+      } else {
+        nextQuantity = 1;
+      }
+
+      quantity = nextQuantity;
+      syncQuantityController();
+    }
 
     await showDialog(
       context: rootContext,
@@ -260,6 +292,7 @@ class ProductCartActionSheet {
 
             if (maxStock > 0 && quantity > maxStock) {
               quantity = maxStock;
+              syncQuantityController();
             }
 
             final displayPrice =
@@ -513,6 +546,8 @@ class ProductCartActionSheet {
                                                   final found = findVariantBySelectedOptions();
                                                   selectedVariantId = found?.id;
                                                   quantity = 1;
+                                                  syncQuantityController();
+                                                  syncQuantityController();
                                                 });
                                               },
                                             );
@@ -615,6 +650,7 @@ class ProductCartActionSheet {
                                   selectedVariantId =
                                   value ? variant.id : null;
                                   quantity = 1;
+                                  syncQuantityController();
                                 });
                               },
                               selectedColor: _primaryColor,
@@ -671,8 +707,10 @@ class ProductCartActionSheet {
                                 onPressed: quantity <= 1
                                     ? null
                                     : () {
+                                  quantityFocusNode.unfocus();
                                   setStateDialog(() {
                                     quantity--;
+                                    syncQuantityController();
                                   });
                                 },
                                 icon: const Icon(
@@ -681,12 +719,76 @@ class ProductCartActionSheet {
                                 ),
                               ),
 
-                              Text(
-                                '$quantity',
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.w900,
-                                  color: _titleColor,
+                              SizedBox(
+                                width: 58,
+                                height: 38,
+                                child: TextField(
+                                  controller: quantityController,
+                                  focusNode: quantityFocusNode,
+                                  enabled: maxStock > 0,
+                                  textAlign: TextAlign.center,
+                                  keyboardType: TextInputType.number,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                  ],
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w900,
+                                    color: _titleColor,
+                                  ),
+                                  decoration: InputDecoration(
+                                    isDense: true,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 8,
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: AppColors.borderPink,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: BorderSide(
+                                        color: AppColors.borderPink,
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      borderSide: const BorderSide(
+                                        color: _primaryColor,
+                                        width: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                  onChanged: (value) {
+                                    // Không gọi setState liên tục khi người dùng đang gõ.
+                                    // Việc rebuild overlay/TextField trong lúc IME đang focus
+                                    // có thể gây lỗi Flutter '_dependents.isEmpty'.
+                                    final parsed = int.tryParse(value);
+                                    if (parsed == null) return;
+
+                                    if (maxStock > 0) {
+                                      quantity = parsed.clamp(1, maxStock).toInt();
+                                    } else {
+                                      quantity = 1;
+                                    }
+                                  },
+                                  onSubmitted: (_) {
+                                    setStateDialog(() {
+                                      applyQuantityInput(maxStock);
+                                    });
+                                    quantityFocusNode.unfocus();
+                                  },
+                                  onEditingComplete: () {
+                                    setStateDialog(() {
+                                      applyQuantityInput(maxStock);
+                                    });
+                                    quantityFocusNode.unfocus();
+                                  },
                                 ),
                               ),
 
@@ -694,8 +796,10 @@ class ProductCartActionSheet {
                                 onPressed: maxStock <= 0 || quantity >= maxStock
                                     ? null
                                     : () {
+                                  quantityFocusNode.unfocus();
                                   setStateDialog(() {
                                     quantity++;
+                                    syncQuantityController();
                                   });
                                 },
                                 icon: const Icon(
@@ -714,6 +818,11 @@ class ProductCartActionSheet {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: () async {
+                            // Nếu người dùng đang nhập dở trong ô số lượng,
+                            // bỏ focus và chuẩn hóa lại trước khi thêm giỏ hoặc mua ngay.
+                            quantityFocusNode.unfocus();
+                            applyQuantityInput(maxStock);
+
                             if (dialogVariants.isEmpty) {
                               _showSnack(
                                 rootContext,
@@ -830,7 +939,11 @@ class ProductCartActionSheet {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      quantityFocusNode.unfocus();
+      quantityFocusNode.dispose();
+      quantityController.dispose();
+    });
   }
 
   static String _norm(String value) {

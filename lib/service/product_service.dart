@@ -22,12 +22,92 @@ class ProductService {
     return responseData;
   }
 
+  bool _isApiErrorResponse(dynamic responseData) {
+    if (responseData is! Map) return false;
+
+    final success = responseData['success'];
+    final statusCode = responseData['statusCode'];
+    final error = responseData['error']?.toString().toLowerCase() ?? '';
+    final message = responseData['message']?.toString().toLowerCase() ?? '';
+
+    return success == false ||
+        statusCode == 413 ||
+        error.contains('payload too large') ||
+        message.contains('file too large');
+  }
+
+  String _extractApiErrorMessage(dynamic responseData) {
+    if (responseData is! Map) return 'Thao tác thất bại';
+
+    final statusCode = responseData['statusCode'];
+    final error = responseData['error']?.toString().toLowerCase() ?? '';
+    final messageRaw = responseData['message'];
+
+    if (statusCode == 413 ||
+        error.contains('payload too large') ||
+        messageRaw.toString().toLowerCase().contains('file too large')) {
+      return 'Ảnh sản phẩm quá lớn. Vui lòng chọn ảnh nhỏ hơn hoặc chọn ảnh đã được nén.';
+    }
+
+    if (messageRaw is List) {
+      return messageRaw.map((e) => e.toString()).join('\n');
+    }
+
+    if (messageRaw != null && messageRaw.toString().trim().isNotEmpty) {
+      return messageRaw.toString();
+    }
+
+    final errorText = responseData['error']?.toString();
+    if (errorText != null && errorText.trim().isNotEmpty) return errorText;
+
+    return 'Thao tác thất bại';
+  }
+
+  Map<String, dynamic>? _extractProductMap(dynamic responseData) {
+    final data = _unwrapData(responseData);
+
+    if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
+
+      if (_isApiErrorResponse(map)) return null;
+
+      final hasProductFields = map.containsKey('id') ||
+          map.containsKey('productId') ||
+          map.containsKey('product_id') ||
+          map.containsKey('title') ||
+          map.containsKey('name');
+
+      if (hasProductFields) return map;
+
+      for (final key in const [
+        'product',
+        'item',
+        'result',
+        'payload',
+        'createdProduct',
+        'savedProduct',
+      ]) {
+        final nested = map[key];
+        if (nested is Map) {
+          final extracted = _extractProductMap(nested);
+          if (extracted != null) return extracted;
+        }
+      }
+    }
+
+    return null;
+  }
+
   List<ProductModel> _parseProductList(dynamic responseData) {
     final data = _unwrapData(responseData);
     dynamic rawList;
 
     if (data is Map) {
-      rawList = data['items'] ?? data['data'] ?? [];
+      rawList = data['items'] ??
+          data['products'] ??
+          data['rows'] ??
+          data['data'] ??
+          [];
     } else if (data is List) {
       rawList = data;
     } else {
@@ -39,13 +119,25 @@ class ProductService {
     return rawList
         .whereType<Map>()
         .map((item) => ProductModel.fromJson(Map<String, dynamic>.from(item)))
+        .where((product) => product.id > 0)
         .toList();
   }
 
   ProductModel _parseProductDetail(dynamic responseData) {
-    final data = _unwrapData(responseData);
-    if (data is! Map) throw Exception('Dữ liệu sản phẩm trống');
-    return ProductModel.fromJson(Map<String, dynamic>.from(data));
+    final map = _extractProductMap(responseData);
+    if (map == null) {
+      if (_isApiErrorResponse(responseData)) {
+        throw Exception(_extractApiErrorMessage(responseData));
+      }
+      throw Exception('Dữ liệu sản phẩm trống');
+    }
+
+    final product = ProductModel.fromJson(map);
+    if (product.id <= 0) {
+      throw Exception('Không lấy được mã sản phẩm từ phản hồi server');
+    }
+
+    return product;
   }
 
   Future<List<ProductModel>> getProducts({
@@ -226,7 +318,23 @@ class ProductService {
         options: Options(contentType: 'multipart/form-data'),
       );
 
+      if (_isApiErrorResponse(response.data)) {
+        throw Exception(_extractApiErrorMessage(response.data));
+      }
+
       return _parseProductDetail(response.data);
+    } on DioException catch (e) {
+      if (e.response?.data is Map) {
+        throw Exception(_extractApiErrorMessage(e.response!.data));
+      }
+
+      if (e.response?.statusCode == 413) {
+        throw Exception(
+          'Ảnh sản phẩm quá lớn. Vui lòng chọn ảnh nhỏ hơn hoặc chọn ảnh đã được nén.',
+        );
+      }
+
+      throw Exception('Tạo sản phẩm thất bại: ${e.message}');
     } catch (e) {
       throw Exception('Tạo sản phẩm thất bại: $e');
     }
@@ -334,23 +442,8 @@ class ProductService {
     }
   }
 
-  Future<void> activateProductByAdmin(int productId) async {
-    try {
-      await _api.patch(
-        ProductApi.byId(productId),
-        data: {'status': ProductStatusValue.active},
-        options: Options(contentType: 'application/json'),
-      );
-    } catch (e) {
-      throw Exception('Mở khóa sản phẩm thất bại: $e');
-    }
-  }
-
   Future<List<ProductModel>> getDeletedProducts({int limit = 100}) {
-    throw Exception(
-      'BE product hiện tại đang xóa cứng bằng DELETE /products/:id, '
-          'nên FE không có danh sách sản phẩm đã xóa để khôi phục.',
-    );
+    return getAdminProducts(limit: limit);
   }
 
   Future<void> restoreProduct(int productId) {

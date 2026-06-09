@@ -334,16 +334,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ================================================================
-  // POPUP THÊM SẢN PHẨM VÀO GIỎ
-  // Khi bấm icon giỏ hàng trên card sản phẩm, popup này sẽ mở ra.
-  // Bên trong có:
-  // - ảnh sản phẩm
-  // - tên sản phẩm
-  // - giá
-  // - tồn kho
-  // - danh sách variant/phân loại
-  // - chọn số lượng
-  // - nút thêm vào giỏ hoặc mua ngay
+  //  THÊM SẢN PHẨM VÀO GIỎ
   // ================================================================
 
   Future<void> _showProductCartDialog(

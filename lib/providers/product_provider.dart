@@ -75,12 +75,96 @@ class ProductProvider with ChangeNotifier {
     return responseData;
   }
 
+  bool _isApiErrorResponse(dynamic responseData) {
+    if (responseData is! Map) return false;
+
+    final success = responseData['success'];
+    final statusCode = responseData['statusCode'];
+    final error = responseData['error']?.toString().toLowerCase() ?? '';
+    final message = responseData['message']?.toString().toLowerCase() ?? '';
+
+    return success == false ||
+        statusCode == 413 ||
+        error.contains('payload too large') ||
+        message.contains('file too large');
+  }
+
+  String _extractApiErrorMessage(dynamic responseData) {
+    if (responseData is! Map) {
+      return 'Thao tác thất bại';
+    }
+
+    final statusCode = responseData['statusCode'];
+    final error = responseData['error']?.toString().toLowerCase() ?? '';
+    final messageRaw = responseData['message'];
+
+    if (statusCode == 413 ||
+        error.contains('payload too large') ||
+        messageRaw.toString().toLowerCase().contains('file too large')) {
+      return 'Ảnh sản phẩm quá lớn. Vui lòng chọn ảnh nhỏ hơn hoặc chọn ảnh đã được nén.';
+    }
+
+    if (messageRaw is List) {
+      return messageRaw.map((e) => e.toString()).join('\n');
+    }
+
+    if (messageRaw != null && messageRaw.toString().trim().isNotEmpty) {
+      return messageRaw.toString();
+    }
+
+    final errorText = responseData['error']?.toString();
+    if (errorText != null && errorText.trim().isNotEmpty) {
+      return errorText;
+    }
+
+    return 'Thao tác thất bại';
+  }
+
+  Map<String, dynamic>? _extractProductMap(dynamic responseData) {
+    final data = _unwrapData(responseData);
+
+    if (data is Map) {
+      final map = Map<String, dynamic>.from(data);
+
+      if (_isApiErrorResponse(map)) return null;
+
+      final hasProductFields = map.containsKey('id') ||
+          map.containsKey('productId') ||
+          map.containsKey('product_id') ||
+          map.containsKey('title') ||
+          map.containsKey('name');
+
+      if (hasProductFields) return map;
+
+      for (final key in const [
+        'product',
+        'item',
+        'result',
+        'payload',
+        'createdProduct',
+        'savedProduct',
+      ]) {
+        final nested = map[key];
+        if (nested is Map) {
+          final extracted = _extractProductMap(nested);
+          if (extracted != null) return extracted;
+        }
+      }
+    }
+
+    return null;
+  }
+
   List<ProductModel> _parseProductsFromResponse(dynamic responseData) {
     final data = _unwrapData(responseData);
     dynamic rawList;
 
     if (data is Map) {
-      rawList = data['items'] ?? data['data'] ?? [];
+      rawList = data['items'] ??
+          data['products'] ??
+          data['rows'] ??
+          data['data'] ??
+          [];
     } else if (data is List) {
       rawList = data;
     } else {
@@ -92,15 +176,18 @@ class ProductProvider with ChangeNotifier {
     return rawList
         .whereType<Map>()
         .map((item) => ProductModel.fromJson(Map<String, dynamic>.from(item)))
+        .where((product) => product.id > 0)
         .toList();
   }
 
   ProductModel? _parseProductDetail(dynamic responseData) {
-    final data = _unwrapData(responseData);
-    if (data is Map) {
-      return ProductModel.fromJson(Map<String, dynamic>.from(data));
-    }
-    return null;
+    final map = _extractProductMap(responseData);
+    if (map == null) return null;
+
+    final product = ProductModel.fromJson(map);
+    if (product.id <= 0) return null;
+
+    return product;
   }
 
   void _upsertInList(List<ProductModel> list, ProductModel product) {
@@ -390,8 +477,7 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  // Admin mở khóa sản phẩm.
-  // BE hiện tại cho ADMIN chuyển trạng thái sang ACTIVE hoặc LOCKED.
+
   Future<bool> activateProductByAdmin(int productId) async {
     try {
       final response = await _api.patch(
@@ -428,10 +514,12 @@ class ProductProvider with ChangeNotifier {
         ProductApi.byId(productId),
       );
 
-      // BE product hiện tại dùng delete() = xóa cứng.
-      // Vì vậy FE không tự gán deletedAt giả, mà xóa item khỏi cache local.
-      _products.removeWhere((p) => p.id == productId);
-      _adminProducts.removeWhere((p) => p.id == productId);
+      final old = getProductFromCache(productId);
+      if (old != null) {
+        _updateLocalProduct(
+          old.copyWith(deletedAt: DateTime.now().toIso8601String()),
+        );
+      }
 
       notifyListeners();
       return true;
@@ -501,24 +589,37 @@ class ProductProvider with ChangeNotifier {
         data: formData,
       );
 
-      final newProduct = _parseProductDetail(response.data);
-      if (newProduct != null) {
-        _products.insert(0, newProduct);
+      // Một số ApiClient không throw DioException với HTTP 413,
+      // mà trả body lỗi dạng {success:false, statusCode:413, ...}.
+      // Vì vậy phải kiểm tra body trước khi parse ProductModel.
+      if (_isApiErrorResponse(response.data)) {
+        _error = _extractApiErrorMessage(response.data);
+        debugPrint('Create product failed response: ${response.data}');
+        return null;
       }
 
-      _isLoading = false;
+      final newProduct = _parseProductDetail(response.data);
+      if (newProduct == null || newProduct.id <= 0) {
+        _error =
+        'Tạo sản phẩm thành công nhưng FE không lấy được mã sản phẩm mới. Vui lòng tải lại danh sách sản phẩm.';
+        debugPrint('Create product response missing valid id: ${response.data}');
+        return null;
+      }
+
+      _products.insert(0, newProduct);
       notifyListeners();
       return newProduct;
     } on DioException catch (e) {
       _error = _handleDioError(e);
       debugPrint('Create product error: ${e.response?.data}');
+      return null;
     } catch (e) {
       _error = 'Lỗi tạo sản phẩm: $e';
+      return null;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
-
-    _isLoading = false;
-    notifyListeners();
-    return null;
   }
 
   Future<bool> updateProduct({
@@ -597,78 +698,32 @@ class ProductProvider with ChangeNotifier {
     }
   }
 
-  ProductModel _mergeProductDetail(ProductModel? old, ProductModel fresh) {
-    if (old == null) return fresh;
-
-    final freshTitle = fresh.title.trim();
-    final isBadTitle = freshTitle.isEmpty || freshTitle == 'Không tên';
-
-    return fresh.copyWith(
-      title: isBadTitle ? old.title : fresh.title,
-      description: fresh.description ?? old.description,
-      imageUrl: fresh.imageUrl.trim().isNotEmpty ? fresh.imageUrl : old.imageUrl,
-      images: fresh.images.isNotEmpty ? fresh.images : old.images,
-      shopId: fresh.shopId ?? old.shopId,
-      categoryId: fresh.categoryId ?? old.categoryId,
-      optionSchema: fresh.optionSchema ?? old.optionSchema,
-      variants: fresh.variants ?? old.variants,
-    );
-  }
-
-  Future<ProductModel?> fetchProductDetail(
-      int id, {
-        bool preferManage = false,
-      }) async {
-    final cached = getProductFromCache(id);
-
-    Future<ProductModel?> fetchPublicDetail() async {
-      final response = await _api.get(ProductApi.byId(id));
-      final parsed = _parseProductDetail(response.data);
-      if (parsed == null) return null;
-
-      final merged = _mergeProductDetail(cached, parsed);
-      _updateLocalProduct(merged);
-      notifyListeners();
-      return merged;
-    }
-
+  Future<ProductModel?> fetchProductDetail(int id) async {
     try {
-      if (preferManage) {
-        try {
-          final manageResponse = await _api.get(ProductApi.manageDetail(id));
-          final parsed = _parseProductDetail(manageResponse.data);
-          if (parsed != null) {
-            final merged = _mergeProductDetail(cached, parsed);
-            _updateLocalProduct(merged);
-            notifyListeners();
-            return merged;
-          }
-        } on DioException catch (e) {
-          final code = e.response?.statusCode;
+      final token = await _getOptionalToken();
 
-          // Nếu không có quyền xem manage thì fallback về public detail.
-          if (code != 401 && code != 403 && code != 404) {
-            debugPrint(
-              'Manage detail failed, fallback public: '
-                  '${e.response?.statusCode} | ${e.response?.data}',
-            );
+      if (token != null) {
+        try {
+          final manageResponse = await _api.get(
+            ProductApi.manageDetail(id),
+          );
+          final manageProduct = _parseProductDetail(manageResponse.data);
+          if (manageProduct != null) return manageProduct;
+        } on DioException catch (e) {
+          if (e.response?.statusCode != 404) {
+            rethrow;
           }
         }
       }
 
-      return await fetchPublicDetail();
+      final response = await _api.get(ProductApi.byId(id));
+      return _parseProductDetail(response.data);
     } on DioException catch (e) {
       _error = _handleDioError(e, autoLogoutOn401: false);
-      debugPrint(
-        'Fetch product detail error: '
-            '${e.response?.statusCode} | ${e.response?.data}',
-      );
       notifyListeners();
-
-      return cached;
-    } catch (e) {
-      debugPrint('Fetch product detail unknown error: $e');
-      return cached;
+      return getProductFromCache(id);
+    } catch (_) {
+      return getProductFromCache(id);
     }
   }
 
@@ -836,14 +891,15 @@ class ProductProvider with ChangeNotifier {
       return 'Phiên đăng nhập hết hạn';
     }
 
+    if (e.response?.statusCode == 413) {
+      return 'Ảnh sản phẩm quá lớn. Vui lòng chọn ảnh nhỏ hơn hoặc chọn ảnh đã được nén.';
+    }
+
     if (e.response != null) {
       final data = e.response?.data;
 
-      if (data is Map && data['message'] != null) {
-        if (data['message'] is List) {
-          return (data['message'] as List).join('\n');
-        }
-        return data['message'].toString();
+      if (data is Map) {
+        return _extractApiErrorMessage(data);
       }
 
       return 'Lỗi server';
@@ -851,4 +907,5 @@ class ProductProvider with ChangeNotifier {
 
     return 'Lỗi kết nối mạng';
   }
+
 }

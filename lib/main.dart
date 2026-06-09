@@ -105,19 +105,10 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
       initialRoute: '/login',
-      builder: (context, child) {
-        return Listener(
-          behavior: HitTestBehavior.translucent,
-          onPointerDown: (_) {
-            final currentFocus = FocusManager.instance.primaryFocus;
-
-            if (currentFocus != null && !currentFocus.hasPrimaryFocus) {
-              currentFocus.unfocus();
-            }
-          },
-          child: child ?? const SizedBox.shrink(),
-        );
-      },
+      // Không đặt Listener global để tự unfocus toàn app.
+      // Listener global có thể va chạm với Dialog/Overlay/TextField trên Android,
+      // gây lỗi _dependents.isEmpty hoặc wrong build scope khi bàn phím đang mở.
+      builder: (context, child) => child ?? const SizedBox.shrink(),
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(),

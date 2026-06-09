@@ -175,6 +175,14 @@ class _AddVariantScreenState extends State<AddVariantScreen> {
   Future<void> _submitVariants() async {
     if (_isSubmitting) return;
 
+    if (widget.productId <= 0) {
+      _showSnack(
+        'Không thể tạo biến thể vì mã sản phẩm không hợp lệ. Vui lòng quay lại danh sách sản phẩm và thử lại.',
+        isError: true,
+      );
+      return;
+    }
+
     if (widget.currentProduct?.isLocked == true) {
       _showSnack('Sản phẩm đã bị admin khóa, không thể chỉnh sửa biến thể', isError: true);
       return;

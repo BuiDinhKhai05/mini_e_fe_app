@@ -236,7 +236,7 @@ class ProductModel {
     }
 
     return ProductModel(
-      id: _parseInt(json['id']),
+      id: _parseInt(json['id'] ?? json['productId'] ?? json['product_id']),
       title: (json['title'] ?? json['name'] ?? 'Không tên').toString(),
       description: _parseNullableString(json['description']),
       price: _parseDouble(json['price']),

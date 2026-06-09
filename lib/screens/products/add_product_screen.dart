@@ -34,6 +34,13 @@ class _AddProductScreenState extends State<AddProductScreen> {
   static const Color _textGrey = AppColors.textGrey;
   static const Color _dangerRed = AppColors.error;
 
+  // BE hiện tại cho tối đa 10 ảnh. FE nén ảnh khi chọn để hạn chế lỗi 413 Payload Too Large.
+  static const int _maxProductImages = 10;
+  static const int _maxImageBytes = 3 * 1024 * 1024; // 3MB/ảnh sau khi nén.
+  static const double _imageMaxWidth = 1280;
+  static const double _imageMaxHeight = 1280;
+  static const int _imageQuality = 70;
+
   final _formKey = GlobalKey<FormState>();
 
   late final TextEditingController _titleController;
@@ -144,33 +151,91 @@ class _AddProductScreenState extends State<AddProductScreen> {
   }
 
   // =========================
-  // Chọn ảnh sản phẩm, giới hạn tối đa 10 ảnh.
+  // Chọn ảnh sản phẩm.
+  // Ảnh điện thoại thường rất lớn, nếu gửi thẳng lên BE dễ bị lỗi 413 Payload Too Large.
+  // Vì vậy FE nén ảnh bằng image_picker và bỏ qua ảnh vẫn còn quá lớn sau khi nén.
   // =========================
   Future<void> _pickImages() async {
-    if (_selectedImageCount >= 10) {
-      _showSnack('Bạn chỉ được chọn tối đa 10 ảnh', isError: true);
+    if (_selectedImageCount >= _maxProductImages) {
+      _showSnack(
+        'Bạn chỉ được chọn tối đa $_maxProductImages ảnh',
+        isError: true,
+      );
       return;
     }
 
-    final picked = await _picker.pickMultiImage(imageQuality: 85);
+    final picked = await _picker.pickMultiImage(
+      imageQuality: _imageQuality,
+      maxWidth: _imageMaxWidth,
+      maxHeight: _imageMaxHeight,
+    );
     if (picked.isEmpty) return;
 
-    final remaining = 10 - _selectedImageCount;
+    final remaining = _maxProductImages - _selectedImageCount;
     final selected = picked.take(remaining).toList();
+
+    int skippedLargeImages = 0;
 
     if (kIsWeb) {
       final bytesList = <Uint8List>[];
+
       for (final xFile in selected) {
+        final length = await xFile.length();
+
+        if (length > _maxImageBytes) {
+          skippedLargeImages++;
+          continue;
+        }
+
         bytesList.add(await xFile.readAsBytes());
       }
+
       if (!mounted) return;
-      setState(() => _imageBytes.addAll(bytesList));
+
+      if (bytesList.isNotEmpty) {
+        setState(() => _imageBytes.addAll(bytesList));
+      }
     } else {
-      setState(() => _images.addAll(selected.map((xFile) => File(xFile.path))));
+      final fileList = <File>[];
+
+      for (final xFile in selected) {
+        final length = await xFile.length();
+
+        if (length > _maxImageBytes) {
+          skippedLargeImages++;
+          continue;
+        }
+
+        fileList.add(File(xFile.path));
+      }
+
+      if (!mounted) return;
+
+      if (fileList.isNotEmpty) {
+        setState(() => _images.addAll(fileList));
+      }
     }
 
+    if (!mounted) return;
+
     if (picked.length > remaining) {
-      _showSnack('Chỉ lấy thêm $remaining ảnh vì giới hạn tối đa là 10 ảnh');
+      _showSnack(
+        'Chỉ lấy thêm $remaining ảnh vì giới hạn tối đa là $_maxProductImages ảnh',
+      );
+    }
+
+    if (skippedLargeImages > 0) {
+      _showSnack(
+        'Đã bỏ qua $skippedLargeImages ảnh vì dung lượng vẫn quá lớn sau khi nén. Vui lòng chọn ảnh nhỏ hơn.',
+        isError: true,
+      );
+    }
+
+    if (_selectedImageCount == 0 && skippedLargeImages == selected.length) {
+      _showSnack(
+        'Không có ảnh nào hợp lệ để tải lên. Vui lòng chọn ảnh nhỏ hơn.',
+        isError: true,
+      );
     }
   }
 
@@ -472,7 +537,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
                       child: OutlinedButton.icon(
                         onPressed: _isSubmitting ? null : _pickImages,
                         icon: const Icon(Icons.add_photo_alternate_outlined),
-                        label: Text('Chọn ảnh ($_selectedImageCount/10)'),
+                        label: Text('Chọn ảnh ($_selectedImageCount/$_maxProductImages)'),
                         style: _outlineButtonStyle(),
                       ),
                     ),
@@ -864,7 +929,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Ảnh mới đã chọn ($_selectedImageCount/10)',
+          'Ảnh mới đã chọn ($_selectedImageCount/$_maxProductImages)',
           style: const TextStyle(fontWeight: FontWeight.w700, color: _textDark),
         ),
         const SizedBox(height: 10),
