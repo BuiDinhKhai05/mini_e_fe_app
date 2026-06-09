@@ -813,6 +813,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
         SizedBox(
           height: 82,
           child: ListView.separated(
+
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
             itemCount: roots.length + 1,
@@ -938,18 +939,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ),
           if (_keyword.isNotEmpty || selectedCategory != null) ...[
             const SizedBox(height: 8),
-            Text(
-              [
-                if (selectedCategory != null) 'Danh mục: ${selectedCategory.name}',
-                if (_keyword.isNotEmpty) 'Từ khóa: "$_keyword"',
-                '$resultCount sản phẩm',
-              ].join(' • '),
-              style: const TextStyle(
-                color: AppColors.textGrey,
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+
           ],
         ],
       ),

@@ -102,12 +102,22 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       navigatorKey: AuthProvider.navigatorKey,
       title: 'Mini E-commerce App',
-
-      // Dùng theme chung của app tại lib/theme/app_theme.dart
       theme: AppTheme.lightTheme,
-
       debugShowCheckedModeBanner: false,
       initialRoute: '/login',
+      builder: (context, child) {
+        return Listener(
+          behavior: HitTestBehavior.translucent,
+          onPointerDown: (_) {
+            final currentFocus = FocusManager.instance.primaryFocus;
+
+            if (currentFocus != null && !currentFocus.hasPrimaryFocus) {
+              currentFocus.unfocus();
+            }
+          },
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       routes: {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => RegisterScreen(),
