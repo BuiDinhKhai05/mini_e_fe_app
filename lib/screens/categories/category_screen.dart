@@ -24,6 +24,7 @@ import '../../providers/cart_provider.dart';
 import '../../providers/category_provider.dart';
 import '../../providers/product_provider.dart';
 import '../../providers/shop_provider.dart';
+import '../../widgets/main_navigation_layout.dart';
 import '../shops/shop_detail_screen.dart';
 
 // Các kiểu sắp xếp sản phẩm trong màn danh mục.
@@ -607,7 +608,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     if (variants.isEmpty)
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.all(14),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -775,129 +776,6 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }
 
   // ================================================================
-  // HEADER MÀN CATEGORY
-  // ================================================================
-  Widget _header(CategoryModel? selectedCategory, int productCount, int shopCount) {
-    final title = selectedCategory?.name ?? widget.initialCategoryName ?? 'Tất cả danh mục';
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        border: Border(bottom: BorderSide(color: AppColors.lightPink)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  InkWell(
-                    onTap: () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(999),
-                    child: Container(
-                      width: 42,
-                      height: 42,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.borderPink),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back_rounded,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textDark,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          'Tìm thấy $productCount sản phẩm • $shopCount cửa hàng',
-                          style: const TextStyle(
-                            color: AppColors.textGrey,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: AppColors.lightPink,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.borderPink),
-                    ),
-                    child: const Icon(
-                      Icons.grid_view_rounded,
-                      color: AppColors.darkPink,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: AppColors.borderPink),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.darkPink.withOpacity(0.08),
-                      blurRadius: 18,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  textInputAction: TextInputAction.search,
-                  onChanged: _onSearchChanged,
-                  decoration: InputDecoration(
-                    hintText: 'Tìm sản phẩm hoặc cửa hàng...',
-                    hintStyle: const TextStyle(
-                      color: AppColors.textLight,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    prefixIcon: const Icon(Icons.search_rounded, color: AppColors.darkPink),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
-                    suffixIcon: _keyword.isEmpty
-                        ? null
-                        : IconButton(
-                      tooltip: 'Xóa tìm kiếm',
-                      icon: const Icon(Icons.clear_rounded, color: AppColors.textGrey),
-                      onPressed: _clearSearchKeyword,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ================================================================
   // DANH MỤC CHA + DANH MỤC CON
   // ================================================================
   Widget _categoryFilterBar(CategoryProvider categoryProvider) {
@@ -922,23 +800,23 @@ class _CategoryScreenState extends State<CategoryScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Padding(
-          padding: EdgeInsets.fromLTRB(16, 16, 16, 10),
+          padding: EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Text(
             'Lọc theo danh mục',
             style: TextStyle(
               color: AppColors.textDark,
-              fontSize: 16,
+              fontSize: 15,
               fontWeight: FontWeight.w900,
             ),
           ),
         ),
         SizedBox(
-          height: 92,
+          height: 82,
           child: ListView.separated(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             scrollDirection: Axis.horizontal,
             itemCount: roots.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            separatorBuilder: (_, __) => const SizedBox(width: 9),
             itemBuilder: (context, index) {
               if (index == 0) {
                 return _CategoryFilterCard(
@@ -962,7 +840,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
           ),
         ),
         if (children.isNotEmpty) ...[
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -995,7 +873,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
   // ================================================================
   Widget _sortAndInfoBar(CategoryModel? selectedCategory, int resultCount) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1008,7 +886,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       : 'Kết quả lọc',
                   style: const TextStyle(
                     color: AppColors.textDark,
-                    fontSize: 17,
+                    fontSize: 16,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1031,7 +909,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 5),
           Wrap(
             spacing: 8,
             runSpacing: 8,
@@ -1059,7 +937,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
             ],
           ),
           if (_keyword.isNotEmpty || selectedCategory != null) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               [
                 if (selectedCategory != null) 'Danh mục: ${selectedCategory.name}',
@@ -1084,11 +962,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
   Widget _productCard(ProductModel product) {
     return InkWell(
       onTap: () => Navigator.pushNamed(context, '/product-detail', arguments: product),
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.softPink),
           boxShadow: [
             BoxShadow(
@@ -1106,7 +984,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               child: Stack(
                 children: [
                   ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
                     child: CachedNetworkImage(
                       imageUrl: product.imageUrl.isNotEmpty
                           ? product.imageUrl
@@ -1150,7 +1028,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 13.5,
+                        fontSize: 12.5,
                         fontWeight: FontWeight.w900,
                         color: AppColors.textDark,
                         height: 1.15,
@@ -1167,7 +1045,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             children: [
                               const Icon(
                                 Icons.storefront_rounded,
-                                size: 13,
+                                size: 12,
                                 color: AppColors.textGrey,
                               ),
                               const SizedBox(width: 4),
@@ -1177,7 +1055,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: const TextStyle(
-                                    fontSize: 11.5,
+                                    fontSize: 10.5,
                                     color: AppColors.textGrey,
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -1192,7 +1070,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     Text(
                       '${_formatPrice(product.price)} VNĐ',
                       style: const TextStyle(
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
                         color: AppColors.darkPink,
                       ),
@@ -1207,7 +1085,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: 10.5,
                             color: stock > 0 ? AppColors.textGrey : AppColors.error,
                             fontWeight: FontWeight.w700,
                           ),
@@ -1219,7 +1097,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       children: [
                         Expanded(
                           child: Container(
-                            height: 32,
+                            height: 28,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
                               color: AppColors.softPink,
@@ -1230,7 +1108,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                               style: TextStyle(
                                 color: AppColors.textGrey,
                                 fontWeight: FontWeight.w900,
-                                fontSize: 12,
+                                fontSize: 11,
                               ),
                             ),
                           ),
@@ -1240,8 +1118,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
                           onTap: () => _showProductCartDialog(product),
                           borderRadius: BorderRadius.circular(12),
                           child: Container(
-                            width: 36,
-                            height: 32,
+                            width: 32,
+                            height: 28,
                             decoration: BoxDecoration(
                               color: AppColors.darkPink,
                               borderRadius: BorderRadius.circular(12),
@@ -1249,7 +1127,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                             child: const Icon(
                               Icons.shopping_cart_outlined,
                               color: Colors.white,
-                              size: 19,
+                              size: 17,
                             ),
                           ),
                         ),
@@ -1362,7 +1240,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+                padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
                 sliver: SliverGrid(
                   delegate: SliverChildBuilderDelegate(
                         (context, index) => _productCard(filteredProducts[index]),
@@ -1370,11 +1248,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   ),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 14,
+                    crossAxisSpacing: 10,
+                    mainAxisSpacing: 12,
                     // Dùng chiều cao cố định để tránh RenderFlex overflow
                     // trên emulator/màn hình nhỏ.
-                    mainAxisExtent: 300,
+                    mainAxisExtent: 278,
                   ),
                 ),
               ),
@@ -1395,7 +1273,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
     return SliverToBoxAdapter(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 0, 6),
+        padding: const EdgeInsets.fromLTRB(16, 12, 0, 4),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1408,7 +1286,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                       'Cửa hàng phù hợp',
                       style: TextStyle(
                         color: AppColors.textDark,
-                        fontSize: 17,
+                        fontSize: 16,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
@@ -1417,16 +1295,16 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     '${shops.length} cửa hàng',
                     style: const TextStyle(
                       color: AppColors.textGrey,
-                      fontSize: 12,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             SizedBox(
-              height: 132,
+              height: 112,
               child: _buildShopHorizontalContent(shopProvider),
             ),
           ],
@@ -1490,17 +1368,17 @@ class _CategoryScreenState extends State<CategoryScreen> {
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: AppColors.softPink),
       ),
       child: Row(
         children: [
           Container(
-            width: 46,
-            height: 46,
+            width: 40,
+            height: 40,
             decoration: const BoxDecoration(
               color: AppColors.lightPink,
               shape: BoxShape.circle,
@@ -1515,7 +1393,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 color: AppColors.textDark,
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1538,13 +1416,13 @@ class _CategoryScreenState extends State<CategoryScreen> {
           MaterialPageRoute(builder: (_) => ShopDetailScreen(shop: shop)),
         );
       },
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       child: Container(
-        width: 126,
-        padding: const EdgeInsets.all(10),
+        width: 108,
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: _categoryColor(index + 2),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: AppColors.softPink.withOpacity(0.72)),
         ),
         child: Column(
@@ -1558,8 +1436,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
                   right: -5,
                   bottom: -2,
                   child: Container(
-                    width: 22,
-                    height: 22,
+                    width: 20,
+                    height: 20,
                     decoration: BoxDecoration(
                       color: Colors.white,
                       shape: BoxShape.circle,
@@ -1567,14 +1445,14 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     ),
                     child: const Icon(
                       Icons.storefront_rounded,
-                      size: 13,
+                      size: 12,
                       color: AppColors.darkPink,
                     ),
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             Text(
               shop.name,
               maxLines: 2,
@@ -1582,16 +1460,16 @@ class _CategoryScreenState extends State<CategoryScreen> {
               textAlign: TextAlign.center,
               style: const TextStyle(
                 color: AppColors.textDark,
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: FontWeight.w900,
                 height: 1.12,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.star_rounded, size: 14, color: AppColors.warning),
+                const Icon(Icons.star_rounded, size: 13, color: AppColors.warning),
                 const SizedBox(width: 2),
                 Flexible(
                   child: Text(
@@ -1600,7 +1478,7 @@ class _CategoryScreenState extends State<CategoryScreen> {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: AppColors.textGrey,
-                      fontSize: 11,
+                      fontSize: 10.5,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -1615,8 +1493,8 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
   Widget _shopLogoSmall(ShopModel shop) {
     return Container(
-      width: 52,
-      height: 52,
+      width: 44,
+      height: 44,
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.9),
         shape: BoxShape.circle,
@@ -1626,170 +1504,11 @@ class _CategoryScreenState extends State<CategoryScreen> {
             : null,
       ),
       child: shop.logoUrl == null || shop.logoUrl!.trim().isEmpty
-          ? const Icon(Icons.storefront_rounded, color: AppColors.darkPink, size: 28)
+          ? const Icon(Icons.storefront_rounded, color: AppColors.darkPink, size: 24)
           : null,
     );
   }
 
-  Widget _shopCard(ShopModel shop) {
-    return InkWell(
-      onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => ShopDetailScreen(shop: shop)),
-        );
-      },
-      borderRadius: BorderRadius.circular(22),
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: AppColors.softPink),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.darkPink.withOpacity(0.07),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-                  child: SizedBox(
-                    height: 118,
-                    width: double.infinity,
-                    child: shop.coverUrl != null
-                        ? Image.network(
-                      shop.coverUrl!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _shopCoverPlaceholder(),
-                    )
-                        : _shopCoverPlaceholder(),
-                  ),
-                ),
-                Positioned(
-                  top: 10,
-                  right: 10,
-                  child: _shopStatusBadge(shop.status),
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _shopLogo(shop),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          shop.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textDark,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 7),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _InfoChip(
-                              icon: Icons.star_rounded,
-                              label: '${shop.stats.ratingAvg.toStringAsFixed(1)} | ${shop.stats.reviewCount} đánh giá',
-                              iconColor: AppColors.warning,
-                            ),
-                            if (shop.phone != null && shop.phone!.trim().isNotEmpty)
-                              _InfoChip(
-                                icon: Icons.phone_outlined,
-                                label: shop.phone!,
-                              ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded, color: AppColors.darkPink),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _shopCoverPlaceholder() {
-    return Container(
-      color: AppColors.lightPink,
-      child: const Center(
-        child: Icon(Icons.storefront_rounded, color: AppColors.darkPink, size: 42),
-      ),
-    );
-  }
-
-  Widget _shopLogo(ShopModel shop) {
-    return Container(
-      width: 54,
-      height: 54,
-      decoration: BoxDecoration(
-        color: AppColors.lightPink,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.darkPink.withOpacity(0.12),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        image: shop.logoUrl != null
-            ? DecorationImage(image: NetworkImage(shop.logoUrl!), fit: BoxFit.cover)
-            : null,
-      ),
-      child: shop.logoUrl == null
-          ? const Icon(Icons.storefront_rounded, color: AppColors.darkPink, size: 28)
-          : null,
-    );
-  }
-
-  Widget _shopStatusBadge(String status) {
-    final label = status == 'ACTIVE'
-        ? 'Hoạt động'
-        : status == 'PENDING'
-        ? 'Chờ duyệt'
-        : status == 'SUSPENDED'
-        ? 'Bị khóa'
-        : status;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.borderPink),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(
-          color: AppColors.darkPink,
-          fontSize: 11,
-          fontWeight: FontWeight.w900,
-        ),
-      ),
-    );
-  }
 
   Widget _buildEmptyResult({
     required IconData icon,
@@ -1866,7 +1585,13 @@ class _CategoryScreenState extends State<CategoryScreen> {
 
           return Column(
             children: [
-              _header(selectedCategory, filteredProducts.length, shopProvider.shops.length),
+              AppHomeHeader(
+                searchController: _searchCtrl,
+                hintText: 'Tìm sản phẩm hoặc cửa hàng...',
+                onSearchChanged: _onSearchChanged,
+                onSearchSubmitted: _onSearchChanged,
+                onClearSearch: _clearSearchKeyword,
+              ),
               Expanded(
                 child: _buildCombinedResults(
                   productProvider: productProvider,
@@ -1880,51 +1605,13 @@ class _CategoryScreenState extends State<CategoryScreen> {
           );
         },
       ),
-    );
-  }
-}
-
-// ================================================================
-// CHIP THÔNG TIN NHỎ TRONG CARD SHOP
-// ================================================================
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color iconColor;
-
-  const _InfoChip({
-    required this.icon,
-    required this.label,
-    this.iconColor = AppColors.darkPink,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.softPink,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: AppColors.borderPink),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 14, color: iconColor),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              color: AppColors.textDark,
-              fontSize: 11.5,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
+      bottomNavigationBar: const AppBottomNav(
+        currentIndex: 1,
       ),
     );
   }
 }
+
 
 // ================================================================
 // CARD CATEGORY TRONG THANH LỌC
@@ -1948,14 +1635,14 @@ class _CategoryFilterCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(22),
+      borderRadius: BorderRadius.circular(18),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 108,
-        padding: const EdgeInsets.all(11),
+        width: 92,
+        padding: const EdgeInsets.all(9),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: selected ? AppColors.darkPink : Colors.white,
             width: selected ? 1.6 : 1,
@@ -1974,8 +1661,8 @@ class _CategoryFilterCard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 40,
-              height: 40,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.82),
                 shape: BoxShape.circle,
@@ -1983,16 +1670,17 @@ class _CategoryFilterCard extends StatelessWidget {
               child: Icon(
                 icon,
                 color: selected ? AppColors.darkPink : AppColors.textDark,
+                size: 18,
               ),
             ),
-            const SizedBox(height: 7),
+            const SizedBox(height: 5),
             Text(
               label,
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 11,
                 color: selected ? AppColors.darkPink : AppColors.textDark,
                 fontWeight: FontWeight.w900,
               ),
@@ -2021,13 +1709,13 @@ class _CategoryChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(right: 10),
+      margin: const EdgeInsets.only(right: 8),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(999),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
           decoration: BoxDecoration(
             color: selected ? AppColors.darkPink : Colors.white,
             borderRadius: BorderRadius.circular(999),
@@ -2040,7 +1728,7 @@ class _CategoryChip extends StatelessWidget {
             style: TextStyle(
               color: selected ? Colors.white : AppColors.textGrey,
               fontWeight: FontWeight.w900,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
         ),
@@ -2070,7 +1758,7 @@ class _SortChip extends StatelessWidget {
       borderRadius: BorderRadius.circular(999),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 160),
-        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
         decoration: BoxDecoration(
           color: selected ? AppColors.darkPink : Colors.white,
           borderRadius: BorderRadius.circular(999),
@@ -2083,7 +1771,7 @@ class _SortChip extends StatelessWidget {
           style: TextStyle(
             color: selected ? Colors.white : AppColors.textGrey,
             fontWeight: FontWeight.w900,
-            fontSize: 12,
+            fontSize: 11,
           ),
         ),
       ),

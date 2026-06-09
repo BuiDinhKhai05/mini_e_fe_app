@@ -13,10 +13,10 @@ import '../models/product_model.dart';
 import '../models/category_model.dart';
 import '../theme/app_theme.dart';
 import '../widgets/horizontal_section.dart';
+import '../widgets/main_navigation_layout.dart';
 import 'categories/category_screen.dart';
 import 'package:mini_e_fe_app/screens/products/widgets/product_cart_action_sheet.dart';
 
-const String _kMochiLogoAsset = 'assets/images/mochi/bunny_bear_original.png';
 const String _kHomeHeroAsset = 'assets/images/mochi/basket_chick.png';
 
 // ================================================================
@@ -42,14 +42,6 @@ class _HomeScreenState extends State<HomeScreen> {
   final Map<int, int> _stockCache = {};
   // Controller của ô tìm kiếm trên header.
   final TextEditingController _searchCtrl = TextEditingController();
-
-  // ID danh mục cha đang chọn.
-  // Khi null nghĩa là chưa chọn danh mục cha nào.
-  int? _selectedRootId;
-  // ID danh mục đang lọc sản phẩm.
-  // Có thể là danh mục cha hoặc danh mục con.
-  int? _selectedCategoryId;
-
 
   // ================================================================
   // KHỞI TẠO DỮ LIỆU KHI VÀO TRANG
@@ -92,52 +84,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ================================================================
-  // LẤY CATEGORY ID TỪ PRODUCT
-  // Dùng dynamic để đọc được nhiều kiểu dữ liệu khác nhau từ ProductModel:
-  // - categoryId
-  // - category_id
-  // - category.id
-  // - toJson()['categoryId'] hoặc toJson()['category_id']
-  // Mục đích: tránh lỗi nếu backend/model đặt tên field khác nhau.
-  // ================================================================
-  int? _tryGetCategoryId(ProductModel product) {
-    try {
-      final d = product as dynamic;
-
-      final v1 = d.categoryId;
-      if (v1 is int) return v1;
-      if (v1 is num) return v1.toInt();
-
-      final v2 = d.category_id;
-      if (v2 is int) return v2;
-      if (v2 is num) return v2.toInt();
-
-      final v3 = d.category?.id;
-      if (v3 is int) return v3;
-      if (v3 is num) return v3.toInt();
-
-      // nếu có toJson()
-      try {
-        final m = d.toJson();
-        if (m is Map) {
-          final v = m['categoryId'] ?? m['category_id'];
-          if (v is int) return v;
-          if (v is num) return v.toInt();
-          if (m['category'] is Map) {
-            final vv = (m['category'] as Map)['id'];
-            if (vv is int) return vv;
-            if (vv is num) return vv.toInt();
-          }
-        }
-      } catch (_) {}
-
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  // ================================================================
   // TÌM DANH MỤC THEO ID TRONG CÂY DANH MỤC
   // Hàm này duyệt đệ quy qua danh mục cha và các danh mục con.
   // ================================================================
@@ -148,48 +94,6 @@ class _HomeScreenState extends State<HomeScreen> {
       if (child != null) return child;
     }
     return null;
-  }
-
-  // ================================================================
-  // LẤY TOÀN BỘ ID DANH MỤC CON CỦA MỘT DANH MỤC
-  // Khi chọn danh mục cha, hàm này lấy cả ID của cha và các con bên trong.
-  // Nhờ vậy sản phẩm thuộc danh mục con vẫn hiện khi chọn danh mục cha.
-  // ================================================================
-  List<int> _collectSubtreeIds(List<CategoryModel> tree, int rootId) {
-    final node = _findNodeById(tree, rootId);
-    if (node == null) return [rootId];
-
-    final ids = <int>[];
-    void dfs(CategoryModel n) {
-      ids.add(n.id);
-      for (final c in n.children) dfs(c);
-    }
-
-    dfs(node);
-    return ids;
-  }
-
-  // ================================================================
-  // LỌC SẢN PHẨM
-  // Áp dụng 2 bộ lọc:
-  // 1. Lọc theo danh mục đang chọn.
-  // 2. Lọc theo keyword tìm kiếm.
-  // ================================================================
-  List<ProductModel> _applyFilters(List<ProductModel> products, List<CategoryModel> tree) {
-    List<int>? allowedCategoryIds;
-    if (_selectedCategoryId != null) {
-      allowedCategoryIds = _collectSubtreeIds(tree, _selectedCategoryId!);
-    }
-
-    return products.where((p) {
-      // filter category
-      if (allowedCategoryIds != null) {
-        final catId = _tryGetCategoryId(p);
-        if (catId == null) return false;
-        if (!allowedCategoryIds.contains(catId)) return false;
-      }
-      return true;
-    }).toList();
   }
 
   // ================================================================
@@ -294,39 +198,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // ================================================================
-  // CHỌN TẤT CẢ SẢN PHẨM
-  // Reset bộ lọc danh mục về null.
-  // ================================================================
-  void _selectAll() {
-    setState(() {
-      _selectedRootId = null;
-      _selectedCategoryId = null;
-    });
-  }
-
-  // ================================================================
-  // CHỌN DANH MỤC CHA
-  // Khi chọn danh mục cha, sản phẩm sẽ lọc theo danh mục cha đó
-  // và toàn bộ danh mục con bên trong.
-  // ================================================================
-  void _selectRoot(CategoryModel root) {
-    setState(() {
-      _selectedRootId = root.id;
-      _selectedCategoryId = root.id;
-    });
-  }
-
-  // ================================================================
-  // CHỌN DANH MỤC CON
-  // Khi chọn danh mục con, chỉ lọc theo danh mục con đó.
-  // ================================================================
-  void _selectChild(CategoryModel child) {
-    setState(() {
-      _selectedCategoryId = child.id;
-    });
-  }
-
-  // ================================================================
   // BOTTOM SHEET CHỌN DANH MỤC
   // Mở bảng chọn danh mục từ dưới màn hình lên.
   // Người dùng có thể chọn 'Tất cả sản phẩm' hoặc từng danh mục cụ thể.
@@ -385,18 +256,17 @@ class _HomeScreenState extends State<HomeScreen> {
                     _categoryPickerTile(
                       title: 'Tất cả sản phẩm',
                       icon: Icons.home_rounded,
-                      selected: _selectedCategoryId == null,
+                      selected: false,
                       onTap: () {
                         Navigator.pop(context);
                         _openCategoryProducts();
                       },
                     ),
                     ...options.map((c) {
-                      final selected = _selectedCategoryId == c.id;
                       return _categoryPickerTile(
                         title: c.name,
                         icon: _categoryIconData(c.name),
-                        selected: selected,
+                        selected: false,
                         onTap: () {
                           Navigator.pop(context);
                           final original = _findNodeById(cp.tree, c.id) ?? c;
@@ -487,241 +357,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
-  // ================================================================
-  // HEADER TRANG HOME
-  // Gồm logo/tên shop, nút giỏ hàng, nút tài khoản và ô tìm kiếm.
-  // Đây là phần được thiết kế lại theo style mobile cute/pink.
-  // ================================================================
-  Widget _header(BuildContext context, CategoryProvider cp) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        border: Border(bottom: BorderSide(color: AppColors.borderPink)),
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          // Header được làm thấp hơn và gọn hơn để phần đầu trang không chiếm quá nhiều chiều cao.
-          padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.large),
-                      border: Border.all(color: AppColors.borderPink),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.darkPink.withOpacity(0.08),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(3),
-                      child: Image.asset(
-                        _kMochiLogoAsset,
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.favorite_rounded,
-                          color: AppColors.darkPink,
-                          size: 22,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Mochi Shop',
-                          style: TextStyle(
-                            color: AppColors.darkPink,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.1,
-                            height: 1.05,
-                          ),
-                        ),
-                        SizedBox(height: 2),
-                        Text(
-                          'Cute things for you ♡',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: AppColors.textGrey,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            height: 1.05,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Consumer<CartProvider>(
-                    builder: (_, provider, __) => Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        _roundHeaderButton(
-                          icon: Icons.shopping_cart_outlined,
-                          onTap: () => Navigator.pushNamed(context, '/cart'),
-                        ),
-                        if ((provider.cartData?.itemsCount ?? 0) > 0)
-                          Positioned(
-                            right: -2,
-                            top: -4,
-                            child: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: const BoxDecoration(
-                                color: AppColors.darkPink,
-                                shape: BoxShape.circle,
-                              ),
-                              child: Text(
-                                '${provider.cartData!.itemsCount}',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _roundHeaderButton(
-                    icon: Icons.person_outline_rounded,
-                    onTap: () => Navigator.pushNamed(context, '/profile'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(AppRadius.large),
-                  border: Border.all(color: AppColors.borderPink),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.darkPink.withOpacity(0.06),
-                      blurRadius: 14,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: TextField(
-                  controller: _searchCtrl,
-                  textInputAction: TextInputAction.search,
-                  onChanged: (_) => setState(() {}),
-                  // Khi người dùng bấm Enter/Search thì chuyển sang CategoryScreen.
-                  onSubmitted: (v) {
-                    final keyword = v.trim();
-                    if (keyword.isEmpty) return;
-                    _openCategoryProducts(keyword: keyword);
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Bạn tìm gì hôm nay?',
-                    hintStyle: AppTextStyles.bodyGrey.copyWith(
-                      color: AppColors.textLight,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                    ),
-                    prefixIcon: const Icon(
-                      Icons.search_rounded,
-                      color: AppColors.darkPink,
-                      size: 21,
-                    ),
-                    prefixIconConstraints: const BoxConstraints(
-                      minWidth: 42,
-                      minHeight: 42,
-                    ),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 12,
-                    ),
-                    suffixIconConstraints: const BoxConstraints(
-                      minWidth: 42,
-                      minHeight: 42,
-                    ),
-                    suffixIcon: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          tooltip: 'Chọn danh mục',
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(
-                            minWidth: 36,
-                            minHeight: 36,
-                          ),
-                          icon: const Icon(
-                            Icons.tune_rounded,
-                            color: AppColors.darkPink,
-                            size: 20,
-                          ),
-                          onPressed: () => _openCategoryPicker(cp),
-                        ),
-                        if (_searchCtrl.text.isNotEmpty)
-                          IconButton(
-                            tooltip: 'Xoá tìm kiếm',
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 36,
-                              minHeight: 36,
-                            ),
-                            icon: const Icon(
-                              Icons.clear_rounded,
-                              color: AppColors.textGrey,
-                              size: 20,
-                            ),
-                            onPressed: () {
-                              _searchCtrl.clear();
-                              setState(() {});
-                            },
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ================================================================
-  // NÚT TRÒN TRÊN HEADER
-  // Dùng lại cho icon giỏ hàng, tài khoản...
-  // ================================================================
-  Widget _roundHeaderButton({required IconData icon, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.circle),
-      child: Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: AppColors.borderPink),
-        ),
-        child: Icon(icon, color: AppColors.textDark, size: 20),
-      ),
-    );
-  }
 
   // ================================================================
   // BANNER CHÍNH
@@ -1021,170 +656,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-  // ================================================================
-  // KHU VỰC DANH MỤC NỔI BẬT
-  // Hiển thị danh mục cha dạng card ngang.
-  // Nếu danh mục cha có danh mục con thì hiển thị thêm chip bên dưới.
-  // ================================================================
-  Widget _categoryHighlights(CategoryProvider cp) {
-    final roots = cp.tree;
-
-    CategoryModel? selectedRoot;
-    if (_selectedRootId != null) {
-      selectedRoot = _findNodeById(roots, _selectedRootId!);
-    }
-    final children = selectedRoot?.children ?? const <CategoryModel>[];
-
-    if (cp.loadingTree) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 16),
-        child: Center(child: CircularProgressIndicator(color: AppColors.darkPink)),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _sectionHeader('Danh mục nổi bật 💗', onViewAll: () => _openCategoryProducts()),
-        SizedBox(
-          height: 88,
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            scrollDirection: Axis.horizontal,
-            itemCount: roots.length + 1,
-            separatorBuilder: (_, __) => const SizedBox(width: 10),
-            itemBuilder: (_, index) {
-              if (index == 0) {
-                return _categoryCard(
-                  label: 'Tất cả',
-                  icon: Icons.home_rounded,
-                  selected: _selectedCategoryId == null,
-                  color: const Color(0xFFFFE8EF),
-                  onTap: () => _openCategoryProducts(),
-                );
-              }
-              final c = roots[index - 1];
-              return _categoryCard(
-                label: c.name,
-                icon: _categoryIconData(c.name),
-                selected: _selectedRootId == c.id,
-                color: _categoryColor(index),
-                onTap: () => _openCategoryProducts(category: c),
-              );
-            },
-          ),
-        ),
-        if (children.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                ...children.map((c) => _CategoryChip(
-                  label: c.name,
-                  selected: _selectedCategoryId == c.id,
-                  onTap: () => _openCategoryProducts(category: c),
-                )),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  // ================================================================
-  // CARD DANH MỤC
-  // Mỗi card gồm icon + tên danh mục.
-  // Card được highlight nếu đang được chọn.
-  // ================================================================
-  Widget _categoryCard({
-    required String label,
-    required IconData icon,
-    required bool selected,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.large),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: 92,
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(AppRadius.large),
-          border: Border.all(
-            color: selected ? AppColors.darkPink : Colors.white,
-            width: selected ? 1.5 : 1,
-          ),
-          boxShadow: selected
-              ? [
-            BoxShadow(
-              color: AppColors.darkPink.withOpacity(0.12),
-              blurRadius: 14,
-              offset: const Offset(0, 7),
-            ),
-          ]
-              : null,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.82),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                icon,
-                color: selected ? AppColors.darkPink : AppColors.textDark,
-                size: 18,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 11,
-                color: selected ? AppColors.darkPink : AppColors.textDark,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ================================================================
-  // MÀU NỀN CHO CARD DANH MỤC
-  // Lấy màu theo index để các danh mục có màu pastel khác nhau.
-  // ================================================================
-  Color _categoryColor(int index) {
-    const colors = [
-      Color(0xFFFFE8EF),
-      Color(0xFFFFF3CC),
-      Color(0xFFE9F8EF),
-      Color(0xFFEAF5FF),
-      Color(0xFFF1EAFE),
-      Color(0xFFFFECE2),
-    ];
-    return colors[index % colors.length];
-  }
-
   // ================================================================
   // CHỌN ICON THEO TÊN DANH MỤC
-  // Dựa vào keyword trong tên danh mục để gán icon phù hợp.
-  // Ví dụ: gấu/bông -> icon thú cưng, quà -> icon gift.
   // ================================================================
   IconData _categoryIconData(String name) {
     final n = name.toLowerCase();
@@ -1199,8 +672,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ================================================================
   // TIÊU ĐỀ MỖI SECTION
-  // Dùng chung cho 'Danh mục nổi bật', 'Sản phẩm bán chạy'...
-  // Có thể có nút 'Xem tất cả' bên phải.
   // ================================================================
   Widget _sectionHeader(String title, {VoidCallback? onViewAll}) {
     return Padding(
@@ -1248,9 +719,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ================================================================
   // CARD SẢN PHẨM
-  // Hiển thị ảnh, nhãn Hot, icon yêu thích, tên, giá, tồn kho,
-  // nút chi tiết và nút thêm vào giỏ.
-  // Chức năng bấm card vẫn đi đến trang chi tiết sản phẩm.
   // ================================================================
   Widget _productCard(
       ProductModel product, {
@@ -1278,8 +746,6 @@ class _HomeScreenState extends State<HomeScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              // Ảnh giảm còn 1/2 chiều cao card để phần thông tin bên dưới
-              // có đủ chỗ, tránh lỗi Column overflow trên màn hình nhỏ.
               flex: 5,
               child: Stack(
                 children: [
@@ -1514,11 +980,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // ================================================================
   // BUILD GIAO DIỆN CHÍNH
-  // Scaffold gồm:
-  // - background màu hồng rất nhạt
-  // - body dùng Consumer2 để nghe ProductProvider và CategoryProvider
-  // - CustomScrollView để cuộn toàn màn hình
-  // - bottomNavigationBar cho 4 tab chính
   // ================================================================
   @override
   Widget build(BuildContext context) {
@@ -1526,12 +987,24 @@ class _HomeScreenState extends State<HomeScreen> {
       backgroundColor: AppColors.softPink,
       body: Consumer2<ProductProvider, CategoryProvider>(
         builder: (context, productProvider, categoryProvider, child) {
-          // Danh sách sản phẩm sau khi lọc theo keyword và danh mục.
-          final filtered = _applyFilters(productProvider.products, categoryProvider.tree);
+          final products = productProvider.products;
 
           return Column(
             children: [
-              _header(context, categoryProvider),
+              AppHomeHeader(
+                searchController: _searchCtrl,
+                onSearchChanged: (_) => setState(() {}),
+                onSearchSubmitted: (v) {
+                  final keyword = v.trim();
+                  if (keyword.isEmpty) return;
+                  _openCategoryProducts(keyword: keyword);
+                },
+                onFilterTap: () => _openCategoryPicker(categoryProvider),
+                onClearSearch: () {
+                  _searchCtrl.clear();
+                  setState(() {});
+                },
+              ),
               Expanded(
                 child: Builder(
                   builder: (_) {
@@ -1546,8 +1019,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         SliverToBoxAdapter(child: _heroBanner()),
                         // Các box dịch vụ: freeship, đổi trả, thanh toán, hỗ trợ.
                         SliverToBoxAdapter(child: _serviceHighlights()),
-                        // Danh mục nổi bật lấy từ CategoryProvider.
-                        SliverToBoxAdapter(child: _categoryHighlights(categoryProvider)),
+
                         if (productProvider.products.isEmpty)
                           const SliverFillRemaining(
                             hasScrollBody: false,
@@ -1562,48 +1034,34 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ),
                           )
-                        else if (filtered.isEmpty)
-                          const SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(20),
-                                child: Text(
-                                  'Không có sản phẩm trong bộ lọc hiện tại.',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(color: AppColors.textGrey, fontWeight: FontWeight.w700),
-                                ),
-                              ),
-                            ),
-                          )
                         else ...[
-                            SliverToBoxAdapter(
-                              child: _recommendedProductsSection(),
-                            ),
-                            SliverToBoxAdapter(
-                              child: _favoriteProductsSection(),
-                            ),
-                            SliverToBoxAdapter(
-                              child: _sectionHeader('Sản phẩm bán chạy 🧸', onViewAll: () => _openCategoryProducts()),
-                            ),
-                            // Grid sản phẩm 2 cột phù hợp với màn hình mobile.
-                            SliverPadding(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
-                              sliver: SliverGrid(
-                                delegate: SliverChildBuilderDelegate(
-                                      (context, index) => _productCard(filtered[index]),
-                                  childCount: filtered.length,
-                                ),
-                                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 2,
-                                  crossAxisSpacing: 12,
-                                  mainAxisSpacing: 14,
-                                  childAspectRatio: 0.60,
-                                ),
+                          SliverToBoxAdapter(
+                            child: _recommendedProductsSection(),
+                          ),
+                          SliverToBoxAdapter(
+                            child: _favoriteProductsSection(),
+                          ),
+                          SliverToBoxAdapter(
+                            child: _sectionHeader('Sản phẩm bán chạy 🧸', onViewAll: () => _openCategoryProducts()),
+                          ),
+                          // Grid sản phẩm 2 cột phù hợp với màn hình mobile.
+                          SliverPadding(
+                            padding: const EdgeInsets.fromLTRB(16, 4, 16, 18),
+                            sliver: SliverGrid(
+                              delegate: SliverChildBuilderDelegate(
+                                    (context, index) => _productCard(products[index]),
+                                childCount: products.length,
+                              ),
+                              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                crossAxisSpacing: 12,
+                                mainAxisSpacing: 14,
+                                childAspectRatio: 0.60,
                               ),
                             ),
-                            const SliverToBoxAdapter(child: SizedBox(height: 10)),
-                          ],
+                          ),
+                          const SliverToBoxAdapter(child: SizedBox(height: 10)),
+                        ],
                       ],
                     );
                   },
@@ -1614,54 +1072,19 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       // Thanh điều hướng dưới cùng gồm: Trang chủ, Danh mục, Giỏ hàng, Tôi.
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AppColors.borderPink),
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.darkPink.withOpacity(0.10),
-              blurRadius: 18,
-              offset: const Offset(0, -8),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: BottomNavigationBar(
-            type: BottomNavigationBarType.fixed,
-            currentIndex: 0,
-            elevation: 0,
-            backgroundColor: Colors.white,
-            selectedItemColor: AppColors.darkPink,
-            unselectedItemColor: AppColors.textLight,
-            selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w900, fontSize: 12),
-            unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
-            onTap: (index) async {
-              if (index == 3) {
-                await Navigator.pushNamed(context, '/personal-info');
-                if (!mounted) return;
-                context.read<ProductProvider>().fetchPublicProducts(showLoading: false);
-              }
-
-              if (index == 2) {
-                await Navigator.pushNamed(context, '/cart');
-                if (!mounted) return;
-                context.read<ProductProvider>().fetchPublicProducts(showLoading: false);
-              }
-
-              if (index == 1) {
-                _openCategoryProducts();
-              }
-            },
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: 'Trang chủ'),
-              BottomNavigationBarItem(icon: Icon(Icons.grid_view_rounded), label: 'Danh mục'),
-              BottomNavigationBarItem(icon: Icon(Icons.shopping_bag_outlined), label: 'Giỏ hàng'),
-              BottomNavigationBarItem(icon: Icon(Icons.person_outline_rounded), label: 'Tôi'),
-            ],
-          ),
-        ),
+      bottomNavigationBar: AppBottomNav(
+        currentIndex: 0,
+        onCategoryTap: () async => _openCategoryProducts(),
+        onCartTap: () async {
+          await Navigator.pushNamed(context, '/cart');
+          if (!mounted) return;
+          context.read<ProductProvider>().fetchPublicProducts(showLoading: false);
+        },
+        onProfileTap: () async {
+          await Navigator.pushNamed(context, '/personal-info');
+          if (!mounted) return;
+          context.read<ProductProvider>().fetchPublicProducts(showLoading: false);
+        },
       ),
     );
   }
@@ -1678,59 +1101,4 @@ class _SupportItem {
   final Color color;
 
   const _SupportItem(this.icon, this.title, this.subtitle, this.color);
-}
-
-
-// ================================================================
-// CHIP DANH MỤC CON
-// Hiển thị danh mục con dưới danh mục cha.
-// Khi chọn chip thì giao diện đổi màu và sản phẩm được lọc theo danh mục con.
-// ================================================================
-class _CategoryChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
-  const _CategoryChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(right: 10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.circle),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-          decoration: BoxDecoration(
-            color: selected ? AppColors.darkPink : Colors.white,
-            borderRadius: BorderRadius.circular(AppRadius.circle),
-            border: Border.all(color: selected ? AppColors.darkPink : AppColors.borderPink),
-            boxShadow: selected
-                ? [
-              BoxShadow(
-                color: AppColors.darkPink.withOpacity(0.18),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ]
-                : null,
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              color: selected ? Colors.white : AppColors.textGrey,
-              fontWeight: FontWeight.w900,
-              fontSize: 12,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
