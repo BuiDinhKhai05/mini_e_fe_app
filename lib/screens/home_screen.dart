@@ -771,25 +771,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Positioned(
-                    left: 10,
-                    top: 10,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: AppColors.darkPink,
-                        borderRadius: BorderRadius.circular(AppRadius.circle),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.darkPink.withOpacity(0.22),
-                            blurRadius: 10,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Text('Hot', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
-                    ),
-                  ),
-                  Positioned(
                     right: 10,
                     top: 10,
                     child: Consumer<RecommendationProvider>(

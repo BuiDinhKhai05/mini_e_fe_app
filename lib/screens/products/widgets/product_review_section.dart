@@ -74,13 +74,13 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
     return Consumer<ReviewProvider>(
       builder: (context, provider, _) {
         return Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
           decoration: _cardDecoration(),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _buildHeader(provider.summary),
-              const SizedBox(height: 14),
+              const SizedBox(height: 10),
               _buildBody(provider),
             ],
           ),
@@ -97,26 +97,26 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
     return Row(
       children: [
         Container(
-          width: 34,
-          height: 34,
+          width: 30,
+          height: 30,
           decoration: BoxDecoration(
             color: _softPink,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: const Icon(
             Icons.star_rounded,
             color: _primaryPink,
-            size: 20,
+            size: 18,
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 9),
         const Expanded(
           child: Text(
             'Đánh giá sản phẩm',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.w900,
               color: _textDark,
             ),
@@ -138,7 +138,7 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
       onTap: _openProductReviewsScreen,
       borderRadius: BorderRadius.circular(999),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(999),
@@ -151,7 +151,7 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
               'Tất cả',
               style: TextStyle(
                 color: _primaryPink,
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -159,7 +159,7 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
             const Icon(
               Icons.chevron_right_rounded,
               color: _primaryPink,
-              size: 18,
+              size: 16,
             ),
           ],
         ),
@@ -200,7 +200,7 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildSummaryRow(provider.summary),
-        const SizedBox(height: 14),
+        const SizedBox(height: 10),
 
         // Hiển thị các review đầu tiên.
         ...visibleReviews.map((review) {
@@ -218,10 +218,10 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
   // =======================================================
   Widget _buildSummaryRow(ProductReviewSummary summary) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
         color: _softPink,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         children: [
@@ -229,7 +229,7 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
             summary.avg.toStringAsFixed(1),
             style: const TextStyle(
               color: _primaryPink,
-              fontSize: 28,
+              fontSize: 24,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -241,7 +241,7 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 9),
           _buildStars(summary.avg),
           const Spacer(),
           Text(
@@ -249,7 +249,7 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
             style: const TextStyle(
               color: _textDark,
               fontWeight: FontWeight.w800,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
         ],
@@ -341,14 +341,14 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
   Widget _buildViewAllButton(int count) {
     return SizedBox(
       width: double.infinity,
-      height: 44,
+      height: 40,
       child: OutlinedButton(
         onPressed: _openProductReviewsScreen,
         style: OutlinedButton.styleFrom(
           foregroundColor: _primaryPink,
           side: const BorderSide(color: _primaryPink),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
         child: Text(
@@ -369,7 +369,7 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
           index < rating.round()
               ? Icons.star_rounded
               : Icons.star_border_rounded,
-          size: 17,
+          size: 15,
           color: _starColor,
         );
       }),
@@ -382,13 +382,13 @@ class _ProductReviewSectionState extends State<ProductReviewSection> {
   BoxDecoration _cardDecoration() {
     return BoxDecoration(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(24),
+      borderRadius: BorderRadius.circular(20),
       border: Border.all(color: _borderPink),
       boxShadow: [
         BoxShadow(
-          color: _primaryPink.withOpacity(0.08),
-          blurRadius: 22,
-          offset: const Offset(0, 10),
+          color: _primaryPink.withOpacity(0.055),
+          blurRadius: 14,
+          offset: const Offset(0, 6),
         ),
       ],
     );

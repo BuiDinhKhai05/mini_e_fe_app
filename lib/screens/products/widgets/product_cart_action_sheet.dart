@@ -74,6 +74,7 @@ class ProductCartActionSheet {
         dialogProduct.optionSchema!.isNotEmpty;
 
     bool didInitDefault = false;
+    bool isOptionsExpanded = false;
 
     await showDialog(
       context: rootContext,
@@ -176,6 +177,64 @@ class ProductCartActionSheet {
               return false;
             }
 
+            int optionValueCount() {
+              if (!hasOptionSchema) return 0;
+              return dialogProduct.optionSchema!.fold<int>(
+                0,
+                    (total, schema) => total + schema.values.length,
+              );
+            }
+
+            List<String> visibleOptionValues(OptionSchema schema) {
+              final values = schema.values.map((e) => e.toString()).toList();
+              if (isOptionsExpanded || optionValueCount() <= 14) return values;
+
+              // Khi thu gọn chỉ hiển thị vài giá trị đầu để popup mua hàng không bị quá dài.
+              // Nếu lựa chọn hiện tại nằm phía sau, vẫn chèn nó vào để người dùng thấy đang chọn gì.
+              final visible = values.take(6).toList();
+              final selected = selectedOptions[schema.name.toString()];
+              if (selected != null && selected.trim().isNotEmpty && !visible.contains(selected)) {
+                visible.add(selected);
+              }
+              return visible;
+            }
+
+            Widget compactChoiceChip({
+              required String label,
+              required bool isSelected,
+              required bool isAvailable,
+              required VoidCallback onTap,
+            }) {
+              return InkWell(
+                onTap: !isAvailable ? null : onTap,
+                borderRadius: BorderRadius.circular(999),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: isSelected ? AppColors.lightPink : Colors.white,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: isSelected ? _primaryColor : AppColors.borderPink,
+                      width: isSelected ? 1.3 : 1,
+                    ),
+                  ),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: !isAvailable
+                          ? AppColors.textLight
+                          : isSelected
+                          ? _primaryColor
+                          : AppColors.textDark,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              );
+            }
+
             VariantItem? selectedVariant;
 
             if (hasOptionSchema) {
@@ -231,10 +290,10 @@ class ProductCartActionSheet {
               ),
               child: Container(
                 constraints: BoxConstraints(
-                  minHeight: MediaQuery.of(dialogContext).size.height * 0.78,
+                  minHeight: MediaQuery.of(dialogContext).size.height * 0.56,
                   maxHeight: MediaQuery.of(dialogContext).size.height * 0.78,
                 ),
-                padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
+                padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -261,8 +320,8 @@ class ProductCartActionSheet {
                                 dialogProduct,
                                 selectedVariant,
                               ),
-                              width: 110,
-                              height: 110,
+                              width: 78,
+                              height: 78,
                               fit: BoxFit.cover,
                               fadeInDuration: Duration.zero,
                               fadeOutDuration: Duration.zero,
@@ -285,7 +344,7 @@ class ProductCartActionSheet {
                             ),
                           ),
 
-                          const SizedBox(width: 14),
+                          const SizedBox(width: 10),
 
                           Expanded(
                             child: Column(
@@ -294,7 +353,7 @@ class ProductCartActionSheet {
                                 Text(
                                   dialogProduct.title,
                                   style: const TextStyle(
-                                    fontSize: 17,
+                                    fontSize: 14,
                                     fontWeight: FontWeight.w900,
                                     color: _titleColor,
                                   ),
@@ -302,12 +361,12 @@ class ProductCartActionSheet {
                                   overflow: TextOverflow.ellipsis,
                                 ),
 
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 5),
 
                                 Text(
                                   '$displayPrice VNĐ',
                                   style: const TextStyle(
-                                    fontSize: 20,
+                                    fontSize: 17,
                                     fontWeight: FontWeight.w900,
                                     color: AppColors.error,
                                   ),
@@ -353,123 +412,185 @@ class ProductCartActionSheet {
                         ],
                       ),
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 14),
 
                       if (dialogVariants.isNotEmpty && hasOptionSchema) ...[
-                        const Text(
-                          'Phân loại:',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w900,
-                            color: _titleColor,
+                        Container(
+                          padding: const EdgeInsets.fromLTRB(12, 11, 12, 8),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: AppColors.borderPink),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: optionValueCount() > 14
+                                    ? () => setStateDialog(
+                                      () => isOptionsExpanded = !isOptionsExpanded,
+                                )
+                                    : null,
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 28,
+                                      height: 28,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.lightPink,
+                                        borderRadius: BorderRadius.circular(9),
+                                      ),
+                                      child: const Icon(
+                                        Icons.tune_rounded,
+                                        color: _primaryColor,
+                                        size: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    const Expanded(
+                                      child: Text(
+                                        'Chọn phân loại',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w900,
+                                          color: _titleColor,
+                                        ),
+                                      ),
+                                    ),
+                                    if (optionValueCount() > 14)
+                                      Icon(
+                                        isOptionsExpanded
+                                            ? Icons.keyboard_arrow_up_rounded
+                                            : Icons.keyboard_arrow_down_rounded,
+                                        color: _primaryColor,
+                                        size: 23,
+                                      ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              ...dialogProduct.optionSchema!.map((schema) {
+                                final optionName = schema.name.toString();
+                                final selectedValue = selectedOptions[optionName];
+                                final visibleValues = visibleOptionValues(schema);
+                                final hiddenCount = schema.values.length - visibleValues.length;
+
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 10),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        optionName,
+                                        style: const TextStyle(
+                                          color: AppColors.textGrey,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w900,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 7),
+                                      Wrap(
+                                        spacing: 7,
+                                        runSpacing: 7,
+                                        children: [
+                                          ...visibleValues.map<Widget>((value) {
+                                            final optionValue = value.toString();
+                                            final isSelected = selectedValue == optionValue;
+                                            final isAvailable = isOptionValueAvailable(
+                                              optionName,
+                                              optionValue,
+                                            );
+
+                                            return compactChoiceChip(
+                                              label: optionValue,
+                                              isSelected: isSelected,
+                                              isAvailable: isAvailable,
+                                              onTap: () {
+                                                setStateDialog(() {
+                                                  selectedOptions[optionName] = optionValue;
+
+                                                  final found = findVariantBySelectedOptions();
+                                                  selectedVariantId = found?.id;
+                                                  quantity = 1;
+                                                });
+                                              },
+                                            );
+                                          }),
+                                          if (!isOptionsExpanded && hiddenCount > 0)
+                                            InkWell(
+                                              onTap: () => setStateDialog(
+                                                    () => isOptionsExpanded = true,
+                                              ),
+                                              borderRadius: BorderRadius.circular(999),
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(
+                                                  horizontal: 11,
+                                                  vertical: 7,
+                                                ),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.background,
+                                                  borderRadius: BorderRadius.circular(999),
+                                                  border: Border.all(
+                                                    color: AppColors.borderPink,
+                                                  ),
+                                                ),
+                                                child: Text(
+                                                  '+$hiddenCount',
+                                                  style: const TextStyle(
+                                                    color: _primaryColor,
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w900,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }).toList(),
+                              if (optionValueCount() > 14)
+                                Center(
+                                  child: TextButton.icon(
+                                    style: TextButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                    ),
+                                    onPressed: () => setStateDialog(
+                                          () => isOptionsExpanded = !isOptionsExpanded,
+                                    ),
+                                    icon: Icon(
+                                      isOptionsExpanded
+                                          ? Icons.keyboard_arrow_up_rounded
+                                          : Icons.keyboard_arrow_down_rounded,
+                                      size: 18,
+                                    ),
+                                    label: Text(
+                                      isOptionsExpanded
+                                          ? 'Thu gọn phân loại'
+                                          : 'Xem thêm phân loại',
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                         ),
 
-                        const SizedBox(height: 14),
-
-                        ...dialogProduct.optionSchema!.map((schema) {
-                          final optionName = schema.name.toString();
-                          final selectedValue = selectedOptions[optionName];
-
-                          return Padding(
-                            padding: const EdgeInsets.only(bottom: 18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  optionName,
-                                  style: const TextStyle(
-                                    color: AppColors.textGrey,
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-
-                                const SizedBox(height: 10),
-
-                                Wrap(
-                                  spacing: 10,
-                                  runSpacing: 10,
-                                  children: schema.values.map<Widget>((value) {
-                                    final optionValue = value.toString();
-                                    final isSelected =
-                                        selectedValue == optionValue;
-                                    final isAvailable = isOptionValueAvailable(
-                                      optionName,
-                                      optionValue,
-                                    );
-
-                                    return InkWell(
-                                      onTap: !isAvailable
-                                          ? null
-                                          : () {
-                                        setStateDialog(() {
-                                          selectedOptions[optionName] =
-                                              optionValue;
-
-                                          final found =
-                                          findVariantBySelectedOptions();
-
-                                          selectedVariantId = found?.id;
-                                          quantity = 1;
-                                        });
-                                      },
-                                      borderRadius: BorderRadius.circular(999),
-                                      child: AnimatedContainer(
-                                        duration:
-                                        const Duration(milliseconds: 160),
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 18,
-                                          vertical: 11,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: isSelected
-                                              ? AppColors.lightPink
-                                              : Colors.white,
-                                          borderRadius:
-                                          BorderRadius.circular(999),
-                                          border: Border.all(
-                                            color: isSelected
-                                                ? _primaryColor
-                                                : AppColors.borderPink,
-                                            width: 1.4,
-                                          ),
-                                          boxShadow: isSelected
-                                              ? [
-                                            BoxShadow(
-                                              color: _primaryColor
-                                                  .withOpacity(0.12),
-                                              blurRadius: 10,
-                                              offset: const Offset(0, 4),
-                                            ),
-                                          ]
-                                              : null,
-                                        ),
-                                        child: Text(
-                                          optionValue,
-                                          style: TextStyle(
-                                            color: !isAvailable
-                                                ? AppColors.textLight
-                                                : isSelected
-                                                ? _primaryColor
-                                                : AppColors.textDark,
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 14,
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          );
-                        }).toList(),
+                        const SizedBox(height: 12),
                       ] else if (dialogVariants.isNotEmpty) ...[
                         const Text(
                           'Phân loại:',
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: FontWeight.w900,
                             color: _titleColor,
                           ),
@@ -478,8 +599,8 @@ class ProductCartActionSheet {
                         const SizedBox(height: 10),
 
                         Wrap(
-                          spacing: 10,
-                          runSpacing: 10,
+                          spacing: 7,
+                          runSpacing: 7,
                           children: dialogVariants.map((variant) {
                             final isSelected = selectedVariantId == variant.id;
                             final stock = variant.stock;

@@ -164,6 +164,7 @@ class AppHomeHeader extends StatelessWidget {
               const SizedBox(height: 10),
               Container(
                 decoration: BoxDecoration(
+
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(AppRadius.large),
                   border: Border.all(color: AppColors.borderPink),
@@ -176,6 +177,7 @@ class AppHomeHeader extends StatelessWidget {
                   ],
                 ),
                 child: TextField(
+
                   controller: searchController,
                   textInputAction: TextInputAction.search,
                   onChanged: onSearchChanged,
